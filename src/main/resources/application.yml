@@ -1,6 +1,12 @@
 spring:
   application:
     name: medcare-senior
+  autoconfigure:
+    # Autenticacao somente via JWT: remove o usuario em memoria com senha gerada automaticamente.
+    # No Spring Boot 4 a classe fica em org.springframework.boot.security.autoconfigure
+    # (o pacote antigo ...boot.autoconfigure.security.servlet nao existe mais e seria ignorado).
+    exclude:
+      - org.springframework.boot.security.autoconfigure.UserDetailsServiceAutoConfiguration
   datasource:
     url: jdbc:postgresql://localhost:5432/${POSTGRES_DB:medcare_db}
     username: ${POSTGRES_USER:medcare_admin}
@@ -20,3 +26,11 @@ spring:
     baseline-on-migrate: true
 server:
   port: 8080
+jwt:
+  # Chave HS256: minimo de 32 caracteres (256 bits). Em producao, defina via variavel de ambiente JWT_SECRET.
+  secret: ${JWT_SECRET:medcare-senior-dev-secret-key-trocar-em-producao-123456}
+  # Validade do token do CUIDADOR (padrao: 24 horas)
+  expiration-ms: ${JWT_EXPIRATION_MS:86400000}
+  # Validade do token do IDOSO (padrao: 180 dias). Mais longa porque o pareamento usa codigo de uso unico
+  # e o idoso nao deve precisar parear de novo com frequencia (RNF-02/RNF-06).
+  expiration-idoso-ms: ${JWT_EXPIRATION_IDOSO_MS:15552000000}

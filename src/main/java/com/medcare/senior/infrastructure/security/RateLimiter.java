@@ -2,6 +2,7 @@ package com.medcare.senior.infrastructure.security;
 
 import org.springframework.stereotype.Component;
 
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.concurrent.ConcurrentHashMap;
@@ -20,14 +21,25 @@ public class RateLimiter {
     static final Duration JANELA = Duration.ofMinutes(15);
     private static final Duration INTERVALO_LIMPEZA = Duration.ofMinutes(1);
 
+    private final Clock clock;
     private final ConcurrentHashMap<String, Tentativas> tentativasPorIp = new ConcurrentHashMap<>();
-    private final AtomicReference<Instant> ultimaLimpeza = new AtomicReference<>(Instant.now());
+    private final AtomicReference<Instant> ultimaLimpeza;
+
+    public RateLimiter() {
+        this(Clock.systemUTC());
+    }
+
+    // Permite controlar o tempo nos testes
+    RateLimiter(Clock clock) {
+        this.clock = clock;
+        this.ultimaLimpeza = new AtomicReference<>(clock.instant());
+    }
 
     /**
      * @return quantos segundos faltam para o IP ser liberado, ou 0 se ele não estiver bloqueado
      */
     public long segundosAteLiberar(String ip) {
-        Instant agora = Instant.now();
+        Instant agora = clock.instant();
         limparExpiradasSeNecessario(agora);
 
         Tentativas tentativas = tentativasPorIp.get(ip);
@@ -39,10 +51,15 @@ public class RateLimiter {
     }
 
     public void registrarFalha(String ip) {
-        Instant agora = Instant.now();
+        Instant agora = clock.instant();
         tentativasPorIp.compute(ip, (chave, atual) -> atual == null || atual.expirou(agora)
                 ? new Tentativas(agora, 1)
                 : new Tentativas(atual.inicioJanela(), atual.falhas() + 1));
+    }
+
+    // Visível para testes
+    int ipsMonitorados() {
+        return tentativasPorIp.size();
     }
 
     private void limparExpiradasSeNecessario(Instant agora) {

@@ -1,0 +1,52 @@
+name: Backend CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    # Os testes de use case são unitários (Mockito), mas o SeniorApplicationTests (@SpringBootTest) sobe o
+    # contexto completo, roda as migrations do Flyway e valida o mapeamento JPA; para isso precisa de um Postgres.
+    # As credenciais são as mesmas dos valores padrão do application.yml.
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: medcare_admin
+          POSTGRES_PASSWORD: medcare_pass
+          POSTGRES_DB: medcare_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U medcare_admin -d medcare_db"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Configurar Java 17
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+
+      # Roda os testes e a checagem de cobertura do JaCoCo (RNF-08: mínimo de 60% em domain e application)
+      - name: Build e testes
+        run: mvn -B verify
+
+      - name: Publicar relatório de cobertura
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: jacoco-report
+          path: target/site/jacoco/
+          if-no-files-found: ignore

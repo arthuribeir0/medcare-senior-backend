@@ -25,6 +25,7 @@ public class MedicamentoMapper {
                 .quantidadeEstoque(entity.getQuantidadeEstoque())
                 .bulaUrl(entity.getBulaUrl())
                 .idosoId(entity.getIdoso().getId())
+                .removidoEm(entity.getRemovidoEm())
                 .build();
     }
 
@@ -39,6 +40,7 @@ public class MedicamentoMapper {
                 .quantidadeEstoque(medicamento.getQuantidadeEstoque())
                 .bulaUrl(medicamento.getBulaUrl())
                 .idoso(entityManager.getReference(IdosoEntity.class, medicamento.getIdosoId()))
+                .removidoEm(medicamento.getRemovidoEm())
                 .build();
     }
 }

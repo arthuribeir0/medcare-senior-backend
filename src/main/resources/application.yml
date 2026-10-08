@@ -34,3 +34,21 @@ jwt:
   # Validade do token do IDOSO (padrao: 180 dias). Mais longa porque o pareamento usa codigo de uso unico
   # e o idoso nao deve precisar parear de novo com frequencia (RNF-02/RNF-06).
   expiration-idoso-ms: ${JWT_EXPIRATION_IDOSO_MS:15552000000}
+app:
+  # Fuso usado pelo Clock da aplicacao para "hoje" e "agora" (geracao de doses, remocao logica etc.)
+  timezone: ${APP_TIMEZONE:America/Sao_Paulo}
+  jobs:
+    # Desligue (JOBS_ENABLED=false) para nao agendar nenhum job; os testes com contexto Spring desligam.
+    enabled: ${JOBS_ENABLED:true}
+    reabastecer-doses:
+      # Cron do Spring (segundo minuto hora dia mes dia-da-semana), no fuso app.timezone. Padrao: 00:05 todo dia.
+      cron: ${REABASTECER_DOSES_CRON:0 5 0 * * *}
+  docs:
+    # Swagger UI e /v3/api-docs. Desligado por padrao (fail closed); para ligar, defina DOCS_ENABLED=true.
+    # Quando false, as rotas tambem continuam negadas no SecurityConfig.
+    enabled: ${DOCS_ENABLED:false}
+springdoc:
+  api-docs:
+    enabled: ${app.docs.enabled}
+  swagger-ui:
+    enabled: ${app.docs.enabled}

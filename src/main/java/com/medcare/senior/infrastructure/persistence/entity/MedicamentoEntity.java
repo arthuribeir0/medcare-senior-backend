@@ -7,10 +7,12 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.time.LocalDateTime;
+
 @Entity
+@Setter
 @Table(name = "medicamento")
 @Getter
-@Setter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
@@ -44,4 +46,7 @@ public class MedicamentoEntity {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "idoso_id", nullable = false)
     private IdosoEntity idoso;
+
+    @Column(name = "removido_em")
+    private LocalDateTime removidoEm;
 }

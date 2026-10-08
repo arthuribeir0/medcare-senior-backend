@@ -8,6 +8,7 @@ import com.medcare.senior.infrastructure.persistence.repository.IdosoRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.Optional;
@@ -37,5 +38,11 @@ public class IdosoRepositoryAdapter implements IdosoRepositoryPort {
     @Override
     public Optional<Idoso> findByIdAndCuidadorId(Long id, Long cuidadorId) {
         return idosoRepository.findByIdAndCuidador_Id(id, cuidadorId).map(idosoMapper::toDomain);
+    }
+
+    @Override
+    @Transactional
+    public void deleteAllByCuidadorId(Long cuidadorId) {
+        idosoRepository.deleteAllByCuidadorId(cuidadorId);
     }
 }

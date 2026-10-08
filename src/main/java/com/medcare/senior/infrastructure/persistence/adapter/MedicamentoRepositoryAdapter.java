@@ -6,7 +6,9 @@ import com.medcare.senior.infrastructure.persistence.mapper.MedicamentoMapper;
 import com.medcare.senior.infrastructure.persistence.repository.MedicamentoRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -24,23 +26,30 @@ public class MedicamentoRepositoryAdapter implements MedicamentoRepositoryPort {
 
     @Override
     public Optional<Medicamento> findById(Long id) {
-        return medicamentoRepository.findById(id).map(medicamentoMapper::toDomain);
+        return medicamentoRepository.findByIdAndRemovidoEmIsNull(id).map(medicamentoMapper::toDomain);
     }
 
     @Override
     public List<Medicamento> findAllByIdosoId(Long idosoId) {
-        return medicamentoRepository.findAllByIdoso_IdOrderByNomeAsc(idosoId).stream()
+        return medicamentoRepository.findAllByIdoso_IdAndRemovidoEmIsNullOrderByNomeAsc(idosoId).stream()
                 .map(medicamentoMapper::toDomain)
                 .toList();
     }
 
     @Override
-    public void deleteById(Long id) {
-        medicamentoRepository.deleteById(id);
+    public boolean existsById(Long id) {
+        return medicamentoRepository.existsByIdAndRemovidoEmIsNull(id);
     }
 
     @Override
-    public boolean existsById(Long id) {
-        return medicamentoRepository.existsById(id);
+    @Transactional
+    public void marcarComoRemovido(Long id, LocalDateTime agora) {
+        medicamentoRepository.marcarComoRemovido(id, agora);
+    }
+
+    @Override
+    @Transactional
+    public void deleteAllByCuidadorId(Long cuidadorId) {
+        medicamentoRepository.deleteAllByCuidadorId(cuidadorId);
     }
 }

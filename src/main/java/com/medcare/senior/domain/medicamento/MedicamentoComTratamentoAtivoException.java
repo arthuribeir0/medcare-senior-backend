@@ -4,8 +4,7 @@ package com.medcare.senior.domain.medicamento;
  * RN-006: um medicamento com tratamento ativo não pode ser removido sem confirmação explícita
  * (forcarRemocao=true).
  *
- * <p>Ainda não é lançada em nenhum lugar: a entidade Tratamento só existirá na Fase 2 do plano.
- * Já está mapeada para HTTP 409 no GlobalExceptionHandler.
+ * <p>Lançada pelo RemoverMedicamentoUseCase e mapeada para HTTP 409 no GlobalExceptionHandler.
  */
 public class MedicamentoComTratamentoAtivoException extends RuntimeException {
 

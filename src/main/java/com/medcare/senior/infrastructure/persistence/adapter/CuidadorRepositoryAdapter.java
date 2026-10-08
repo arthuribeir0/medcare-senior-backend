@@ -8,6 +8,7 @@ import com.medcare.senior.infrastructure.persistence.repository.CuidadorReposito
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
 
@@ -41,5 +42,11 @@ public class CuidadorRepositoryAdapter implements CuidadorRepositoryPort {
     @Override
     public boolean existsById(Long id) {
         return cuidadorRepository.existsById(id);
+    }
+
+    @Override
+    @Transactional
+    public void deleteById(Long id) {
+        cuidadorRepository.deleteById(id);
     }
 }

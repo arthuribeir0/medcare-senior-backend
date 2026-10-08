@@ -6,6 +6,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.time.LocalDateTime;
+
 @Getter
 @Setter
 @Builder
@@ -22,6 +24,11 @@ public class Medicamento {
     private Integer quantidadeEstoque;
     private String bulaUrl;
     private Long idosoId;
+
+    /**
+     * Remoção lógica: preenchido quando o cuidador remove o medicamento. Medicamento removido é invisível na API.
+     */
+    private LocalDateTime removidoEm;
 
     /**
      * RN-005: nome, dosagem e tipo são obrigatórios.

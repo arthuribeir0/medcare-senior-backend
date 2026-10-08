@@ -26,4 +26,9 @@ public interface CodigoVinculoRepositoryPort {
      * consumido (ou se ele expirou nesse meio-tempo)
      */
     boolean marcarComoUsado(Long id, LocalDateTime agora);
+
+    /**
+     * Remove todos os códigos de vínculo gerados pelo cuidador (exclusão de conta, LGPD).
+     */
+    void deleteAllByCuidadorId(Long cuidadorId);
 }

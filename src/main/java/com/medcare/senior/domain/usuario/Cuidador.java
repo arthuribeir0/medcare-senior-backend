@@ -21,4 +21,6 @@ public class Cuidador {
     private String senhaHash;
     private String telefone;
     private LocalDateTime dataCadastro;
+    private boolean consentimentoLgpd;
+    private LocalDateTime dataConsentimento;
 }

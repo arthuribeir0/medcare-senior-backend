@@ -24,4 +24,10 @@ public interface CodigoVinculoRepository extends JpaRepository<CodigoVinculoEnti
     @Query("UPDATE CodigoVinculoEntity c SET c.usado = true "
             + "WHERE c.id = :id AND c.usado = false AND c.expiraEm > :agora")
     int marcarComoUsado(@Param("id") Long id, @Param("agora") LocalDateTime agora);
+
+    // Inclui também códigos dos idosos do cuidador, por segurança, caso cuidador_id e idoso.cuidador_id divirjam
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("DELETE FROM CodigoVinculoEntity c WHERE c.cuidador.id = :cuidadorId "
+            + "OR c.idoso.id IN (SELECT i.id FROM IdosoEntity i WHERE i.cuidador.id = :cuidadorId)")
+    void deleteAllByCuidadorId(@Param("cuidadorId") Long cuidadorId);
 }

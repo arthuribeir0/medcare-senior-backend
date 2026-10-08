@@ -16,4 +16,9 @@ public interface IdosoRepositoryPort {
     boolean existsByCuidadorIdAndNomeAndDataNascimento(Long cuidadorId, String nome, LocalDate dataNascimento);
 
     Optional<Idoso> findByIdAndCuidadorId(Long id, Long cuidadorId);
+
+    /**
+     * Remove todos os idosos do cuidador (exclusão de conta, LGPD).
+     */
+    void deleteAllByCuidadorId(Long cuidadorId);
 }

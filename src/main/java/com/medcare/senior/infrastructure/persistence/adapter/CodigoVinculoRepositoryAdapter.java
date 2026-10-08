@@ -39,4 +39,10 @@ public class CodigoVinculoRepositoryAdapter implements CodigoVinculoRepositoryPo
     public boolean marcarComoUsado(Long id, LocalDateTime agora) {
         return codigoVinculoRepository.marcarComoUsado(id, agora) == 1;
     }
+
+    @Override
+    @Transactional
+    public void deleteAllByCuidadorId(Long cuidadorId) {
+        codigoVinculoRepository.deleteAllByCuidadorId(cuidadorId);
+    }
 }

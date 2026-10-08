@@ -5,7 +5,14 @@ import com.medcare.senior.domain.exception.CodigoVinculoInvalidoException;
 import com.medcare.senior.infrastructure.security.RateLimiter;
 import com.medcare.senior.presentation.dto.AuthResponseDTO;
 import com.medcare.senior.presentation.dto.ValidarCodigoRequestDTO;
+import com.medcare.senior.presentation.exception.ErroResponse;
 import com.medcare.senior.presentation.exception.MuitasTentativasException;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.security.SecurityRequirements;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -22,12 +29,21 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/vinculo")
 @RequiredArgsConstructor
+@Tag(name = "Vínculo", description = "Pareamento do aparelho do idoso por código")
 public class VinculoController {
 
     private final ValidarCodigoVinculoUseCase validarCodigoVinculoUseCase;
     private final RateLimiter rateLimiter;
 
     @PostMapping("/validar")
+    @SecurityRequirements
+    @Operation(summary = "Troca um código de vínculo por um JWT do idoso",
+            description = "Endpoint público, com limite de tentativas inválidas por IP.")
+    @ApiResponse(responseCode = "200", description = "Código válido; token do idoso emitido")
+    @ApiResponse(responseCode = "400", description = "Código inválido, expirado ou já usado",
+            content = @Content(schema = @Schema(implementation = ErroResponse.class)))
+    @ApiResponse(responseCode = "429", description = "Muitas tentativas inválidas (header Retry-After)",
+            content = @Content(schema = @Schema(implementation = ErroResponse.class)))
     public ResponseEntity<AuthResponseDTO> validar(@Valid @RequestBody ValidarCodigoRequestDTO request,
                                                    HttpServletRequest httpRequest) {
         String ip = httpRequest.getRemoteAddr();

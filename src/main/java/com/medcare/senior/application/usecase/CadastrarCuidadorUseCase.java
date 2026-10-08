@@ -1,6 +1,7 @@
 package com.medcare.senior.application.usecase;
 
 import com.medcare.senior.domain.autenticacao.PasswordHasherPort;
+import com.medcare.senior.domain.exception.ConsentimentoLgpdObrigatorioException;
 import com.medcare.senior.domain.exception.EmailJaCadastradoException;
 import com.medcare.senior.domain.exception.SenhaFracaException;
 import com.medcare.senior.domain.usuario.Cuidador;
@@ -22,7 +23,16 @@ public class CadastrarCuidadorUseCase {
     private final CuidadorRepositoryPort cuidadorRepository;
     private final PasswordHasherPort passwordHasher;
 
-    public Cuidador executar(String nome, String email, String senha, String telefone) {
+    /**
+     * @param consentimentoLgpd aceite do termo de consentimento; só {@code true} é aceito ({@code null} é recusa)
+     * @throws ConsentimentoLgpdObrigatorioException se o termo não foi aceito
+     */
+    public Cuidador executar(String nome, String email, String senha, String telefone, Boolean consentimentoLgpd) {
+        // LGPD: verificado primeiro, para nem consultar o e-mail de quem não consentiu
+        if (!Boolean.TRUE.equals(consentimentoLgpd)) {
+            throw new ConsentimentoLgpdObrigatorioException();
+        }
+
         String emailNormalizado = email.trim().toLowerCase(Locale.ROOT);
 
         // RN-001
@@ -35,12 +45,15 @@ public class CadastrarCuidadorUseCase {
             throw new SenhaFracaException();
         }
 
+        LocalDateTime agora = LocalDateTime.now();
         Cuidador cuidador = Cuidador.builder()
                 .nome(nome.trim())
                 .email(emailNormalizado)
                 .senhaHash(passwordHasher.hash(senha))
                 .telefone(telefone)
-                .dataCadastro(LocalDateTime.now())
+                .dataCadastro(agora)
+                .consentimentoLgpd(true)
+                .dataConsentimento(agora)
                 .build();
 
         // Cadastro concorrente com o mesmo e-mail é convertido em EmailJaCadastradoException pelo adapter

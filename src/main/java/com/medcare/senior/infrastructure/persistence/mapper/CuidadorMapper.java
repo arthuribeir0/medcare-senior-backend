@@ -15,6 +15,8 @@ public class CuidadorMapper {
                 .senhaHash(entity.getSenhaHash())
                 .telefone(entity.getTelefone())
                 .dataCadastro(entity.getDataCadastro())
+                .consentimentoLgpd(entity.isConsentimentoLgpd())
+                .dataConsentimento(entity.getDataConsentimento())
                 .build();
     }
 
@@ -26,6 +28,8 @@ public class CuidadorMapper {
                 .senhaHash(cuidador.getSenhaHash())
                 .telefone(cuidador.getTelefone())
                 .dataCadastro(cuidador.getDataCadastro())
+                .consentimentoLgpd(cuidador.isConsentimentoLgpd())
+                .dataConsentimento(cuidador.getDataConsentimento())
                 .build();
     }
 }

@@ -36,4 +36,10 @@ public class CuidadorEntity {
 
     @Column(name = "data_cadastro", nullable = false)
     private LocalDateTime dataCadastro;
+
+    @Column(name = "consentimento_lgpd", nullable = false)
+    private boolean consentimentoLgpd;
+
+    @Column(name = "data_consentimento")
+    private LocalDateTime dataConsentimento;
 }

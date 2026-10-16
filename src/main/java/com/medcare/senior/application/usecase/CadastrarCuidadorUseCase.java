@@ -9,6 +9,7 @@ import com.medcare.senior.domain.usuario.CuidadorRepositoryPort;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.Locale;
 import java.util.regex.Pattern;
@@ -22,6 +23,7 @@ public class CadastrarCuidadorUseCase {
 
     private final CuidadorRepositoryPort cuidadorRepository;
     private final PasswordHasherPort passwordHasher;
+    private final Clock clock;
 
     /**
      * @param consentimentoLgpd aceite do termo de consentimento; só {@code true} é aceito ({@code null} é recusa)
@@ -45,7 +47,7 @@ public class CadastrarCuidadorUseCase {
             throw new SenhaFracaException();
         }
 
-        LocalDateTime agora = LocalDateTime.now();
+        LocalDateTime agora = LocalDateTime.now(clock);
         Cuidador cuidador = Cuidador.builder()
                 .nome(nome.trim())
                 .email(emailNormalizado)

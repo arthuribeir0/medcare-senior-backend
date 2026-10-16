@@ -8,6 +8,7 @@ import com.medcare.senior.domain.usuario.Role;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.time.Clock;
 import java.time.LocalDateTime;
 
 @Service
@@ -16,13 +17,14 @@ public class ValidarCodigoVinculoUseCase {
 
     private final CodigoVinculoRepositoryPort codigoVinculoRepository;
     private final TokenGeneratorPort tokenGenerator;
+    private final Clock clock;
 
     /**
      * @return o JWT do idoso vinculado ao código
      * @throws CodigoVinculoInvalidoException se o código não existir, estiver expirado ou já tiver sido usado
      */
     public String executar(String codigo) {
-        LocalDateTime agora = LocalDateTime.now();
+        LocalDateTime agora = LocalDateTime.now(clock);
 
         CodigoVinculo codigoVinculo = codigoVinculoRepository.findMaisRecenteByCodigoUnico(codigo.trim())
                 .orElseThrow(CodigoVinculoInvalidoException::new);

@@ -32,6 +32,10 @@
 		<!-- Linha 3.x do springdoc: a 3.1.x é compilada contra o Spring Boot 4.1 (as 2.x são para o Boot 3) -->
 		<springdoc.version>3.1.1</springdoc.version>
 		<jacoco.version>0.8.15</jacoco.version>
+		<!-- ShedLock 7.x: compilado para Java 17 e contra Spring Framework 7 / testado com Spring Boot 4.1 (a 6.x é para o Boot 3) -->
+		<shedlock.version>7.10.1</shedlock.version>
+		<!-- Firebase Admin SDK: versão estável mais recente; compilado para Java 8, roda no Java 17 -->
+		<firebase-admin.version>9.11.0</firebase-admin.version>
 		<sonar-maven-plugin.version>5.8.0.7211</sonar-maven-plugin.version>
 		<!-- RNF-08: cobertura mínima de linhas das camadas domain e application -->
 		<jacoco.cobertura-minima>0.60</jacoco.cobertura-minima>
@@ -84,6 +88,21 @@
 			<artifactId>jjwt-jackson</artifactId>
 			<version>${jjwt.version}</version>
 			<scope>runtime</scope>
+		</dependency>
+		<dependency>
+			<groupId>net.javacrumbs.shedlock</groupId>
+			<artifactId>shedlock-spring</artifactId>
+			<version>${shedlock.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>net.javacrumbs.shedlock</groupId>
+			<artifactId>shedlock-provider-jdbc-template</artifactId>
+			<version>${shedlock.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>com.google.firebase</groupId>
+			<artifactId>firebase-admin</artifactId>
+			<version>${firebase-admin.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>org.flywaydb</groupId>

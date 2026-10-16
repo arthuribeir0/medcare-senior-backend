@@ -5,8 +5,8 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * Não há operação de atualização de dose: doses registradas são imutáveis (RN-008). As únicas remoções
- * possíveis atingem SOMENTE doses PENDENTES.
+ * Doses registradas são imutáveis (RN-008): a única atualização possível é a transição a partir de PENDENTE
+ * ({@link #registrarSePendente}), e as únicas remoções atingem SOMENTE doses PENDENTES.
  */
 public interface DoseRepositoryPort {
 
@@ -17,6 +17,24 @@ public interface DoseRepositoryPort {
      * Usado para a geração ser idempotente.
      */
     Set<LocalDateTime> findHorariosProgramadosByTratamentoIdDesde(Long tratamentoId, LocalDateTime desde);
+
+    /**
+     * Até {@code limite} doses PENDENTES com horário programado igual ou anterior a {@code vencidasAte}, das mais
+     * antigas para as mais novas. Ignora doses anonimizadas (sem tratamento) e doses de tratamento ou medicamento
+     * removido logicamente.
+     */
+    List<DoseVencida> findPendentesVencidas(LocalDateTime vencidasAte, int limite);
+
+    /**
+     * Grava a versão registrada da dose (status e hora de confirmação) SOMENTE se no banco ela ainda estiver
+     * PENDENTE, em um único UPDATE atômico ({@code ... WHERE id = ? AND status = 'PENDENTE'}). Se outra transação
+     * registrou a dose antes (ex.: confirmação do idoso), nada muda.
+     *
+     * @param doseRegistrada dose já em um status registrado, criada por uma transição de {@link Dose}
+     * @return quantas linhas mudaram: 1 se a transição aconteceu, 0 se a dose não existe ou não estava PENDENTE
+     * @throws IllegalArgumentException se {@code doseRegistrada} ainda estiver PENDENTE ou não tiver id
+     */
+    int registrarSePendente(Dose doseRegistrada);
 
     /**
      * Apaga as doses PENDENTES do tratamento com horário programado depois de {@code agora}.

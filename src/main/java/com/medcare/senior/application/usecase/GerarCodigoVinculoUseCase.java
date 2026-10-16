@@ -9,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.security.SecureRandom;
+import java.time.Clock;
 import java.time.Duration;
 import java.time.LocalDateTime;
 
@@ -23,6 +24,7 @@ public class GerarCodigoVinculoUseCase {
 
     private final IdosoRepositoryPort idosoRepository;
     private final CodigoVinculoRepositoryPort codigoVinculoRepository;
+    private final Clock clock;
 
     /**
      * @param idosoId    idoso para o qual o código será gerado
@@ -34,7 +36,7 @@ public class GerarCodigoVinculoUseCase {
         Idoso idoso = idosoRepository.findByIdAndCuidadorId(idosoId, cuidadorId)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Idoso não encontrado"));
 
-        LocalDateTime agora = LocalDateTime.now();
+        LocalDateTime agora = LocalDateTime.now(clock);
 
         CodigoVinculo codigo = CodigoVinculo.builder()
                 .codigoUnico(gerarCodigoDisponivel(agora))

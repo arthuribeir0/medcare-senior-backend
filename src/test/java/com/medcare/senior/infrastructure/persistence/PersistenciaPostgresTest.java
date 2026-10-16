@@ -3,8 +3,10 @@ package com.medcare.senior.infrastructure.persistence;
 import com.medcare.senior.application.service.GeradorDeDosesService;
 import com.medcare.senior.application.usecase.EditarTratamentoUseCase;
 import com.medcare.senior.application.usecase.ExcluirContaUseCase;
+import com.medcare.senior.application.usecase.RegistrarTokenDispositivoUseCase;
 import com.medcare.senior.application.usecase.RemoverMedicamentoUseCase;
 import com.medcare.senior.domain.dose.Dose;
+import com.medcare.senior.domain.dose.DoseVencida;
 import com.medcare.senior.domain.dose.StatusDose;
 import com.medcare.senior.infrastructure.persistence.adapter.CodigoVinculoRepositoryAdapter;
 import com.medcare.senior.infrastructure.persistence.adapter.CuidadorRepositoryAdapter;
@@ -60,6 +62,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
         CuidadorMapper.class, IdosoMapper.class, MedicamentoMapper.class, TratamentoMapper.class, DoseMapper.class,
         CodigoVinculoMapper.class,
         ExcluirContaUseCase.class, RemoverMedicamentoUseCase.class, EditarTratamentoUseCase.class,
+        RegistrarTokenDispositivoUseCase.class,
         GeradorDeDosesService.class,
         PersistenciaPostgresTest.RelogioFixo.class
 })
@@ -99,6 +102,12 @@ class PersistenciaPostgresTest {
 
     @Autowired
     private DoseRepositoryAdapter doseAdapter;
+
+    @Autowired
+    private CuidadorRepositoryAdapter cuidadorAdapter;
+
+    @Autowired
+    private RegistrarTokenDispositivoUseCase registrarTokenDispositivoUseCase;
 
     // ---------------------------------------------------------------------------------------------------------
     // Exclusão de conta (LGPD)
@@ -143,6 +152,62 @@ class PersistenciaPostgresTest {
         assertThat(contar("cuidador", outro.getId())).isEqualTo(1);
         assertThat(contar("tratamento", tratamentoDoOutro.getId())).isEqualTo(1);
         assertThat(tratamentoIdDaDose(pendenteDoOutro.getId())).isEqualTo(tratamentoDoOutro.getId());
+    }
+
+    @Test
+    void exclusaoDeContaApagaOTokenDeDispositivo() {
+        String token = "fcm-" + UUID.randomUUID();
+        CuidadorEntity cuidador = cuidador();
+        cuidadorAdapter.atualizarFcmToken(cuidador.getId(), token);
+        assertThat(cuidadoresComToken(token)).isEqualTo(1);
+
+        excluirContaUseCase.executar(cuidador.getId());
+
+        // O token ficava na linha do cuidador, que foi apagada: não sobra cópia em lugar nenhum
+        assertThat(cuidadoresComToken(token)).isZero();
+    }
+
+    // ---------------------------------------------------------------------------------------------------------
+    // Token de dispositivo (FCM)
+    // ---------------------------------------------------------------------------------------------------------
+
+    @Test
+    void registrarTokenGravaNoCuidadorERetiraDeOutraConta() {
+        String token = "fcm-" + UUID.randomUUID();
+        CuidadorEntity contaAnterior = cuidador();
+        CuidadorEntity contaNova = cuidador();
+        CuidadorEntity semRelacao = cuidador();
+        cuidadorAdapter.atualizarFcmToken(contaAnterior.getId(), token);
+        cuidadorAdapter.atualizarFcmToken(semRelacao.getId(), "fcm-outro-aparelho");
+
+        registrarTokenDispositivoUseCase.executar(contaNova.getId(), token);
+
+        assertThat(cuidadorAdapter.findById(contaNova.getId())).get()
+                .extracting(c -> c.getFcmToken()).isEqualTo(token);
+        assertThat(cuidadorAdapter.findById(contaAnterior.getId())).get()
+                .extracting(c -> c.getFcmToken()).isNull();
+        assertThat(cuidadorAdapter.findById(semRelacao.getId())).get()
+                .extracting(c -> c.getFcmToken()).isEqualTo("fcm-outro-aparelho");
+    }
+
+    @Test
+    void removerFcmTokenSeIgualSoApagaSeOTokenAindaForOMesmo() {
+        CuidadorEntity cuidador = cuidador();
+        cuidadorAdapter.atualizarFcmToken(cuidador.getId(), "fcm-novo");
+
+        // O push falhou com o token antigo, mas o cuidador já registrou outro: o novo fica
+        cuidadorAdapter.removerFcmTokenSeIgual(cuidador.getId(), "fcm-antigo");
+        assertThat(cuidadorAdapter.findById(cuidador.getId())).get()
+                .extracting(c -> c.getFcmToken()).isEqualTo("fcm-novo");
+
+        cuidadorAdapter.removerFcmTokenSeIgual(cuidador.getId(), "fcm-novo");
+        assertThat(cuidadorAdapter.findById(cuidador.getId())).get()
+                .extracting(c -> c.getFcmToken()).isNull();
+    }
+
+    @Test
+    void atualizarFcmTokenDeCuidadorInexistenteNaoAlteraNada() {
+        assertThat(cuidadorAdapter.atualizarFcmToken(Long.MAX_VALUE, "fcm-qualquer")).isFalse();
     }
 
     // ---------------------------------------------------------------------------------------------------------
@@ -263,6 +328,83 @@ class PersistenciaPostgresTest {
     }
 
     // ---------------------------------------------------------------------------------------------------------
+    // Verificação de doses vencidas: busca e UPDATE atômico PENDENTE -> NAO_TOMADA
+    // ---------------------------------------------------------------------------------------------------------
+
+    @Test
+    void registrarSePendenteMarcaDosePendenteComoNaoTomada() {
+        TratamentoEntity tratamento = tratamento(medicamento(idoso(cuidador()), null), null);
+        DoseEntity pendente = dose(tratamento, AGORA.minusHours(1), StatusDose.PENDENTE);
+
+        int alteradas = doseAdapter.registrarSePendente(domainPendente(pendente).marcarComoNaoTomada());
+
+        assertThat(alteradas).isEqualTo(1);
+        assertThat(statusDaDose(pendente.getId())).isEqualTo("NAO_TOMADA");
+    }
+
+    @Test
+    void registrarSePendenteNaoSobrescreveDoseJaTomada() {
+        TratamentoEntity tratamento = tratamento(medicamento(idoso(cuidador()), null), null);
+        DoseEntity tomada = dose(tratamento, AGORA.minusHours(1), StatusDose.TOMADA);
+        // Leitura "velha": o verificador viu a dose como PENDENTE antes da confirmação concorrente
+        Dose lidaComoPendente = domainPendente(tomada);
+
+        int alteradas = doseAdapter.registrarSePendente(lidaComoPendente.marcarComoNaoTomada());
+
+        assertThat(alteradas).isZero();
+        assertThat(statusDaDose(tomada.getId())).isEqualTo("TOMADA");
+    }
+
+    @Test
+    void findPendentesVencidasIgnoraNaoVencidasRegistradasRemovidasEAnonimizadas() {
+        // Horários em 2000: nenhum dado de desenvolvimento do banco local interfere na busca
+        LocalDateTime vencidasAte = LocalDateTime.of(2000, 1, 10, 12, 0);
+        CuidadorEntity cuidador = cuidador();
+        IdosoEntity idoso = idoso(cuidador);
+        MedicamentoEntity medicamento = medicamento(idoso, null);
+        TratamentoEntity tratamento = tratamento(medicamento, null);
+        DoseEntity maisAntiga = dose(tratamento, vencidasAte.minusDays(1), StatusDose.PENDENTE);
+        DoseEntity noLimite = dose(tratamento, vencidasAte, StatusDose.PENDENTE);
+        DoseEntity naoVencida = dose(tratamento, vencidasAte.plusMinutes(1), StatusDose.PENDENTE);
+        DoseEntity tomada = dose(tratamento, vencidasAte.minusHours(1), StatusDose.TOMADA);
+        DoseEntity deTratamentoRemovido = dose(tratamento(medicamento, vencidasAte), vencidasAte.minusHours(2),
+                StatusDose.PENDENTE);
+        DoseEntity deMedicamentoRemovido = dose(tratamento(medicamento(idoso, vencidasAte), null),
+                vencidasAte.minusHours(3), StatusDose.PENDENTE);
+        em.getEntityManager()
+                .createNativeQuery("INSERT INTO dose (tratamento_id, horario_programado, status) VALUES (NULL, ?1, 'PENDENTE')")
+                .setParameter(1, vencidasAte.minusHours(4))
+                .executeUpdate();
+
+        List<DoseVencida> vencidas = doseAdapter.findPendentesVencidas(vencidasAte, 100);
+
+        assertThat(vencidas).extracting(DoseVencida::doseId)
+                .containsExactly(maisAntiga.getId(), noLimite.getId())
+                .doesNotContain(naoVencida.getId(), tomada.getId(), deTratamentoRemovido.getId(),
+                        deMedicamentoRemovido.getId());
+        DoseVencida primeira = vencidas.get(0);
+        assertThat(primeira.cuidadorId()).isEqualTo(cuidador.getId());
+        assertThat(primeira.nomeIdoso()).isEqualTo(idoso.getNome());
+        assertThat(primeira.nomeMedicamento()).isEqualTo(medicamento.getNome());
+        assertThat(primeira.dose().getTratamentoId()).isEqualTo(tratamento.getId());
+        assertThat(primeira.dose().getStatus()).isEqualTo(StatusDose.PENDENTE);
+        assertThat(primeira.horarioProgramado()).isEqualTo(vencidasAte.minusDays(1));
+    }
+
+    @Test
+    void findPendentesVencidasRespeitaOLimiteComecandoPelasMaisAntigas() {
+        LocalDateTime vencidasAte = LocalDateTime.of(2000, 1, 10, 12, 0);
+        TratamentoEntity tratamento = tratamento(medicamento(idoso(cuidador()), null), null);
+        DoseEntity primeira = dose(tratamento, vencidasAte.minusHours(3), StatusDose.PENDENTE);
+        DoseEntity segunda = dose(tratamento, vencidasAte.minusHours(2), StatusDose.PENDENTE);
+        dose(tratamento, vencidasAte.minusHours(1), StatusDose.PENDENTE);
+
+        List<DoseVencida> vencidas = doseAdapter.findPendentesVencidas(vencidasAte, 2);
+
+        assertThat(vencidas).extracting(DoseVencida::doseId).containsExactly(primeira.getId(), segunda.getId());
+    }
+
+    // ---------------------------------------------------------------------------------------------------------
     // Montagem de dados e consultas de verificação (SQL nativo: lê o estado real do banco)
     // ---------------------------------------------------------------------------------------------------------
 
@@ -335,6 +477,30 @@ class PersistenciaPostgresTest {
                 .setParameter(1, List.of(ids))
                 .getSingleResult();
         return total.longValue();
+    }
+
+    private static Dose domainPendente(DoseEntity entity) {
+        return Dose.builder()
+                .id(entity.getId())
+                .tratamentoId(entity.getTratamento().getId())
+                .horarioProgramado(entity.getHorarioProgramado())
+                .status(StatusDose.PENDENTE)
+                .build();
+    }
+
+    private long cuidadoresComToken(String token) {
+        Number total = (Number) em.getEntityManager()
+                .createNativeQuery("SELECT COUNT(*) FROM cuidador WHERE fcm_token = ?1")
+                .setParameter(1, token)
+                .getSingleResult();
+        return total.longValue();
+    }
+
+    private String statusDaDose(Long doseId) {
+        return (String) em.getEntityManager()
+                .createNativeQuery("SELECT status FROM dose WHERE id = ?1")
+                .setParameter(1, doseId)
+                .getSingleResult();
     }
 
     private Long tratamentoIdDaDose(Long doseId) {

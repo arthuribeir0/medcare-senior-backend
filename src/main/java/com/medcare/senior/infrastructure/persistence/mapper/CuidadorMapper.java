@@ -17,6 +17,7 @@ public class CuidadorMapper {
                 .dataCadastro(entity.getDataCadastro())
                 .consentimentoLgpd(entity.isConsentimentoLgpd())
                 .dataConsentimento(entity.getDataConsentimento())
+                .fcmToken(entity.getFcmToken())
                 .build();
     }
 
@@ -30,6 +31,7 @@ public class CuidadorMapper {
                 .dataCadastro(cuidador.getDataCadastro())
                 .consentimentoLgpd(cuidador.isConsentimentoLgpd())
                 .dataConsentimento(cuidador.getDataConsentimento())
+                .fcmToken(cuidador.getFcmToken())
                 .build();
     }
 }

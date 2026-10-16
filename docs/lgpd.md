@@ -30,7 +30,7 @@ Exposta em `DELETE /api/cuidadores/me` (somente o próprio cuidador, papel CUIDA
 
 | Dado | Tratamento |
 |---|---|
-| Cuidador (nome, e-mail, senha, telefone, consentimento) | Apagado |
+| Cuidador (nome, e-mail, senha, telefone, consentimento, **token de dispositivo**) | Apagado |
 | Idosos do cuidador | Apagados |
 | Medicamentos dos idosos, **inclusive os removidos logicamente** | Apagados |
 | Tratamentos dos medicamentos, **inclusive os removidos logicamente** | Apagados |
@@ -47,6 +47,21 @@ O histórico de doses tem valor estatístico (adesão a tratamentos), mas não p
 `dose.tratamento_id` tem chave estrangeira com `ON DELETE SET NULL`: quando o tratamento é apagado, o banco zera
 o vínculo. A dose restante guarda só horário programado, hora de confirmação e status — sem tratamento,
 medicamento, idoso ou cuidador. Dado anonimizado de forma irreversível deixa de ser dado pessoal (LGPD, art. 12).
+
+## Token de dispositivo (push)
+
+O token FCM do aparelho do cuidador (`cuidador.fcm_token`, registrado em `PUT /api/cuidadores/me/fcm-token`) é
+**dado pessoal**: identifica um aparelho de uma pessoa e permite enviar mensagens a ele.
+
+- Fica **só** na linha do cuidador, sem cópia em outra tabela. Na exclusão de conta ele é apagado junto com essa
+  linha (coberto por `PersistenciaPostgresTest.exclusaoDeContaApagaOTokenDeDispositivo`).
+- Um aparelho pertence a **uma conta por vez**: ao registrar um token, ele é retirado de qualquer outro cuidador
+  que o tenha. Sem isso, quem trocasse de conta no mesmo celular continuaria recebendo avisos da conta anterior,
+  que trazem nome de idoso e de medicamento.
+- Nunca é escrito em log; os logs de envio de aviso trazem apenas IDs (dose e cuidador).
+- O conteúdo do aviso (nome do idoso, do medicamento e horário) passa pelo Firebase Cloud Messaging (Google) para
+  chegar ao aparelho. Isso é tratamento de dados por operador e precisa constar no termo de consentimento antes de
+  ligar o envio real (`app.fcm.enabled=true`) em produção.
 
 ## Tokens emitidos antes da exclusão
 

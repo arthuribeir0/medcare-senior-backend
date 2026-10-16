@@ -11,9 +11,9 @@ import java.time.LocalDateTime;
  * Uma dose programada de um tratamento (RN-008).
  *
  * <p>IMUTÁVEL de propósito: não há setters nem métodos que alterem a dose. Doses já registradas (TOMADA,
- * NAO_TOMADA, CONFIRMADA_COM_ATRASO) formam o histórico de adesão e nunca podem mudar. Quando a confirmação de
- * dose for implementada, ela deve criar a versão registrada SOMENTE a partir de uma dose PENDENTE (ex.: um
- * método que valide {@code status == PENDENTE} e devolva uma nova instância), nunca alterar uma dose registrada.
+ * NAO_TOMADA, CONFIRMADA_COM_ATRASO) formam o histórico de adesão e nunca podem mudar. Cada transição cria a
+ * versão registrada SOMENTE a partir de uma dose PENDENTE e devolve uma nova instância (ver
+ * {@link #marcarComoNaoTomada()}); a confirmação de dose, quando implementada, deve seguir o mesmo padrão.
  *
  * <p>{@code tratamentoId} nulo = dose anonimizada: o tratamento foi apagado na exclusão de conta (LGPD).
  */
@@ -41,5 +41,26 @@ public class Dose {
 
     public boolean isRegistrada() {
         return status.isRegistrada();
+    }
+
+    /**
+     * Versão NAO_TOMADA desta dose, para quando o horário + tolerância passou sem confirmação. Não altera esta
+     * instância. Sem hora de confirmação: a dose não foi confirmada.
+     *
+     * <p>Esta validação é em memória; no banco, a gravação é um UPDATE condicionado a status = 'PENDENTE'
+     * ({@link DoseRepositoryPort#registrarSePendente}), para não sobrescrever uma confirmação concorrente.
+     *
+     * @throws TransicaoDeDoseInvalidaException se a dose não estiver PENDENTE
+     */
+    public Dose marcarComoNaoTomada() {
+        if (status != StatusDose.PENDENTE) {
+            throw new TransicaoDeDoseInvalidaException(id, status, StatusDose.NAO_TOMADA);
+        }
+        return Dose.builder()
+                .id(id)
+                .tratamentoId(tratamentoId)
+                .horarioProgramado(horarioProgramado)
+                .status(StatusDose.NAO_TOMADA)
+                .build();
     }
 }

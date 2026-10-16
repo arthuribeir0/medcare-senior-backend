@@ -6,6 +6,7 @@ import com.medcare.senior.domain.exception.EmailJaCadastradoException;
 import com.medcare.senior.domain.exception.SenhaFracaException;
 import com.medcare.senior.domain.usuario.Cuidador;
 import com.medcare.senior.domain.usuario.CuidadorRepositoryPort;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -13,9 +14,12 @@ import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.time.Clock;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -31,6 +35,8 @@ import static org.mockito.Mockito.when;
 class CadastrarCuidadorUseCaseTest {
 
     private static final String SENHA_FORTE = "SenhaForte1";
+    private static final ZoneId FUSO = ZoneId.of("America/Sao_Paulo");
+    private static final LocalDateTime AGORA = LocalDateTime.of(2026, 10, 16, 9, 30);
 
     @Mock
     private CuidadorRepositoryPort cuidadorRepository;
@@ -38,8 +44,13 @@ class CadastrarCuidadorUseCaseTest {
     @Mock
     private PasswordHasherPort passwordHasher;
 
-    @InjectMocks
     private CadastrarCuidadorUseCase useCase;
+
+    @BeforeEach
+    void setUp() {
+        useCase = new CadastrarCuidadorUseCase(cuidadorRepository, passwordHasher,
+                Clock.fixed(AGORA.atZone(FUSO).toInstant(), FUSO));
+    }
 
     @Test
     void deveCadastrarCuidadorComSenhaHasheada() {
@@ -61,7 +72,7 @@ class CadastrarCuidadorUseCaseTest {
         assertThat(enviado.getNome()).isEqualTo("Ana");
         assertThat(enviado.getEmail()).isEqualTo("ana@email.com");
         assertThat(enviado.getTelefone()).isEqualTo("11999999999");
-        assertThat(enviado.getDataCadastro()).isNotNull();
+        assertThat(enviado.getDataCadastro()).isEqualTo(AGORA);
         assertThat(enviado.isConsentimentoLgpd()).isTrue();
         assertThat(enviado.getDataConsentimento()).isEqualTo(enviado.getDataCadastro());
     }

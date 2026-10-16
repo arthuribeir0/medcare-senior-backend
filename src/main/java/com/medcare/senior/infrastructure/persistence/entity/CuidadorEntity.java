@@ -42,4 +42,7 @@ public class CuidadorEntity {
 
     @Column(name = "data_consentimento")
     private LocalDateTime dataConsentimento;
+
+    @Column(name = "fcm_token", length = 512)
+    private String fcmToken;
 }

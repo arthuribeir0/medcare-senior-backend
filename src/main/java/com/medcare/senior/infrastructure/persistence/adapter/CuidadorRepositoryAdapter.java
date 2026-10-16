@@ -45,6 +45,29 @@ public class CuidadorRepositoryAdapter implements CuidadorRepositoryPort {
     }
 
     @Override
+    public Optional<Cuidador> findById(Long id) {
+        return cuidadorRepository.findById(id).map(cuidadorMapper::toDomain);
+    }
+
+    @Override
+    @Transactional
+    public boolean atualizarFcmToken(Long cuidadorId, String fcmToken) {
+        return cuidadorRepository.atualizarFcmToken(cuidadorId, fcmToken) > 0;
+    }
+
+    @Override
+    @Transactional
+    public void removerFcmTokenDosOutrosCuidadores(String fcmToken, Long cuidadorId) {
+        cuidadorRepository.removerFcmTokenDosOutros(fcmToken, cuidadorId);
+    }
+
+    @Override
+    @Transactional
+    public void removerFcmTokenSeIgual(Long cuidadorId, String fcmToken) {
+        cuidadorRepository.removerFcmTokenSeIgual(cuidadorId, fcmToken);
+    }
+
+    @Override
     @Transactional
     public void deleteById(Long id) {
         cuidadorRepository.deleteById(id);

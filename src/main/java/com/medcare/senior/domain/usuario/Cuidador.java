@@ -23,4 +23,9 @@ public class Cuidador {
     private LocalDateTime dataCadastro;
     private boolean consentimentoLgpd;
     private LocalDateTime dataConsentimento;
+
+    /**
+     * Token FCM do aparelho do cuidador, para avisos push. Dado pessoal (LGPD). {@code null} = sem aparelho registrado.
+     */
+    private String fcmToken;
 }

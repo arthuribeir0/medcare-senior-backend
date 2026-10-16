@@ -2,10 +2,12 @@ package com.medcare.senior.infrastructure.persistence.adapter;
 
 import com.medcare.senior.domain.dose.Dose;
 import com.medcare.senior.domain.dose.DoseRepositoryPort;
+import com.medcare.senior.domain.dose.DoseVencida;
 import com.medcare.senior.domain.dose.StatusDose;
 import com.medcare.senior.infrastructure.persistence.mapper.DoseMapper;
 import com.medcare.senior.infrastructure.persistence.repository.DoseRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,6 +34,33 @@ public class DoseRepositoryAdapter implements DoseRepositoryPort {
     @Override
     public Set<LocalDateTime> findHorariosProgramadosByTratamentoIdDesde(Long tratamentoId, LocalDateTime desde) {
         return new HashSet<>(doseRepository.findHorariosProgramadosDesde(tratamentoId, desde));
+    }
+
+    @Override
+    public List<DoseVencida> findPendentesVencidas(LocalDateTime vencidasAte, int limite) {
+        return doseRepository.findVencidasByStatus(StatusDose.PENDENTE, vencidasAte, PageRequest.of(0, limite))
+                .stream()
+                .map(linha -> new DoseVencida(
+                        Dose.builder()
+                                .id(linha.doseId())
+                                .tratamentoId(linha.tratamentoId())
+                                .horarioProgramado(linha.horarioProgramado())
+                                .status(StatusDose.PENDENTE)
+                                .build(),
+                        linha.cuidadorId(),
+                        linha.nomeIdoso(),
+                        linha.nomeMedicamento()))
+                .toList();
+    }
+
+    @Override
+    @Transactional
+    public int registrarSePendente(Dose doseRegistrada) {
+        if (doseRegistrada.getId() == null || !doseRegistrada.isRegistrada()) {
+            throw new IllegalArgumentException("Só uma dose existente e já registrada pode substituir uma PENDENTE");
+        }
+        return doseRepository.atualizarStatusSeAtual(doseRegistrada.getId(), StatusDose.PENDENTE,
+                doseRegistrada.getStatus(), doseRegistrada.getHoraConfirmacao());
     }
 
     @Override

@@ -33,3 +33,9 @@ build/
 .vscode/
 
 .env
+
+### Credenciais do Firebase / Google Cloud (nunca versionar) ###
+*firebase*.json
+*service-account*.json
+*serviceAccount*.json
+*-adminsdk-*.json

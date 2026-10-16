@@ -43,6 +43,24 @@ app:
     reabastecer-doses:
       # Cron do Spring (segundo minuto hora dia mes dia-da-semana), no fuso app.timezone. Padrao: 00:05 todo dia.
       cron: ${REABASTECER_DOSES_CRON:0 5 0 * * *}
+    verificar-doses:
+      # Varredura de doses vencidas (PENDENTE -> NAO_TOMADA + aviso ao cuidador). Padrao: segundo 0 de cada minuto.
+      cron: ${VERIFICAR_DOSES_CRON:0 * * * * *}
+  alertas:
+    # Minutos apos o horario programado em que a dose ainda pode ser confirmada antes de virar NAO_TOMADA
+    tolerancia-minutos: ${ALERTAS_TOLERANCIA_MINUTOS:30}
+    # Dose que venceu ha mais que isto e marcada NAO_TOMADA, mas nao gera aviso (evita avisos muito atrasados)
+    janela-notificacao-horas: ${ALERTAS_JANELA_NOTIFICACAO_HORAS:24}
+    # Maximo de doses tratadas por execucao da varredura; o restante fica para a proxima
+    lote-maximo: ${ALERTAS_LOTE_MAXIMO:500}
+  fcm:
+    # Push via Firebase Cloud Messaging. Desligado por padrao (e nos testes e no CI): os avisos so vao para o log.
+    enabled: ${FCM_ENABLED:false}
+    # Caminho do JSON da conta de servico do Firebase. NUNCA versione esse arquivo (bloqueado no .gitignore).
+    # Com enabled=true e arquivo ausente, a aplicacao nao sobe.
+    credentials-path: ${FIREBASE_CREDENTIALS_PATH:}
+    # true = o Firebase valida a mensagem (validateOnly) mas nao entrega ao aparelho; para testar credenciais e tokens
+    dry-run: ${FCM_DRY_RUN:false}
   docs:
     # Swagger UI e /v3/api-docs. Desligado por padrao (fail closed); para ligar, defina DOCS_ENABLED=true.
     # Quando false, as rotas tambem continuam negadas no SecurityConfig.

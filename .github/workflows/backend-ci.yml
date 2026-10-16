@@ -40,7 +40,10 @@ jobs:
           cache: maven
 
       # Roda os testes e a checagem de cobertura do JaCoCo (RNF-08: mínimo de 60% em domain e application)
+      # FCM desligado no CI: nenhum teste fala com o Firebase e não há credencial no repositório nem nos secrets
       - name: Build e testes
+        env:
+          FCM_ENABLED: 'false'
         run: mvn -B verify
 
       - name: Publicar relatório de cobertura

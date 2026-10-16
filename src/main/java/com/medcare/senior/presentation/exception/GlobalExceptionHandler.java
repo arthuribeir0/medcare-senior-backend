@@ -8,6 +8,7 @@ import com.medcare.senior.domain.exception.EmailJaCadastradoException;
 import com.medcare.senior.domain.exception.IdosoJaCadastradoException;
 import com.medcare.senior.domain.exception.RecursoNaoEncontradoException;
 import com.medcare.senior.domain.exception.SenhaFracaException;
+import com.medcare.senior.domain.exception.TokenDispositivoInvalidoException;
 import com.medcare.senior.domain.medicamento.DadosObrigatoriosMedicamentoException;
 import com.medcare.senior.domain.medicamento.MedicamentoComTratamentoAtivoException;
 import com.medcare.senior.domain.tratamento.DiasSemanaObrigatoriosException;
@@ -40,6 +41,11 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(ConsentimentoLgpdObrigatorioException.class)
     public ResponseEntity<ErroResponse> handleConsentimentoLgpdObrigatorio(ConsentimentoLgpdObrigatorioException ex) {
+        return construirResposta(HttpStatus.BAD_REQUEST, ex.getMessage(), List.of());
+    }
+
+    @ExceptionHandler(TokenDispositivoInvalidoException.class)
+    public ResponseEntity<ErroResponse> handleTokenDispositivoInvalido(TokenDispositivoInvalidoException ex) {
         return construirResposta(HttpStatus.BAD_REQUEST, ex.getMessage(), List.of());
     }
 

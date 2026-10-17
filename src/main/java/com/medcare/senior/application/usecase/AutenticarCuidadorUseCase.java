@@ -1,6 +1,7 @@
 package com.medcare.senior.application.usecase;
 
 import com.medcare.senior.domain.autenticacao.PasswordHasherPort;
+import com.medcare.senior.domain.autenticacao.SessaoAutenticada;
 import com.medcare.senior.domain.autenticacao.TokenGeneratorPort;
 import com.medcare.senior.domain.exception.CredenciaisInvalidasException;
 import com.medcare.senior.domain.usuario.Cuidador;
@@ -32,9 +33,9 @@ public class AutenticarCuidadorUseCase {
     }
 
     /**
-     * @return o JWT do cuidador autenticado
+     * @return o JWT, o ID e o nome do cuidador autenticado
      */
-    public String executar(String email, String senha) {
+    public SessaoAutenticada executar(String email, String senha) {
         String emailNormalizado = email.trim().toLowerCase(Locale.ROOT);
         Optional<Cuidador> cuidador = cuidadorRepository.findByEmail(emailNormalizado);
 
@@ -45,6 +46,8 @@ public class AutenticarCuidadorUseCase {
             throw new CredenciaisInvalidasException();
         }
 
-        return tokenGenerator.generateToken(cuidador.get().getId(), Role.CUIDADOR);
+        Cuidador autenticado = cuidador.get();
+        return new SessaoAutenticada(tokenGenerator.generateToken(autenticado.getId(), Role.CUIDADOR),
+                autenticado.getId(), autenticado.getNome());
     }
 }

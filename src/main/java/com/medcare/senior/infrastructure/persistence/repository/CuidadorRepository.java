@@ -27,4 +27,8 @@ public interface CuidadorRepository extends JpaRepository<CuidadorEntity, Long> 
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("UPDATE CuidadorEntity c SET c.fcmToken = NULL WHERE c.id = :id AND c.fcmToken = :fcmToken")
     int removerFcmTokenSeIgual(@Param("id") Long id, @Param("fcmToken") String fcmToken);
+
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("UPDATE CuidadorEntity c SET c.fcmToken = NULL WHERE c.id = :id AND c.fcmToken IS NOT NULL")
+    int removerFcmToken(@Param("id") Long id);
 }

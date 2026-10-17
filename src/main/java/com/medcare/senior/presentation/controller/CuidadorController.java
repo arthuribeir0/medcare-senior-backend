@@ -4,6 +4,7 @@ import com.medcare.senior.application.usecase.BuscarCuidadorUseCase;
 import com.medcare.senior.application.usecase.CadastrarCuidadorUseCase;
 import com.medcare.senior.application.usecase.ExcluirContaUseCase;
 import com.medcare.senior.application.usecase.RegistrarTokenDispositivoUseCase;
+import com.medcare.senior.application.usecase.RemoverTokenDispositivoUseCase;
 import com.medcare.senior.domain.autenticacao.AuthenticatedUser;
 import com.medcare.senior.domain.usuario.Cuidador;
 import com.medcare.senior.presentation.dto.CuidadorRequestDTO;
@@ -40,6 +41,7 @@ public class CuidadorController {
     private final ExcluirContaUseCase excluirContaUseCase;
     private final RegistrarTokenDispositivoUseCase registrarTokenDispositivoUseCase;
     private final BuscarCuidadorUseCase buscarCuidadorUseCase;
+    private final RemoverTokenDispositivoUseCase removerTokenDispositivoUseCase;
 
     @PostMapping
     @SecurityRequirements
@@ -97,6 +99,19 @@ public class CuidadorController {
             @Parameter(hidden = true) @AuthenticationPrincipal AuthenticatedUser usuario,
             @Valid @RequestBody TokenDispositivoRequestDTO request) {
         registrarTokenDispositivoUseCase.executar(usuario.cuidadorId(), request.token());
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/me/fcm-token")
+    @Operation(summary = "Apaga o token de dispositivo do cuidador autenticado",
+            description = "Usado no logout: o aparelho deixa de receber avisos push desta conta. Idempotente: responde "
+                    + "204 mesmo se não houver token gravado. Somente CUIDADOR.")
+    @ApiResponse(responseCode = "204", description = "Token apagado (ou já não havia token)")
+    @ApiResponse(responseCode = "401", description = "Token de acesso ausente ou inválido", content = @Content)
+    @ApiResponse(responseCode = "403", description = "Token de acesso sem o papel CUIDADOR", content = @Content)
+    public ResponseEntity<Void> removerTokenDispositivo(
+            @Parameter(hidden = true) @AuthenticationPrincipal AuthenticatedUser usuario) {
+        removerTokenDispositivoUseCase.executar(usuario.cuidadorId());
         return ResponseEntity.noContent().build();
     }
 }

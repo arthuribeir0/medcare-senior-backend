@@ -5,6 +5,7 @@ import com.medcare.senior.application.usecase.BuscarMedicamentoUseCase;
 import com.medcare.senior.application.usecase.EditarTratamentoUseCase;
 import com.medcare.senior.application.usecase.ExcluirContaUseCase;
 import com.medcare.senior.application.usecase.RegistrarTokenDispositivoUseCase;
+import com.medcare.senior.application.usecase.RemoverTokenDispositivoUseCase;
 import com.medcare.senior.application.usecase.RemoverMedicamentoUseCase;
 import com.medcare.senior.domain.dose.Dose;
 import com.medcare.senior.domain.dose.DoseVencida;
@@ -65,7 +66,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
         CuidadorMapper.class, IdosoMapper.class, MedicamentoMapper.class, TratamentoMapper.class, DoseMapper.class,
         CodigoVinculoMapper.class,
         ExcluirContaUseCase.class, RemoverMedicamentoUseCase.class, EditarTratamentoUseCase.class,
-        RegistrarTokenDispositivoUseCase.class, BuscarMedicamentoUseCase.class,
+        RegistrarTokenDispositivoUseCase.class, BuscarMedicamentoUseCase.class, RemoverTokenDispositivoUseCase.class,
         GeradorDeDosesService.class,
         PersistenciaPostgresTest.RelogioFixo.class
 })
@@ -117,6 +118,9 @@ class PersistenciaPostgresTest {
 
     @Autowired
     private IdosoRepositoryAdapter idosoAdapter;
+
+    @Autowired
+    private RemoverTokenDispositivoUseCase removerTokenDispositivoUseCase;
 
     @Autowired
     private BuscarMedicamentoUseCase buscarMedicamentoUseCase;
@@ -215,6 +219,26 @@ class PersistenciaPostgresTest {
         cuidadorAdapter.removerFcmTokenSeIgual(cuidador.getId(), "fcm-novo");
         assertThat(cuidadorAdapter.findById(cuidador.getId())).get()
                 .extracting(c -> c.getFcmToken()).isNull();
+    }
+
+    @Test
+    void removerTokenApagaSoODoCuidadorEEhIdempotente() {
+        CuidadorEntity cuidador = cuidador();
+        CuidadorEntity outro = cuidador();
+        cuidadorAdapter.atualizarFcmToken(cuidador.getId(), "fcm-meu-aparelho");
+        cuidadorAdapter.atualizarFcmToken(outro.getId(), "fcm-outro-aparelho");
+
+        removerTokenDispositivoUseCase.executar(cuidador.getId());
+        assertThat(cuidadorAdapter.findById(cuidador.getId())).get()
+                .extracting(c -> c.getFcmToken()).isNull();
+
+        // De novo, já sem token: nenhum erro e nada muda
+        removerTokenDispositivoUseCase.executar(cuidador.getId());
+        assertThat(cuidadorAdapter.findById(cuidador.getId())).get()
+                .extracting(c -> c.getFcmToken()).isNull();
+
+        assertThat(cuidadorAdapter.findById(outro.getId())).get()
+                .extracting(c -> c.getFcmToken()).isEqualTo("fcm-outro-aparelho");
     }
 
     @Test

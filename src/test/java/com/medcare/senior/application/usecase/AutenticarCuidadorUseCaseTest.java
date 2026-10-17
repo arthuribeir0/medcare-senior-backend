@@ -1,6 +1,7 @@
 package com.medcare.senior.application.usecase;
 
 import com.medcare.senior.domain.autenticacao.PasswordHasherPort;
+import com.medcare.senior.domain.autenticacao.SessaoAutenticada;
 import com.medcare.senior.domain.autenticacao.TokenGeneratorPort;
 import com.medcare.senior.domain.exception.CredenciaisInvalidasException;
 import com.medcare.senior.domain.usuario.Cuidador;
@@ -42,6 +43,7 @@ class AutenticarCuidadorUseCaseTest {
 
     private final Cuidador cuidador = Cuidador.builder()
             .id(7L)
+            .nome("Ana Souza")
             .email("ana@email.com")
             .senhaHash("hash-real")
             .build();
@@ -54,14 +56,14 @@ class AutenticarCuidadorUseCaseTest {
     }
 
     @Test
-    void deveRetornarTokenQuandoCredenciaisCorretas() {
+    void deveRetornarTokenIdENomeQuandoCredenciaisCorretas() {
         when(cuidadorRepository.findByEmail("ana@email.com")).thenReturn(Optional.of(cuidador));
         when(passwordHasher.matches("SenhaForte1", "hash-real")).thenReturn(true);
         when(tokenGenerator.generateToken(7L, Role.CUIDADOR)).thenReturn("jwt-token");
 
-        String token = useCase.executar("  Ana@Email.com ", "SenhaForte1");
+        SessaoAutenticada sessao = useCase.executar("  Ana@Email.com ", "SenhaForte1");
 
-        assertThat(token).isEqualTo("jwt-token");
+        assertThat(sessao).isEqualTo(new SessaoAutenticada("jwt-token", 7L, "Ana Souza"));
     }
 
     @Test

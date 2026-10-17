@@ -37,5 +37,10 @@ public interface CuidadorRepositoryPort {
      */
     void removerFcmTokenSeIgual(Long cuidadorId, String fcmToken);
 
+    /**
+     * Apaga o token de dispositivo do cuidador, qualquer que seja (logout do aparelho). Sem token gravado, nada muda.
+     */
+    void removerFcmToken(Long cuidadorId);
+
     void deleteById(Long id);
 }

@@ -39,7 +39,7 @@ public class VinculoController {
     @SecurityRequirements
     @Operation(summary = "Troca um código de vínculo por um JWT do idoso",
             description = "Endpoint público, com limite de tentativas inválidas por IP.")
-    @ApiResponse(responseCode = "200", description = "Código válido; token do idoso emitido")
+    @ApiResponse(responseCode = "200", description = "Código válido; devolve o token e o id e o nome do idoso")
     @ApiResponse(responseCode = "400", description = "Código inválido, expirado ou já usado",
             content = @Content(schema = @Schema(implementation = ErroResponse.class)))
     @ApiResponse(responseCode = "429", description = "Muitas tentativas inválidas (header Retry-After)",
@@ -54,8 +54,7 @@ public class VinculoController {
         }
 
         try {
-            String token = validarCodigoVinculoUseCase.executar(request.codigo());
-            return ResponseEntity.ok(AuthResponseDTO.bearer(token));
+            return ResponseEntity.ok(AuthResponseDTO.bearer(validarCodigoVinculoUseCase.executar(request.codigo())));
         } catch (CodigoVinculoInvalidoException e) {
             // Só falhas contam; um acerto NÃO zera o contador (senão um cuidador poderia gerar e validar
             // códigos próprios para "resetar" o limite e continuar testando códigos alheios)

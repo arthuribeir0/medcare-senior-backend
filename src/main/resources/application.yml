@@ -15,11 +15,14 @@ spring:
   jpa:
     hibernate:
       ddl-auto: validate
-    show-sql: true
+    # Log de SQL desligado por padrão; para depurar, JPA_SHOW_SQL=true
+    show-sql: ${JPA_SHOW_SQL:false}
+    # Sem Open Session in View: a sessão do JPA termina na transação do use case (nada de lazy loading na view)
+    open-in-view: false
+    # O dialeto do PostgreSQL é detectado automaticamente pelo Hibernate 7
     properties:
       hibernate:
         format_sql: true
-        dialect: org.hibernate.dialect.PostgreSQLDialect
   flyway:
     enabled: true
     locations: classpath:db/migration

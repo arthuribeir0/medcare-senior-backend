@@ -20,7 +20,9 @@ public interface CodigoVinculoRepository extends JpaRepository<CodigoVinculoEnti
 
     Optional<CodigoVinculoEntity> findFirstByCodigoUnicoOrderByIdDesc(String codigoUnico);
 
-    @Modifying
+    // UPDATE em massa não passa pelo contexto de persistência: flush antes (pendências gravadas) e clear depois,
+    // para que uma releitura na mesma transação não devolva a entidade antiga com usado=false
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("UPDATE CodigoVinculoEntity c SET c.usado = true "
             + "WHERE c.id = :id AND c.usado = false AND c.expiraEm > :agora")
     int marcarComoUsado(@Param("id") Long id, @Param("agora") LocalDateTime agora);

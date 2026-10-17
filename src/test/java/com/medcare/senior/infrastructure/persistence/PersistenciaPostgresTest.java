@@ -8,6 +8,7 @@ import com.medcare.senior.application.usecase.RemoverMedicamentoUseCase;
 import com.medcare.senior.domain.dose.Dose;
 import com.medcare.senior.domain.dose.DoseVencida;
 import com.medcare.senior.domain.dose.StatusDose;
+import com.medcare.senior.domain.usuario.CodigoVinculo;
 import com.medcare.senior.infrastructure.persistence.adapter.CodigoVinculoRepositoryAdapter;
 import com.medcare.senior.infrastructure.persistence.adapter.CuidadorRepositoryAdapter;
 import com.medcare.senior.infrastructure.persistence.adapter.DoseRepositoryAdapter;
@@ -109,6 +110,9 @@ class PersistenciaPostgresTest {
     @Autowired
     private RegistrarTokenDispositivoUseCase registrarTokenDispositivoUseCase;
 
+    @Autowired
+    private CodigoVinculoRepositoryAdapter codigoVinculoAdapter;
+
     // ---------------------------------------------------------------------------------------------------------
     // Exclusão de conta (LGPD)
     // ---------------------------------------------------------------------------------------------------------
@@ -208,6 +212,35 @@ class PersistenciaPostgresTest {
     @Test
     void atualizarFcmTokenDeCuidadorInexistenteNaoAlteraNada() {
         assertThat(cuidadorAdapter.atualizarFcmToken(Long.MAX_VALUE, "fcm-qualquer")).isFalse();
+    }
+
+    // ---------------------------------------------------------------------------------------------------------
+    // Código de vínculo: UPDATE em massa e contexto de persistência
+    // ---------------------------------------------------------------------------------------------------------
+
+    @Test
+    void marcarComoUsadoAtualizaOCodigoJaCarregadoNaMesmaTransacao() {
+        CuidadorEntity cuidador = cuidador();
+        CodigoVinculoEntity entity = codigoVinculo(cuidador, idoso(cuidador), codigoAleatorio());
+        // Carrega o código na sessão, como o ValidarCodigoVinculoUseCase faz antes de marcar
+        CodigoVinculo carregado = codigoVinculoAdapter.findMaisRecenteByCodigoUnico(entity.getCodigoUnico()).orElseThrow();
+        assertThat(carregado.isUsado()).isFalse();
+
+        assertThat(codigoVinculoAdapter.marcarComoUsado(entity.getId(), AGORA)).isTrue();
+
+        // Relida na MESMA transação: sem limpar o contexto, a entidade gerenciada continuaria usado=false
+        assertThat(codigoVinculoAdapter.findMaisRecenteByCodigoUnico(entity.getCodigoUnico())).get()
+                .extracting(CodigoVinculo::isUsado).isEqualTo(true);
+    }
+
+    @Test
+    void codigoDeVinculoSoPodeSerMarcadoComoUsadoUmaVez() {
+        CuidadorEntity cuidador = cuidador();
+        CodigoVinculoEntity entity = codigoVinculo(cuidador, idoso(cuidador), codigoAleatorio());
+
+        // RN11: uso único; a segunda marcação (ex.: requisição concorrente) não altera nenhuma linha
+        assertThat(codigoVinculoAdapter.marcarComoUsado(entity.getId(), AGORA)).isTrue();
+        assertThat(codigoVinculoAdapter.marcarComoUsado(entity.getId(), AGORA)).isFalse();
     }
 
     // ---------------------------------------------------------------------------------------------------------
@@ -462,13 +495,21 @@ class PersistenciaPostgresTest {
     }
 
     private CodigoVinculoEntity codigoVinculo(CuidadorEntity cuidador, IdosoEntity idoso) {
+        return codigoVinculo(cuidador, idoso, "123456");
+    }
+
+    private CodigoVinculoEntity codigoVinculo(CuidadorEntity cuidador, IdosoEntity idoso, String codigoUnico) {
         return em.persist(CodigoVinculoEntity.builder()
-                .codigoUnico("123456")
+                .codigoUnico(codigoUnico)
                 .cuidador(cuidador)
                 .idoso(idoso)
                 .expiraEm(AGORA.plusDays(1))
                 .usado(false)
                 .build());
+    }
+
+    private static String codigoAleatorio() {
+        return String.format("%06d", java.util.concurrent.ThreadLocalRandom.current().nextInt(1_000_000));
     }
 
     private long contar(String tabela, Long... ids) {

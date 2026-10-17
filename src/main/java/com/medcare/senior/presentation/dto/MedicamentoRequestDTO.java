@@ -4,6 +4,7 @@ import com.medcare.senior.domain.medicamento.Medicamento;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
 
@@ -20,9 +21,11 @@ public record MedicamentoRequestDTO(
         @Size(max = 100, message = "A dosagem deve ter no máximo 100 caracteres")
         String dosagem,
 
-        @Schema(example = "Comprimido")
+        @Schema(description = "Tipo do medicamento (lista fixa, em maiúsculas e sem acento)", example = "COMPRIMIDO",
+                allowableValues = {"COMPRIMIDO", "CAPSULA", "GOTAS", "INJECAO", "XAROPE", "ADESIVO"})
         @NotBlank(message = "O tipo é obrigatório")
-        @Size(max = 100, message = "O tipo deve ter no máximo 100 caracteres")
+        @Pattern(regexp = MedicamentoRequestDTO.TIPOS_PERMITIDOS,
+                message = "O tipo deve ser um destes: COMPRIMIDO, CAPSULA, GOTAS, INJECAO, XAROPE ou ADESIVO")
         String tipo,
 
         @Schema(example = "Redondo")
@@ -45,6 +48,10 @@ public record MedicamentoRequestDTO(
         @NotNull(message = "O idoso é obrigatório")
         Long idosoId
 ) {
+
+    // Tipos aceitos no cadastro e na edição. Sem migration: a coluna continua VARCHAR, e cadastros antigos com texto
+    // livre continuam sendo devolvidos como estão.
+    public static final String TIPOS_PERMITIDOS = "COMPRIMIDO|CAPSULA|GOTAS|INJECAO|XAROPE|ADESIVO";
 
     public Medicamento toDomain() {
         return Medicamento.builder()

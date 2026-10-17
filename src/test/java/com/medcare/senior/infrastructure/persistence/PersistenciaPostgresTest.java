@@ -1,6 +1,7 @@
 package com.medcare.senior.infrastructure.persistence;
 
 import com.medcare.senior.application.service.GeradorDeDosesService;
+import com.medcare.senior.application.usecase.BuscarMedicamentoUseCase;
 import com.medcare.senior.application.usecase.EditarTratamentoUseCase;
 import com.medcare.senior.application.usecase.ExcluirContaUseCase;
 import com.medcare.senior.application.usecase.RegistrarTokenDispositivoUseCase;
@@ -8,6 +9,7 @@ import com.medcare.senior.application.usecase.RemoverMedicamentoUseCase;
 import com.medcare.senior.domain.dose.Dose;
 import com.medcare.senior.domain.dose.DoseVencida;
 import com.medcare.senior.domain.dose.StatusDose;
+import com.medcare.senior.domain.exception.RecursoNaoEncontradoException;
 import com.medcare.senior.domain.usuario.CodigoVinculo;
 import com.medcare.senior.infrastructure.persistence.adapter.CodigoVinculoRepositoryAdapter;
 import com.medcare.senior.infrastructure.persistence.adapter.CuidadorRepositoryAdapter;
@@ -63,7 +65,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
         CuidadorMapper.class, IdosoMapper.class, MedicamentoMapper.class, TratamentoMapper.class, DoseMapper.class,
         CodigoVinculoMapper.class,
         ExcluirContaUseCase.class, RemoverMedicamentoUseCase.class, EditarTratamentoUseCase.class,
-        RegistrarTokenDispositivoUseCase.class,
+        RegistrarTokenDispositivoUseCase.class, BuscarMedicamentoUseCase.class,
         GeradorDeDosesService.class,
         PersistenciaPostgresTest.RelogioFixo.class
 })
@@ -112,6 +114,12 @@ class PersistenciaPostgresTest {
 
     @Autowired
     private CodigoVinculoRepositoryAdapter codigoVinculoAdapter;
+
+    @Autowired
+    private IdosoRepositoryAdapter idosoAdapter;
+
+    @Autowired
+    private BuscarMedicamentoUseCase buscarMedicamentoUseCase;
 
     // ---------------------------------------------------------------------------------------------------------
     // Exclusão de conta (LGPD)
@@ -212,6 +220,39 @@ class PersistenciaPostgresTest {
     @Test
     void atualizarFcmTokenDeCuidadorInexistenteNaoAlteraNada() {
         assertThat(cuidadorAdapter.atualizarFcmToken(Long.MAX_VALUE, "fcm-qualquer")).isFalse();
+    }
+
+    // ---------------------------------------------------------------------------------------------------------
+    // Leituras do app: idosos do cuidador e medicamento por id
+    // ---------------------------------------------------------------------------------------------------------
+
+    @Test
+    void listarIdososTrazSoOsDoCuidadorEmOrdemDeNomeSemDiferenciarMaiusculas() {
+        CuidadorEntity cuidador = cuidador();
+        IdosoEntity zeca = idosoComNome(cuidador, "Zeca");
+        IdosoEntity ana = idosoComNome(cuidador, "ana");
+        IdosoEntity bruno = idosoComNome(cuidador, "Bruno");
+        IdosoEntity doOutro = idosoComNome(cuidador(), "Aaron");
+
+        assertThat(idosoAdapter.findAllByCuidadorId(cuidador.getId()))
+                .extracting(i -> i.getId())
+                .containsExactly(ana.getId(), bruno.getId(), zeca.getId())
+                .doesNotContain(doOutro.getId());
+    }
+
+    @Test
+    void buscarMedicamentoIgnoraRemovidoEDeOutroCuidador() {
+        CuidadorEntity cuidador = cuidador();
+        IdosoEntity idoso = idoso(cuidador);
+        MedicamentoEntity ativo = medicamento(idoso, null);
+        MedicamentoEntity removido = medicamento(idoso, AGORA.minusDays(1));
+        MedicamentoEntity doOutro = medicamento(idoso(cuidador()), null);
+
+        assertThat(buscarMedicamentoUseCase.executar(ativo.getId(), cuidador.getId()).getId()).isEqualTo(ativo.getId());
+        assertThatThrownBy(() -> buscarMedicamentoUseCase.executar(removido.getId(), cuidador.getId()))
+                .isInstanceOf(RecursoNaoEncontradoException.class);
+        assertThatThrownBy(() -> buscarMedicamentoUseCase.executar(doOutro.getId(), cuidador.getId()))
+                .isInstanceOf(RecursoNaoEncontradoException.class);
     }
 
     // ---------------------------------------------------------------------------------------------------------
@@ -460,11 +501,19 @@ class PersistenciaPostgresTest {
                 .build());
     }
 
+    private IdosoEntity idosoComNome(CuidadorEntity cuidador, String nome) {
+        return em.persist(IdosoEntity.builder()
+                .nome(nome)
+                .dataNascimento(LocalDate.of(1945, 3, 12))
+                .cuidador(cuidador)
+                .build());
+    }
+
     private MedicamentoEntity medicamento(IdosoEntity idoso, LocalDateTime removidoEm) {
         return em.persist(MedicamentoEntity.builder()
                 .nome("Losartana")
                 .dosagem("50mg")
-                .tipo("Comprimido")
+                .tipo("COMPRIMIDO")
                 .idoso(idoso)
                 .removidoEm(removidoEm)
                 .build());

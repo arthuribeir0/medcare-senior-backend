@@ -1,7 +1,9 @@
 package com.medcare.senior.presentation.controller;
 
+import com.medcare.senior.application.usecase.BuscarIdosoUseCase;
 import com.medcare.senior.application.usecase.CadastrarIdosoUseCase;
 import com.medcare.senior.application.usecase.GerarCodigoVinculoUseCase;
+import com.medcare.senior.application.usecase.ListarIdososUseCase;
 import com.medcare.senior.domain.autenticacao.AuthenticatedUser;
 import com.medcare.senior.domain.usuario.CodigoVinculo;
 import com.medcare.senior.domain.usuario.Idoso;
@@ -20,11 +22,14 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
 
 /**
  * Acesso restrito a CUIDADOR no SecurityConfig. O ID do cuidador vem sempre do JWT
@@ -40,6 +45,8 @@ public class IdosoController {
 
     private final CadastrarIdosoUseCase cadastrarIdosoUseCase;
     private final GerarCodigoVinculoUseCase gerarCodigoVinculoUseCase;
+    private final ListarIdososUseCase listarIdososUseCase;
+    private final BuscarIdosoUseCase buscarIdosoUseCase;
 
     @PostMapping
     @Operation(summary = "Cadastra um idoso vinculado ao cuidador autenticado",
@@ -55,6 +62,29 @@ public class IdosoController {
         Idoso idoso = cadastrarIdosoUseCase.executar(
                 request.nome(), request.dataNascimento(), request.telefone(), usuario.cuidadorId());
         return ResponseEntity.status(HttpStatus.CREATED).body(IdosoResponseDTO.from(idoso));
+    }
+
+    @GetMapping
+    @Operation(summary = "Lista os idosos do cuidador autenticado",
+            description = "Ordem alfabética de nome, sem diferenciar maiúsculas de minúsculas.")
+    @ApiResponse(responseCode = "200", description = "Lista de idosos (pode ser vazia)")
+    public ResponseEntity<List<IdosoResponseDTO>> listar(@Parameter(hidden = true)
+                                                         @AuthenticationPrincipal AuthenticatedUser usuario) {
+        List<IdosoResponseDTO> idosos = listarIdososUseCase.executar(usuario.cuidadorId()).stream()
+                .map(IdosoResponseDTO::from)
+                .toList();
+        return ResponseEntity.ok(idosos);
+    }
+
+    @GetMapping("/{id}")
+    @Operation(summary = "Busca um idoso do cuidador autenticado")
+    @ApiResponse(responseCode = "200", description = "Idoso encontrado")
+    @ApiResponse(responseCode = "404", description = "Idoso inexistente ou de outro cuidador",
+            content = @Content(schema = @Schema(implementation = ErroResponse.class)))
+    public ResponseEntity<IdosoResponseDTO> buscar(@Parameter(description = "ID do idoso") @PathVariable Long id,
+                                                   @Parameter(hidden = true)
+                                                   @AuthenticationPrincipal AuthenticatedUser usuario) {
+        return ResponseEntity.ok(IdosoResponseDTO.from(buscarIdosoUseCase.executar(id, usuario.cuidadorId())));
     }
 
     @PostMapping("/{id}/gerar-codigo")

@@ -55,6 +55,7 @@ public class SecurityConfig {
                             .requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll()
                             .requestMatchers(HttpMethod.POST, "/api/vinculo/validar").permitAll()
                             .requestMatchers("/error").permitAll()
+                            .requestMatchers(HttpMethod.GET, "/api/cuidadores/me").hasRole(Role.CUIDADOR.name())
                             .requestMatchers(HttpMethod.DELETE, "/api/cuidadores/me").hasRole(Role.CUIDADOR.name())
                             .requestMatchers(HttpMethod.PUT, "/api/cuidadores/me/fcm-token").hasRole(Role.CUIDADOR.name())
                             .requestMatchers("/api/idosos/**").hasRole(Role.CUIDADOR.name())

@@ -1,6 +1,7 @@
 package com.medcare.senior.domain.usuario;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 
 public interface IdosoRepositoryPort {
@@ -16,6 +17,11 @@ public interface IdosoRepositoryPort {
     boolean existsByCuidadorIdAndNomeAndDataNascimento(Long cuidadorId, String nome, LocalDate dataNascimento);
 
     Optional<Idoso> findByIdAndCuidadorId(Long id, Long cuidadorId);
+
+    /**
+     * Idosos do cuidador, em ordem alfabética de nome sem diferenciar maiúsculas de minúsculas.
+     */
+    List<Idoso> findAllByCuidadorId(Long cuidadorId);
 
     /**
      * Remove todos os idosos do cuidador (exclusão de conta, LGPD).

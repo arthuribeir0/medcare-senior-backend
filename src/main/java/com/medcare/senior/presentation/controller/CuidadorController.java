@@ -1,5 +1,6 @@
 package com.medcare.senior.presentation.controller;
 
+import com.medcare.senior.application.usecase.BuscarCuidadorUseCase;
 import com.medcare.senior.application.usecase.CadastrarCuidadorUseCase;
 import com.medcare.senior.application.usecase.ExcluirContaUseCase;
 import com.medcare.senior.application.usecase.RegistrarTokenDispositivoUseCase;
@@ -22,6 +23,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -37,6 +39,7 @@ public class CuidadorController {
     private final CadastrarCuidadorUseCase cadastrarCuidadorUseCase;
     private final ExcluirContaUseCase excluirContaUseCase;
     private final RegistrarTokenDispositivoUseCase registrarTokenDispositivoUseCase;
+    private final BuscarCuidadorUseCase buscarCuidadorUseCase;
 
     @PostMapping
     @SecurityRequirements
@@ -51,6 +54,17 @@ public class CuidadorController {
         Cuidador cuidador = cadastrarCuidadorUseCase.executar(
                 request.nome(), request.email(), request.senha(), request.telefone(), request.consentimentoLgpd());
         return ResponseEntity.status(HttpStatus.CREATED).body(CuidadorResponseDTO.from(cuidador));
+    }
+
+    @GetMapping("/me")
+    @Operation(summary = "Dados do cuidador autenticado", description = "Somente CUIDADOR.")
+    @ApiResponse(responseCode = "200", description = "Dados do cuidador")
+    @ApiResponse(responseCode = "401", description = "Token ausente ou inválido", content = @Content)
+    @ApiResponse(responseCode = "403", description = "Token sem o papel CUIDADOR", content = @Content)
+    @ApiResponse(responseCode = "404", description = "Conta já excluída",
+            content = @Content(schema = @Schema(implementation = ErroResponse.class)))
+    public ResponseEntity<CuidadorResponseDTO> buscarMe(@Parameter(hidden = true) @AuthenticationPrincipal AuthenticatedUser usuario) {
+        return ResponseEntity.ok(CuidadorResponseDTO.from(buscarCuidadorUseCase.executar(usuario.cuidadorId())));
     }
 
     @DeleteMapping("/me")

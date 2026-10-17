@@ -11,6 +11,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 
 @Component
@@ -38,6 +39,13 @@ public class IdosoRepositoryAdapter implements IdosoRepositoryPort {
     @Override
     public Optional<Idoso> findByIdAndCuidadorId(Long id, Long cuidadorId) {
         return idosoRepository.findByIdAndCuidador_Id(id, cuidadorId).map(idosoMapper::toDomain);
+    }
+
+    @Override
+    public List<Idoso> findAllByCuidadorId(Long cuidadorId) {
+        return idosoRepository.findAllByCuidadorIdOrderByNome(cuidadorId).stream()
+                .map(idosoMapper::toDomain)
+                .toList();
     }
 
     @Override

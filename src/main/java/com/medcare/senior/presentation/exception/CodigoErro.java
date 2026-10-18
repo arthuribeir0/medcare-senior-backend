@@ -23,6 +23,9 @@ package com.medcare.senior.presentation.exception;
  *  EMAIL_DUPLICADO                 409   RN-001
  *  IDOSO_DUPLICADO                 409   RN-003
  *  TRATAMENTO_ATIVO                409   RN-006 (remoção sem forcarRemocao=true)
+ *  DOSE_JA_REGISTRADA              409   confirmação de dose que já tem status registrado (RN-008), inclusive corrida
+ *  DOSE_MUITO_CEDO                 409   confirmação antes da abertura da janela
+ *  DOSE_ENCERRADA                  409   confirmação depois do encerramento da janela
  *  LIMITE_TENTATIVAS               429   rate limiting do pareamento (header Retry-After)
  *  ERRO_INTERNO                    500   erro inesperado (sem detalhes na resposta)
  * </pre>
@@ -45,6 +48,9 @@ public enum CodigoErro {
     EMAIL_DUPLICADO,
     IDOSO_DUPLICADO,
     TRATAMENTO_ATIVO,
+    DOSE_JA_REGISTRADA,
+    DOSE_MUITO_CEDO,
+    DOSE_ENCERRADA,
     LIMITE_TENTATIVAS,
     ERRO_INTERNO
 }

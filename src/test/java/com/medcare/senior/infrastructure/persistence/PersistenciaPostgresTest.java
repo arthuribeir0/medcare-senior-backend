@@ -2,6 +2,7 @@ package com.medcare.senior.infrastructure.persistence;
 
 import com.medcare.senior.application.service.GeradorDeDosesService;
 import com.medcare.senior.application.usecase.BuscarMedicamentoUseCase;
+import com.medcare.senior.application.usecase.ConfirmarDoseUseCase;
 import com.medcare.senior.application.usecase.EditarTratamentoUseCase;
 import com.medcare.senior.application.usecase.ExcluirContaUseCase;
 import com.medcare.senior.application.usecase.RegistrarTokenDispositivoUseCase;
@@ -9,6 +10,8 @@ import com.medcare.senior.application.usecase.RemoverTokenDispositivoUseCase;
 import com.medcare.senior.application.usecase.RemoverMedicamentoUseCase;
 import com.medcare.senior.domain.dose.Dose;
 import com.medcare.senior.domain.dose.DoseDetalhada;
+import com.medcare.senior.domain.dose.DoseNaoConfirmavelException;
+import com.medcare.senior.domain.dose.PoliticaDeJanela;
 import com.medcare.senior.domain.dose.DoseVencida;
 import com.medcare.senior.domain.dose.StatusDose;
 import com.medcare.senior.domain.exception.RecursoNaoEncontradoException;
@@ -68,6 +71,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
         CodigoVinculoMapper.class,
         ExcluirContaUseCase.class, RemoverMedicamentoUseCase.class, EditarTratamentoUseCase.class,
         RegistrarTokenDispositivoUseCase.class, BuscarMedicamentoUseCase.class, RemoverTokenDispositivoUseCase.class,
+        ConfirmarDoseUseCase.class,
         GeradorDeDosesService.class,
         PersistenciaPostgresTest.RelogioFixo.class
 })
@@ -84,6 +88,12 @@ class PersistenciaPostgresTest {
         @Bean
         Clock clock() {
             return Clock.fixed(AGORA.atZone(FUSO).toInstant(), FUSO);
+        }
+
+        @Bean
+        PoliticaDeJanela politicaDeJanela() {
+            return new PoliticaDeJanela(java.time.Duration.ofMinutes(60), java.time.Duration.ofMinutes(30),
+                    java.time.Duration.ofMinutes(180));
         }
     }
 
@@ -122,6 +132,9 @@ class PersistenciaPostgresTest {
 
     @Autowired
     private RemoverTokenDispositivoUseCase removerTokenDispositivoUseCase;
+
+    @Autowired
+    private ConfirmarDoseUseCase confirmarDoseUseCase;
 
     @Autowired
     private BuscarMedicamentoUseCase buscarMedicamentoUseCase;
@@ -323,6 +336,52 @@ class PersistenciaPostgresTest {
         assertThat(primeira.dose().getTratamentoId()).isEqualTo(tratamento.getId());
         assertThat(primeira.dose().getStatus()).isEqualTo(StatusDose.TOMADA);
         assertThat(primeira.dose().getHoraConfirmacao()).isEqualTo(dia.atStartOfDay().plusMinutes(5));
+    }
+
+    // ---------------------------------------------------------------------------------------------------------
+    // Confirmação de dose pelo idoso: UPDATE atômico e escopo
+    // ---------------------------------------------------------------------------------------------------------
+
+    @Test
+    void confirmarGravaTomadaComAHoraDoServidor() {
+        IdosoEntity idoso = idoso(cuidador());
+        DoseEntity pendente = dose(tratamento(medicamento(idoso, null), null), AGORA.minusMinutes(10), StatusDose.PENDENTE);
+
+        confirmarDoseUseCase.executar(pendente.getId(), idoso.getId());
+
+        assertThat(statusDaDose(pendente.getId())).isEqualTo("TOMADA");
+        assertThat(horaConfirmacaoDaDose(pendente.getId())).isEqualTo(AGORA);
+    }
+
+    @Test
+    void confirmarNaoSobrescreveDoseJaTomada() {
+        IdosoEntity idoso = idoso(cuidador());
+        DoseEntity tomada = dose(tratamento(medicamento(idoso, null), null), AGORA.minusMinutes(10), StatusDose.TOMADA);
+        LocalDateTime confirmadaEm = horaConfirmacaoDaDose(tomada.getId());
+
+        assertThatThrownBy(() -> confirmarDoseUseCase.executar(tomada.getId(), idoso.getId()))
+                .isInstanceOf(DoseNaoConfirmavelException.class);
+        assertThat(statusDaDose(tomada.getId())).isEqualTo("TOMADA");
+        assertThat(horaConfirmacaoDaDose(tomada.getId())).isEqualTo(confirmadaEm);
+
+        // Mesmo com leitura "velha" (vista como PENDENTE), o UPDATE condicional não altera a dose já registrada
+        assertThat(doseAdapter.registrarSePendente(domainPendente(tomada).confirmar(StatusDose.CONFIRMADA_COM_ATRASO, AGORA)))
+                .isZero();
+        assertThat(statusDaDose(tomada.getId())).isEqualTo("TOMADA");
+    }
+
+    @Test
+    void confirmarDoseDeOutroIdosoOuDeRemedioRemovidoEhNaoEncontrada() {
+        IdosoEntity idoso = idoso(cuidador());
+        DoseEntity doOutro = dose(tratamento(medicamento(idoso(cuidador()), null), null), AGORA, StatusDose.PENDENTE);
+        DoseEntity deRemovido = dose(tratamento(medicamento(idoso, AGORA.minusDays(1)), null), AGORA, StatusDose.PENDENTE);
+
+        assertThatThrownBy(() -> confirmarDoseUseCase.executar(doOutro.getId(), idoso.getId()))
+                .isInstanceOf(RecursoNaoEncontradoException.class);
+        assertThatThrownBy(() -> confirmarDoseUseCase.executar(deRemovido.getId(), idoso.getId()))
+                .isInstanceOf(RecursoNaoEncontradoException.class);
+        assertThat(statusDaDose(doOutro.getId())).isEqualTo("PENDENTE");
+        assertThat(statusDaDose(deRemovido.getId())).isEqualTo("PENDENTE");
     }
 
     // ---------------------------------------------------------------------------------------------------------
@@ -661,6 +720,17 @@ class PersistenciaPostgresTest {
                 .createNativeQuery("SELECT status FROM dose WHERE id = ?1")
                 .setParameter(1, doseId)
                 .getSingleResult();
+    }
+
+    private LocalDateTime horaConfirmacaoDaDose(Long doseId) {
+        Object valor = em.getEntityManager()
+                .createNativeQuery("SELECT hora_confirmacao FROM dose WHERE id = ?1")
+                .setParameter(1, doseId)
+                .getSingleResult();
+        if (valor == null) {
+            return null;
+        }
+        return valor instanceof java.sql.Timestamp timestamp ? timestamp.toLocalDateTime() : (LocalDateTime) valor;
     }
 
     private Long tratamentoIdDaDose(Long doseId) {

@@ -13,6 +13,7 @@ import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Os deletes abaixo recebem o status como parâmetro e são sempre chamados com PENDENTE pelo adapter:
@@ -50,6 +51,13 @@ public interface DoseRepository extends JpaRepository<DoseEntity, Long> {
     List<DoseDetalhadaProjection> findDetalhadasDoIdosoEntre(@Param("idosoId") Long idosoId,
                                                              @Param("inicio") LocalDateTime inicio,
                                                              @Param("fim") LocalDateTime fim);
+
+    @Query("SELECT new com.medcare.senior.infrastructure.persistence.projection.DoseDetalhadaProjection("
+            + "d.id, t.id, d.horarioProgramado, d.horaConfirmacao, d.status, i.id, i.nome, m.id, m.nome, m.dosagem, m.tipo) "
+            + "FROM DoseEntity d JOIN d.tratamento t JOIN t.medicamento m JOIN m.idoso i "
+            + "WHERE d.id = :doseId AND i.id = :idosoId AND t.removidoEm IS NULL AND m.removidoEm IS NULL")
+    Optional<DoseDetalhadaProjection> findDetalhadaByIdAndIdosoId(@Param("doseId") Long doseId,
+                                                                  @Param("idosoId") Long idosoId);
 
     // Transição atômica: só muda se a dose ainda estiver no status esperado (PENDENTE). Se uma confirmação
     // concorrente chegou antes, nenhuma linha muda e o retorno é 0.

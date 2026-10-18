@@ -364,6 +364,26 @@ class PersistenciaPostgresTest {
     }
 
     @Test
+    void confirmarNaoMexeNoEstoqueDoMedicamento() {
+        // BE-29: o DRS só prevê o estoque como campo opcional do cadastro (UC-004, RN-005); não há baixa automática
+        IdosoEntity idoso = idoso(cuidador());
+        MedicamentoEntity medicamento = medicamento(idoso, null);
+        em.getEntityManager().createNativeQuery("UPDATE medicamento SET quantidade_estoque = 30 WHERE id = ?1")
+                .setParameter(1, medicamento.getId())
+                .executeUpdate();
+        DoseEntity pendente = dose(tratamento(medicamento, null), AGORA.minusMinutes(10), StatusDose.PENDENTE);
+
+        confirmarDoseUseCase.executar(pendente.getId(), idoso.getId());
+
+        Number estoque = (Number) em.getEntityManager()
+                .createNativeQuery("SELECT quantidade_estoque FROM medicamento WHERE id = ?1")
+                .setParameter(1, medicamento.getId())
+                .getSingleResult();
+        assertThat(statusDaDose(pendente.getId())).isEqualTo("TOMADA");
+        assertThat(estoque.intValue()).isEqualTo(30);
+    }
+
+    @Test
     void confirmarNaoSobrescreveDoseJaTomada() {
         IdosoEntity idoso = idoso(cuidador());
         DoseEntity tomada = dose(tratamento(medicamento(idoso, null), null), AGORA.minusMinutes(10), StatusDose.TOMADA);

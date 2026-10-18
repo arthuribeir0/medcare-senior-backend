@@ -62,6 +62,11 @@ public interface DoseRepositoryPort {
     int registrarSePendente(Dose doseRegistrada);
 
     /**
+     * Status atual da dose, lido do banco (sem cache), ou vazio se ela não existir.
+     */
+    Optional<StatusDose> findStatusById(Long doseId);
+
+    /**
      * Apaga as doses PENDENTES do tratamento com horário programado depois de {@code agora}.
      * Doses registradas e doses já passadas não são tocadas.
      */

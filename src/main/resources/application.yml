@@ -50,6 +50,9 @@ app:
       # Varredura de doses: aviso ao cuidador no fim da tolerancia (dose segue PENDENTE) e encerramento como NAO_TOMADA
       # depois de encerramento-minutos. Padrao: segundo 0 de cada minuto.
       cron: ${VERIFICAR_DOSES_CRON:0 * * * * *}
+    retentativa-avisos:
+      # Reenvio dos avisos que falharam temporariamente (RN-010). Padrao: a cada 5 minutos, no segundo 30.
+      cron: ${RETENTATIVA_AVISOS_CRON:30 */5 * * * *}
   alertas:
     # Tolerancia PADRAO (minutos apos o horario programado): no fim dela o cuidador e avisado (a dose continua PENDENTE
     # e aparece ATRASADA; confirmar depois disto da CONFIRMADA_COM_ATRASO). Vale quando o cuidador nao tem a sua.
@@ -60,6 +63,13 @@ app:
     encerramento-minutos: ${ALERTAS_ENCERRAMENTO_MINUTOS:180}
     # Maximo de doses tratadas por fase (encerramento e aviso) em cada execucao da varredura; o resto fica para a proxima
     lote-maximo: ${ALERTAS_LOTE_MAXIMO:500}
+    retentativa:
+      # Tentativas de envio por aviso, contando a primeira (feita pela varredura). Esgotadas: evento FALHA.
+      max-tentativas: ${ALERTAS_RETENTATIVA_MAX_TENTATIVAS:5}
+      # Espera depois da 1a tentativa; dobra a cada nova (5 -> 5, 10, 20 e 40 minutos)
+      intervalo-base-minutos: ${ALERTAS_RETENTATIVA_INTERVALO_BASE_MINUTOS:5}
+      # Maximo de eventos reprocessados por execucao
+      lote-maximo: ${ALERTAS_RETENTATIVA_LOTE_MAXIMO:200}
   fcm:
     # Push via Firebase Cloud Messaging. Desligado por padrao (e nos testes e no CI): os avisos so vao para o log.
     enabled: ${FCM_ENABLED:false}

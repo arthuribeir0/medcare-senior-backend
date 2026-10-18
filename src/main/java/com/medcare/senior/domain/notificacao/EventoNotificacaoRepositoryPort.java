@@ -1,6 +1,8 @@
 package com.medcare.senior.domain.notificacao;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -24,6 +26,19 @@ public interface EventoNotificacaoRepositoryPort {
      * @return true se esta chamada ganhou a tentativa
      */
     boolean reivindicar(Long eventoId, int tentativasEsperadas, LocalDateTime agora);
+
+    /**
+     * Até {@code limite} eventos PENDENTES prontos para a retentativa (RN-010), dos que esperam há mais tempo para os
+     * mais recentes:
+     * <ul>
+     *   <li>nunca tentados (tentativas = 0, ultima_tentativa nula): na hora (queda entre o INSERT e o envio);</li>
+     *   <li>com tentativas entre 1 e {@code maxTentativas - 1}: quando agora >= ultima_tentativa +
+     *       intervaloBase * 2^(tentativas - 1) (com base de 5 min: esperas de 5, 10, 20 e 40 min);</li>
+     *   <li>com tentativas >= {@code maxTentativas}: sempre (só falta registrar o esgotamento).</li>
+     * </ul>
+     */
+    List<EventoParaRetentativa> findParaRetentativa(LocalDateTime agora, int maxTentativas, Duration intervaloBase,
+                                                    int limite);
 
     /**
      * PENDENTE -> ENVIADO. Não faz nada se o evento já tiver saído de PENDENTE.

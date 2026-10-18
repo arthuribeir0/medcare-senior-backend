@@ -1,6 +1,8 @@
 package com.medcare.senior.infrastructure.persistence.adapter;
 
+import com.medcare.senior.domain.dose.StatusDose;
 import com.medcare.senior.domain.notificacao.EventoNotificacaoRepositoryPort;
+import com.medcare.senior.domain.notificacao.EventoParaRetentativa;
 import com.medcare.senior.domain.notificacao.MotivoFalhaNotificacao;
 import com.medcare.senior.domain.notificacao.StatusEventoNotificacao;
 import com.medcare.senior.infrastructure.persistence.repository.EventoNotificacaoRepository;
@@ -8,7 +10,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -32,6 +36,19 @@ public class EventoNotificacaoRepositoryAdapter implements EventoNotificacaoRepo
     @Transactional
     public boolean reivindicar(Long eventoId, int tentativasEsperadas, LocalDateTime agora) {
         return repository.reivindicar(eventoId, tentativasEsperadas, agora, StatusEventoNotificacao.PENDENTE) == 1;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<EventoParaRetentativa> findParaRetentativa(LocalDateTime agora, int maxTentativas, Duration intervaloBase,
+                                                           int limite) {
+        return repository.findParaRetentativa(agora, maxTentativas, Math.toIntExact(intervaloBase.toMinutes()), limite)
+                .stream()
+                .map(linha -> new EventoParaRetentativa(linha.getEventoId(), linha.getTentativas(), linha.getDoseId(),
+                        StatusDose.valueOf(linha.getStatusDose()), linha.getHorarioProgramado(),
+                        Boolean.TRUE.equals(linha.getSemDono()), linha.getCuidadorId(), linha.getIdosoId(),
+                        linha.getNomeIdoso()))
+                .toList();
     }
 
     @Override

@@ -1,5 +1,6 @@
 package com.medcare.senior.infrastructure.config;
 
+import com.medcare.senior.application.usecase.ReenviarAvisosPendentesUseCase;
 import com.medcare.senior.application.usecase.VerificarDosesVencidasUseCase;
 import com.medcare.senior.domain.dose.PoliticaDeJanela;
 import org.springframework.beans.factory.annotation.Value;
@@ -9,7 +10,7 @@ import org.springframework.context.annotation.Configuration;
 import java.time.Duration;
 
 /**
- * Parâmetros da varredura de doses e da janela de confirmação (app.alertas.*). Valores inválidos (negativos, zero,
+ * Parâmetros da varredura de doses, da retentativa de avisos e da janela de confirmação (app.alertas.*). Valores inválidos (negativos, zero,
  * lote zero, tolerância maior ou igual ao encerramento) impedem a aplicação de subir.
  */
 @Configuration
@@ -19,6 +20,19 @@ public class AlertasConfig {
     public VerificarDosesVencidasUseCase.Parametros parametrosDeAlerta(
             @Value("${app.alertas.lote-maximo:500}") int loteMaximo) {
         return new VerificarDosesVencidasUseCase.Parametros(loteMaximo);
+    }
+
+    /**
+     * Retentativa de avisos (RN-010): tentativas no total (contando a 1ª, da varredura), espera base que dobra a cada
+     * tentativa e lote por execução.
+     */
+    @Bean
+    public ReenviarAvisosPendentesUseCase.Parametros parametrosDeRetentativa(
+            @Value("${app.alertas.retentativa.max-tentativas:5}") int maxTentativas,
+            @Value("${app.alertas.retentativa.intervalo-base-minutos:5}") long intervaloBaseMinutos,
+            @Value("${app.alertas.retentativa.lote-maximo:200}") int loteMaximo) {
+        return new ReenviarAvisosPendentesUseCase.Parametros(maxTentativas, Duration.ofMinutes(intervaloBaseMinutos),
+                loteMaximo);
     }
 
     /**

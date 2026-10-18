@@ -75,6 +75,9 @@ public interface DoseRepository extends JpaRepository<DoseEntity, Long> {
     Optional<DoseDetalhadaProjection> findDetalhadaByIdAndIdosoId(@Param("doseId") Long doseId,
                                                                   @Param("idosoId") Long idosoId);
 
+    @Query("SELECT d.status FROM DoseEntity d WHERE d.id = :id")
+    Optional<StatusDose> findStatusById(@Param("id") Long id);
+
     // Transição atômica: só muda se a dose ainda estiver no status esperado (PENDENTE). Se uma confirmação
     // concorrente chegou antes, nenhuma linha muda e o retorno é 0.
     @Modifying(flushAutomatically = true, clearAutomatically = true)

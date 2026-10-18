@@ -83,6 +83,11 @@ public class DoseRepositoryAdapter implements DoseRepositoryPort {
     }
 
     @Override
+    public Optional<StatusDose> findStatusById(Long doseId) {
+        return doseRepository.findStatusById(doseId);
+    }
+
+    @Override
     @Transactional
     public int registrarSePendente(Dose doseRegistrada) {
         if (doseRegistrada.getId() == null || !doseRegistrada.isRegistrada()) {

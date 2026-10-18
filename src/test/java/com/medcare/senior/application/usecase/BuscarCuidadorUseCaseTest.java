@@ -1,6 +1,6 @@
 package com.medcare.senior.application.usecase;
 
-import com.medcare.senior.domain.exception.RecursoNaoEncontradoException;
+import com.medcare.senior.domain.exception.SessaoInvalidaException;
 import com.medcare.senior.domain.usuario.Cuidador;
 import com.medcare.senior.domain.usuario.CuidadorRepositoryPort;
 import org.junit.jupiter.api.Test;
@@ -35,11 +35,11 @@ class BuscarCuidadorUseCaseTest {
     }
 
     @Test
-    void deveResponderNaoEncontradoParaContaExcluida() {
+    void deveResponderSessaoInvalidaParaContaExcluida() {
         when(cuidadorRepository.findById(CUIDADOR_ID)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> useCase.executar(CUIDADOR_ID))
-                .isInstanceOf(RecursoNaoEncontradoException.class)
-                .hasMessage("Cuidador não encontrado");
+                .isInstanceOf(SessaoInvalidaException.class)
+                .hasMessage("Sessão inválida. Entre na sua conta de novo.");
     }
 }

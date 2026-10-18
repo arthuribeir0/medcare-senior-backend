@@ -17,12 +17,14 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -35,6 +37,7 @@ class PushNotificadorDeDoseNaoTomadaAdapterTest {
     private static final ZoneId FUSO = ZoneId.of("America/Sao_Paulo");
     private static final LocalDateTime AGORA = LocalDateTime.of(2026, 10, 16, 8, 45);
     private static final Long CUIDADOR_ID = 1L;
+    private static final Long IDOSO_ID = 20L;
     private static final String TOKEN = "token-do-aparelho";
 
     @Mock
@@ -52,7 +55,7 @@ class PushNotificadorDeDoseNaoTomadaAdapterTest {
     }
 
     private static DoseNaoTomadaNotificacao notificacao(LocalDateTime horario) {
-        return new DoseNaoTomadaNotificacao(10L, CUIDADOR_ID, "Maria", "Losartana", horario);
+        return new DoseNaoTomadaNotificacao(10L, CUIDADOR_ID, IDOSO_ID, "Maria", horario);
     }
 
     private void cuidadorComToken(String token) {
@@ -61,42 +64,45 @@ class PushNotificadorDeDoseNaoTomadaAdapterTest {
     }
 
     @Test
-    void enviaMensagemEmPortuguesComIdosoMedicamentoEHorario() {
+    void enviaMensagemEmPortuguesComIdosoEHorarioSemOMedicamento() {
         cuidadorComToken(TOKEN);
-        when(notificacaoPush.enviar(anyString(), anyString(), anyString())).thenReturn(ResultadoEnvioPush.ENVIADO);
+        when(notificacaoPush.enviar(anyString(), anyString(), anyString(), anyMap())).thenReturn(ResultadoEnvioPush.ENVIADO);
 
-        notificador.notificar(notificacao(AGORA.toLocalDate().atTime(8, 0)));
+        assertThat(notificador.notificar(notificacao(AGORA.toLocalDate().atTime(8, 0)))).isEqualTo(ResultadoEnvioPush.ENVIADO);
 
-        verify(notificacaoPush).enviar(TOKEN, "Dose não confirmada", "Maria não confirmou Losartana às 08:00");
+        // Sem o nome do medicamento (dado de saúde passaria pelo FCM/Google); o payload leva só tipo, IDs e data
+        verify(notificacaoPush).enviar(TOKEN, "Dose não confirmada", "Maria ainda não confirmou a dose das 08:00",
+                Map.of("tipo", "DOSE_NAO_CONFIRMADA", "doseId", "10", "idosoId", "20", "data", "2026-10-16"));
         verify(cuidadorRepository, never()).removerFcmTokenSeIgual(anyLong(), anyString());
     }
 
     @Test
     void doseDeOutroDiaLevaADataNoCorpo() {
         cuidadorComToken(TOKEN);
-        when(notificacaoPush.enviar(anyString(), anyString(), anyString())).thenReturn(ResultadoEnvioPush.ENVIADO);
+        when(notificacaoPush.enviar(anyString(), anyString(), anyString(), anyMap())).thenReturn(ResultadoEnvioPush.ENVIADO);
 
         notificador.notificar(notificacao(LocalDateTime.of(2026, 10, 15, 22, 0)));
 
-        verify(notificacaoPush).enviar(TOKEN, "Dose não confirmada", "Maria não confirmou Losartana às 22:00 de 15/10");
+        verify(notificacaoPush).enviar(TOKEN, "Dose não confirmada", "Maria ainda não confirmou a dose das 22:00 de 15/10",
+                Map.of("tipo", "DOSE_NAO_CONFIRMADA", "doseId", "10", "idosoId", "20", "data", "2026-10-15"));
     }
 
     @ParameterizedTest
     @NullSource
     @ValueSource(strings = {"", "   "})
-    void cuidadorSemTokenNaoRecebePushEOFluxoSegue(String token) {
+    void cuidadorSemTokenNaoRecebePushEDevolveSemToken(String token) {
         cuidadorComToken(token);
 
-        assertThatCode(() -> notificador.notificar(notificacao(AGORA.minusHours(1)))).doesNotThrowAnyException();
+        assertThat(notificador.notificar(notificacao(AGORA.minusHours(1)))).isEqualTo(ResultadoEnvioPush.SEM_TOKEN);
 
         verifyNoInteractions(notificacaoPush);
     }
 
     @Test
-    void contaExcluidaNaoRecebePush() {
+    void contaExcluidaNaoRecebePushEDevolveSemToken() {
         when(cuidadorRepository.findById(CUIDADOR_ID)).thenReturn(Optional.empty());
 
-        assertThatCode(() -> notificador.notificar(notificacao(AGORA.minusHours(1)))).doesNotThrowAnyException();
+        assertThat(notificador.notificar(notificacao(AGORA.minusHours(1)))).isEqualTo(ResultadoEnvioPush.SEM_TOKEN);
 
         verifyNoInteractions(notificacaoPush);
     }
@@ -104,10 +110,10 @@ class PushNotificadorDeDoseNaoTomadaAdapterTest {
     @Test
     void tokenInvalidoEhDescartadoDoCuidador() {
         cuidadorComToken(TOKEN);
-        when(notificacaoPush.enviar(anyString(), anyString(), anyString()))
+        when(notificacaoPush.enviar(anyString(), anyString(), anyString(), anyMap()))
                 .thenReturn(ResultadoEnvioPush.TOKEN_INVALIDO);
 
-        assertThatCode(() -> notificador.notificar(notificacao(AGORA.minusHours(1)))).doesNotThrowAnyException();
+        assertThat(notificador.notificar(notificacao(AGORA.minusHours(1)))).isEqualTo(ResultadoEnvioPush.TOKEN_INVALIDO);
 
         // Só apaga se ainda for o mesmo token (o cuidador pode ter registrado outro nesse meio tempo)
         verify(cuidadorRepository).removerFcmTokenSeIgual(CUIDADOR_ID, TOKEN);
@@ -116,12 +122,13 @@ class PushNotificadorDeDoseNaoTomadaAdapterTest {
     @Test
     void falhaTemporariaNaoDescartaOTokenNemLancaExcecao() {
         cuidadorComToken(TOKEN);
-        when(notificacaoPush.enviar(anyString(), anyString(), anyString()))
+        when(notificacaoPush.enviar(anyString(), anyString(), anyString(), anyMap()))
                 .thenReturn(ResultadoEnvioPush.FALHA_TEMPORARIA);
 
-        assertThatCode(() -> notificador.notificar(notificacao(AGORA.minusHours(1)))).doesNotThrowAnyException();
+        assertThatCode(() -> assertThat(notificador.notificar(notificacao(AGORA.minusHours(1))))
+                .isEqualTo(ResultadoEnvioPush.FALHA_TEMPORARIA)).doesNotThrowAnyException();
 
-        verify(notificacaoPush).enviar(any(), any(), any());
+        verify(notificacaoPush).enviar(any(), any(), any(), any());
         verify(cuidadorRepository, never()).removerFcmTokenSeIgual(anyLong(), anyString());
     }
 
@@ -129,6 +136,6 @@ class PushNotificadorDeDoseNaoTomadaAdapterTest {
     void corpoUsaOHorarioProgramadoEmFormato24Horas() {
         String corpo = notificador.corpo(notificacao(AGORA.toLocalDate().atTime(20, 5)));
 
-        assertThat(corpo).isEqualTo("Maria não confirmou Losartana às 20:05");
+        assertThat(corpo).isEqualTo("Maria ainda não confirmou a dose das 20:05");
     }
 }

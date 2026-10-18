@@ -53,6 +53,18 @@ class DoseTest {
         assertThat(pendente.getHoraConfirmacao()).isNull();
     }
 
+    @Test
+    void horaDaConfirmacaoEhTruncadaEmMicrossegundosComoNoPostgres() {
+        LocalDateTime horario = LocalDateTime.of(2026, 10, 8, 8, 0);
+        LocalDateTime agoraComNanos = horario.plusMinutes(5).withNano(123_456_789);
+        Dose pendente = Dose.builder().id(7L).tratamentoId(1000L).horarioProgramado(horario)
+                .status(StatusDose.PENDENTE).build();
+
+        Dose confirmada = pendente.confirmar(StatusDose.TOMADA, agoraComNanos);
+
+        assertThat(confirmada.getHoraConfirmacao()).isEqualTo(horario.plusMinutes(5).withNano(123_456_000));
+    }
+
     @ParameterizedTest
     @EnumSource(value = StatusDose.class, names = "PENDENTE", mode = EnumSource.Mode.EXCLUDE)
     void doseRegistradaNaoPodeSerConfirmada(StatusDose status) {

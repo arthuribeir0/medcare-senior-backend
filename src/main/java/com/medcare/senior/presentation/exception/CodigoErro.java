@@ -16,6 +16,7 @@ package com.medcare.senior.presentation.exception;
  *  DADOS_OBRIGATORIOS_MEDICAMENTO  400   RN-005
  *  TRATAMENTO_INVALIDO             400   RN-007 (horários, dias da semana, período)
  *  CREDENCIAIS_INVALIDAS           401   login com e-mail inexistente ou senha errada (mesma mensagem)
+ *  SESSAO_INVALIDA                 401   token válido de usuário que não existe mais (o app volta ao pareamento)
  *  ACESSO_NEGADO                   403   papel diferente do exigido pela operação
  *  RECURSO_NAO_ENCONTRADO          404   recurso inexistente, removido ou de outro dono
  *  METODO_NAO_PERMITIDO            405   método HTTP não suportado pela rota
@@ -37,6 +38,7 @@ public enum CodigoErro {
     DADOS_OBRIGATORIOS_MEDICAMENTO,
     TRATAMENTO_INVALIDO,
     CREDENCIAIS_INVALIDAS,
+    SESSAO_INVALIDA,
     ACESSO_NEGADO,
     RECURSO_NAO_ENCONTRADO,
     METODO_NAO_PERMITIDO,

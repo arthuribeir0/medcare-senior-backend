@@ -19,6 +19,11 @@ public interface IdosoRepositoryPort {
     Optional<Idoso> findByIdAndCuidadorId(Long id, Long cuidadorId);
 
     /**
+     * Busca sem filtro de dono: usar SOMENTE com o ID do próprio idoso autenticado (token IDOSO).
+     */
+    Optional<Idoso> findById(Long id);
+
+    /**
      * Idosos do cuidador, em ordem alfabética de nome sem diferenciar maiúsculas de minúsculas.
      */
     List<Idoso> findAllByCuidadorId(Long cuidadorId);

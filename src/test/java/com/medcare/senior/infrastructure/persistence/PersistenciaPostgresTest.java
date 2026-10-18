@@ -1,13 +1,21 @@
 package com.medcare.senior.infrastructure.persistence;
 
 import com.medcare.senior.application.service.GeradorDeDosesService;
+import com.medcare.senior.application.usecase.BuscarMedicamentoUseCase;
+import com.medcare.senior.application.usecase.ConfirmarDoseUseCase;
 import com.medcare.senior.application.usecase.EditarTratamentoUseCase;
 import com.medcare.senior.application.usecase.ExcluirContaUseCase;
 import com.medcare.senior.application.usecase.RegistrarTokenDispositivoUseCase;
+import com.medcare.senior.application.usecase.RemoverTokenDispositivoUseCase;
 import com.medcare.senior.application.usecase.RemoverMedicamentoUseCase;
 import com.medcare.senior.domain.dose.Dose;
+import com.medcare.senior.domain.dose.DoseDetalhada;
+import com.medcare.senior.domain.dose.DoseNaoConfirmavelException;
+import com.medcare.senior.domain.dose.PoliticaDeJanela;
 import com.medcare.senior.domain.dose.DoseVencida;
 import com.medcare.senior.domain.dose.StatusDose;
+import com.medcare.senior.domain.exception.RecursoNaoEncontradoException;
+import com.medcare.senior.domain.usuario.CodigoVinculo;
 import com.medcare.senior.infrastructure.persistence.adapter.CodigoVinculoRepositoryAdapter;
 import com.medcare.senior.infrastructure.persistence.adapter.CuidadorRepositoryAdapter;
 import com.medcare.senior.infrastructure.persistence.adapter.DoseRepositoryAdapter;
@@ -62,7 +70,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
         CuidadorMapper.class, IdosoMapper.class, MedicamentoMapper.class, TratamentoMapper.class, DoseMapper.class,
         CodigoVinculoMapper.class,
         ExcluirContaUseCase.class, RemoverMedicamentoUseCase.class, EditarTratamentoUseCase.class,
-        RegistrarTokenDispositivoUseCase.class,
+        RegistrarTokenDispositivoUseCase.class, BuscarMedicamentoUseCase.class, RemoverTokenDispositivoUseCase.class,
+        ConfirmarDoseUseCase.class,
         GeradorDeDosesService.class,
         PersistenciaPostgresTest.RelogioFixo.class
 })
@@ -79,6 +88,12 @@ class PersistenciaPostgresTest {
         @Bean
         Clock clock() {
             return Clock.fixed(AGORA.atZone(FUSO).toInstant(), FUSO);
+        }
+
+        @Bean
+        PoliticaDeJanela politicaDeJanela() {
+            return new PoliticaDeJanela(java.time.Duration.ofMinutes(60), java.time.Duration.ofMinutes(30),
+                    java.time.Duration.ofMinutes(180));
         }
     }
 
@@ -108,6 +123,21 @@ class PersistenciaPostgresTest {
 
     @Autowired
     private RegistrarTokenDispositivoUseCase registrarTokenDispositivoUseCase;
+
+    @Autowired
+    private CodigoVinculoRepositoryAdapter codigoVinculoAdapter;
+
+    @Autowired
+    private IdosoRepositoryAdapter idosoAdapter;
+
+    @Autowired
+    private RemoverTokenDispositivoUseCase removerTokenDispositivoUseCase;
+
+    @Autowired
+    private ConfirmarDoseUseCase confirmarDoseUseCase;
+
+    @Autowired
+    private BuscarMedicamentoUseCase buscarMedicamentoUseCase;
 
     // ---------------------------------------------------------------------------------------------------------
     // Exclusão de conta (LGPD)
@@ -206,8 +236,181 @@ class PersistenciaPostgresTest {
     }
 
     @Test
+    void removerTokenApagaSoODoCuidadorEEhIdempotente() {
+        CuidadorEntity cuidador = cuidador();
+        CuidadorEntity outro = cuidador();
+        cuidadorAdapter.atualizarFcmToken(cuidador.getId(), "fcm-meu-aparelho");
+        cuidadorAdapter.atualizarFcmToken(outro.getId(), "fcm-outro-aparelho");
+
+        removerTokenDispositivoUseCase.executar(cuidador.getId());
+        assertThat(cuidadorAdapter.findById(cuidador.getId())).get()
+                .extracting(c -> c.getFcmToken()).isNull();
+
+        // De novo, já sem token: nenhum erro e nada muda
+        removerTokenDispositivoUseCase.executar(cuidador.getId());
+        assertThat(cuidadorAdapter.findById(cuidador.getId())).get()
+                .extracting(c -> c.getFcmToken()).isNull();
+
+        assertThat(cuidadorAdapter.findById(outro.getId())).get()
+                .extracting(c -> c.getFcmToken()).isEqualTo("fcm-outro-aparelho");
+    }
+
+    @Test
     void atualizarFcmTokenDeCuidadorInexistenteNaoAlteraNada() {
         assertThat(cuidadorAdapter.atualizarFcmToken(Long.MAX_VALUE, "fcm-qualquer")).isFalse();
+    }
+
+    // ---------------------------------------------------------------------------------------------------------
+    // Leituras do app: idosos do cuidador e medicamento por id
+    // ---------------------------------------------------------------------------------------------------------
+
+    @Test
+    void listarIdososTrazSoOsDoCuidadorEmOrdemDeNomeSemDiferenciarMaiusculas() {
+        CuidadorEntity cuidador = cuidador();
+        IdosoEntity zeca = idosoComNome(cuidador, "Zeca");
+        IdosoEntity ana = idosoComNome(cuidador, "ana");
+        IdosoEntity bruno = idosoComNome(cuidador, "Bruno");
+        IdosoEntity doOutro = idosoComNome(cuidador(), "Aaron");
+
+        assertThat(idosoAdapter.findAllByCuidadorId(cuidador.getId()))
+                .extracting(i -> i.getId())
+                .containsExactly(ana.getId(), bruno.getId(), zeca.getId())
+                .doesNotContain(doOutro.getId());
+    }
+
+    @Test
+    void buscarMedicamentoIgnoraRemovidoEDeOutroCuidador() {
+        CuidadorEntity cuidador = cuidador();
+        IdosoEntity idoso = idoso(cuidador);
+        MedicamentoEntity ativo = medicamento(idoso, null);
+        MedicamentoEntity removido = medicamento(idoso, AGORA.minusDays(1));
+        MedicamentoEntity doOutro = medicamento(idoso(cuidador()), null);
+
+        assertThat(buscarMedicamentoUseCase.executar(ativo.getId(), cuidador.getId()).getId()).isEqualTo(ativo.getId());
+        assertThatThrownBy(() -> buscarMedicamentoUseCase.executar(removido.getId(), cuidador.getId()))
+                .isInstanceOf(RecursoNaoEncontradoException.class);
+        assertThatThrownBy(() -> buscarMedicamentoUseCase.executar(doOutro.getId(), cuidador.getId()))
+                .isInstanceOf(RecursoNaoEncontradoException.class);
+    }
+
+    // ---------------------------------------------------------------------------------------------------------
+    // Doses do dia para o app: uma consulta com idoso e medicamento
+    // ---------------------------------------------------------------------------------------------------------
+
+    @Test
+    void dosesDoDiaTrazSoODiaDoIdosoSemRemovidasNemAnonimizadasEmOrdemDeHorario() {
+        // Dia em 2000: nenhum dado de desenvolvimento do banco local interfere
+        LocalDate dia = LocalDate.of(2000, 3, 15);
+        IdosoEntity idoso = idoso(cuidador());
+        MedicamentoEntity medicamento = medicamento(idoso, null);
+        TratamentoEntity tratamento = tratamento(medicamento, null);
+        DoseEntity noite = dose(tratamento, dia.atTime(20, 0), StatusDose.PENDENTE);
+        DoseEntity meiaNoite = dose(tratamento, dia.atStartOfDay(), StatusDose.TOMADA);
+        DoseEntity manha = dose(tratamento, dia.atTime(8, 0), StatusDose.CONFIRMADA_COM_ATRASO);
+        DoseEntity diaSeguinte = dose(tratamento, dia.plusDays(1).atStartOfDay(), StatusDose.PENDENTE);
+        DoseEntity diaAnterior = dose(tratamento, dia.minusDays(1).atTime(23, 59), StatusDose.PENDENTE);
+        DoseEntity deTratamentoRemovido = dose(tratamento(medicamento, dia.atStartOfDay()), dia.atTime(9, 0), StatusDose.PENDENTE);
+        DoseEntity deMedicamentoRemovido = dose(tratamento(medicamento(idoso, dia.atStartOfDay()), null), dia.atTime(10, 0),
+                StatusDose.PENDENTE);
+        DoseEntity deOutroIdoso = dose(tratamento(medicamento(idoso(cuidador()), null), null), dia.atTime(11, 0),
+                StatusDose.PENDENTE);
+        em.getEntityManager()
+                .createNativeQuery("INSERT INTO dose (tratamento_id, horario_programado, status) VALUES (NULL, ?1, 'TOMADA')")
+                .setParameter(1, dia.atTime(12, 0))
+                .executeUpdate();
+
+        List<DoseDetalhada> doses = doseAdapter.findDetalhadasDoIdosoEntre(idoso.getId(), dia.atStartOfDay(),
+                dia.plusDays(1).atStartOfDay());
+
+        assertThat(doses).extracting(d -> d.dose().getId())
+                .containsExactly(meiaNoite.getId(), manha.getId(), noite.getId())
+                .doesNotContain(diaSeguinte.getId(), diaAnterior.getId(), deTratamentoRemovido.getId(),
+                        deMedicamentoRemovido.getId(), deOutroIdoso.getId());
+        DoseDetalhada primeira = doses.get(0);
+        assertThat(primeira.idosoId()).isEqualTo(idoso.getId());
+        assertThat(primeira.idosoNome()).isEqualTo(idoso.getNome());
+        assertThat(primeira.medicamentoId()).isEqualTo(medicamento.getId());
+        assertThat(primeira.medicamentoNome()).isEqualTo("Losartana");
+        assertThat(primeira.dosagem()).isEqualTo("50mg");
+        assertThat(primeira.tipo()).isEqualTo("COMPRIMIDO");
+        assertThat(primeira.dose().getTratamentoId()).isEqualTo(tratamento.getId());
+        assertThat(primeira.dose().getStatus()).isEqualTo(StatusDose.TOMADA);
+        assertThat(primeira.dose().getHoraConfirmacao()).isEqualTo(dia.atStartOfDay().plusMinutes(5));
+    }
+
+    // ---------------------------------------------------------------------------------------------------------
+    // Confirmação de dose pelo idoso: UPDATE atômico e escopo
+    // ---------------------------------------------------------------------------------------------------------
+
+    @Test
+    void confirmarGravaTomadaComAHoraDoServidor() {
+        IdosoEntity idoso = idoso(cuidador());
+        DoseEntity pendente = dose(tratamento(medicamento(idoso, null), null), AGORA.minusMinutes(10), StatusDose.PENDENTE);
+
+        confirmarDoseUseCase.executar(pendente.getId(), idoso.getId());
+
+        assertThat(statusDaDose(pendente.getId())).isEqualTo("TOMADA");
+        assertThat(horaConfirmacaoDaDose(pendente.getId())).isEqualTo(AGORA);
+    }
+
+    @Test
+    void confirmarNaoSobrescreveDoseJaTomada() {
+        IdosoEntity idoso = idoso(cuidador());
+        DoseEntity tomada = dose(tratamento(medicamento(idoso, null), null), AGORA.minusMinutes(10), StatusDose.TOMADA);
+        LocalDateTime confirmadaEm = horaConfirmacaoDaDose(tomada.getId());
+
+        assertThatThrownBy(() -> confirmarDoseUseCase.executar(tomada.getId(), idoso.getId()))
+                .isInstanceOf(DoseNaoConfirmavelException.class);
+        assertThat(statusDaDose(tomada.getId())).isEqualTo("TOMADA");
+        assertThat(horaConfirmacaoDaDose(tomada.getId())).isEqualTo(confirmadaEm);
+
+        // Mesmo com leitura "velha" (vista como PENDENTE), o UPDATE condicional não altera a dose já registrada
+        assertThat(doseAdapter.registrarSePendente(domainPendente(tomada).confirmar(StatusDose.CONFIRMADA_COM_ATRASO, AGORA)))
+                .isZero();
+        assertThat(statusDaDose(tomada.getId())).isEqualTo("TOMADA");
+    }
+
+    @Test
+    void confirmarDoseDeOutroIdosoOuDeRemedioRemovidoEhNaoEncontrada() {
+        IdosoEntity idoso = idoso(cuidador());
+        DoseEntity doOutro = dose(tratamento(medicamento(idoso(cuidador()), null), null), AGORA, StatusDose.PENDENTE);
+        DoseEntity deRemovido = dose(tratamento(medicamento(idoso, AGORA.minusDays(1)), null), AGORA, StatusDose.PENDENTE);
+
+        assertThatThrownBy(() -> confirmarDoseUseCase.executar(doOutro.getId(), idoso.getId()))
+                .isInstanceOf(RecursoNaoEncontradoException.class);
+        assertThatThrownBy(() -> confirmarDoseUseCase.executar(deRemovido.getId(), idoso.getId()))
+                .isInstanceOf(RecursoNaoEncontradoException.class);
+        assertThat(statusDaDose(doOutro.getId())).isEqualTo("PENDENTE");
+        assertThat(statusDaDose(deRemovido.getId())).isEqualTo("PENDENTE");
+    }
+
+    // ---------------------------------------------------------------------------------------------------------
+    // Código de vínculo: UPDATE em massa e contexto de persistência
+    // ---------------------------------------------------------------------------------------------------------
+
+    @Test
+    void marcarComoUsadoAtualizaOCodigoJaCarregadoNaMesmaTransacao() {
+        CuidadorEntity cuidador = cuidador();
+        CodigoVinculoEntity entity = codigoVinculo(cuidador, idoso(cuidador), codigoAleatorio());
+        // Carrega o código na sessão, como o ValidarCodigoVinculoUseCase faz antes de marcar
+        CodigoVinculo carregado = codigoVinculoAdapter.findMaisRecenteByCodigoUnico(entity.getCodigoUnico()).orElseThrow();
+        assertThat(carregado.isUsado()).isFalse();
+
+        assertThat(codigoVinculoAdapter.marcarComoUsado(entity.getId(), AGORA)).isTrue();
+
+        // Relida na MESMA transação: sem limpar o contexto, a entidade gerenciada continuaria usado=false
+        assertThat(codigoVinculoAdapter.findMaisRecenteByCodigoUnico(entity.getCodigoUnico())).get()
+                .extracting(CodigoVinculo::isUsado).isEqualTo(true);
+    }
+
+    @Test
+    void codigoDeVinculoSoPodeSerMarcadoComoUsadoUmaVez() {
+        CuidadorEntity cuidador = cuidador();
+        CodigoVinculoEntity entity = codigoVinculo(cuidador, idoso(cuidador), codigoAleatorio());
+
+        // RN11: uso único; a segunda marcação (ex.: requisição concorrente) não altera nenhuma linha
+        assertThat(codigoVinculoAdapter.marcarComoUsado(entity.getId(), AGORA)).isTrue();
+        assertThat(codigoVinculoAdapter.marcarComoUsado(entity.getId(), AGORA)).isFalse();
     }
 
     // ---------------------------------------------------------------------------------------------------------
@@ -427,11 +630,19 @@ class PersistenciaPostgresTest {
                 .build());
     }
 
+    private IdosoEntity idosoComNome(CuidadorEntity cuidador, String nome) {
+        return em.persist(IdosoEntity.builder()
+                .nome(nome)
+                .dataNascimento(LocalDate.of(1945, 3, 12))
+                .cuidador(cuidador)
+                .build());
+    }
+
     private MedicamentoEntity medicamento(IdosoEntity idoso, LocalDateTime removidoEm) {
         return em.persist(MedicamentoEntity.builder()
                 .nome("Losartana")
                 .dosagem("50mg")
-                .tipo("Comprimido")
+                .tipo("COMPRIMIDO")
                 .idoso(idoso)
                 .removidoEm(removidoEm)
                 .build());
@@ -462,13 +673,21 @@ class PersistenciaPostgresTest {
     }
 
     private CodigoVinculoEntity codigoVinculo(CuidadorEntity cuidador, IdosoEntity idoso) {
+        return codigoVinculo(cuidador, idoso, "123456");
+    }
+
+    private CodigoVinculoEntity codigoVinculo(CuidadorEntity cuidador, IdosoEntity idoso, String codigoUnico) {
         return em.persist(CodigoVinculoEntity.builder()
-                .codigoUnico("123456")
+                .codigoUnico(codigoUnico)
                 .cuidador(cuidador)
                 .idoso(idoso)
                 .expiraEm(AGORA.plusDays(1))
                 .usado(false)
                 .build());
+    }
+
+    private static String codigoAleatorio() {
+        return String.format("%06d", java.util.concurrent.ThreadLocalRandom.current().nextInt(1_000_000));
     }
 
     private long contar(String tabela, Long... ids) {
@@ -501,6 +720,17 @@ class PersistenciaPostgresTest {
                 .createNativeQuery("SELECT status FROM dose WHERE id = ?1")
                 .setParameter(1, doseId)
                 .getSingleResult();
+    }
+
+    private LocalDateTime horaConfirmacaoDaDose(Long doseId) {
+        Object valor = em.getEntityManager()
+                .createNativeQuery("SELECT hora_confirmacao FROM dose WHERE id = ?1")
+                .setParameter(1, doseId)
+                .getSingleResult();
+        if (valor == null) {
+            return null;
+        }
+        return valor instanceof java.sql.Timestamp timestamp ? timestamp.toLocalDateTime() : (LocalDateTime) valor;
     }
 
     private Long tratamentoIdDaDose(Long doseId) {

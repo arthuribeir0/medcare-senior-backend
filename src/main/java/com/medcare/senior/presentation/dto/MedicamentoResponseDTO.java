@@ -14,7 +14,8 @@ public record MedicamentoResponseDTO(
         @Schema(example = "50mg")
         String dosagem,
 
-        @Schema(example = "Comprimido")
+        @Schema(description = "COMPRIMIDO, CAPSULA, GOTAS, INJECAO, XAROPE ou ADESIVO (cadastros antigos podem ter texto livre)",
+                example = "COMPRIMIDO")
         String tipo,
 
         @Schema(example = "Redondo")

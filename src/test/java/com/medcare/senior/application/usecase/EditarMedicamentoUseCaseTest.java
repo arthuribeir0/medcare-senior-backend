@@ -44,7 +44,7 @@ class EditarMedicamentoUseCaseTest {
         return Medicamento.builder()
                 .nome("Losartana")
                 .dosagem("100mg")
-                .tipo("Comprimido")
+                .tipo("COMPRIMIDO")
                 .idosoId(IDOSO_ID)
                 .build();
     }

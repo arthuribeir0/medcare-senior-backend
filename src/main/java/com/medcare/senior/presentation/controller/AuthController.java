@@ -29,13 +29,12 @@ public class AuthController {
     @PostMapping("/login")
     @SecurityRequirements
     @Operation(summary = "Autentica o cuidador", description = "Troca e-mail e senha por um JWT com papel CUIDADOR.")
-    @ApiResponse(responseCode = "200", description = "Autenticado")
+    @ApiResponse(responseCode = "200", description = "Autenticado; devolve o token e o id e o nome do cuidador")
     @ApiResponse(responseCode = "400", description = "Campos inválidos",
             content = @Content(schema = @Schema(implementation = ErroResponse.class)))
     @ApiResponse(responseCode = "401", description = "E-mail ou senha inválidos",
             content = @Content(schema = @Schema(implementation = ErroResponse.class)))
     public ResponseEntity<AuthResponseDTO> login(@Valid @RequestBody LoginRequestDTO request) {
-        String token = autenticarCuidadorUseCase.executar(request.email(), request.senha());
-        return ResponseEntity.ok(AuthResponseDTO.bearer(token));
+        return ResponseEntity.ok(AuthResponseDTO.bearer(autenticarCuidadorUseCase.executar(request.email(), request.senha())));
     }
 }

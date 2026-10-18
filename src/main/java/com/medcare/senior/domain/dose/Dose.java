@@ -13,7 +13,7 @@ import java.time.LocalDateTime;
  * <p>IMUTÁVEL de propósito: não há setters nem métodos que alterem a dose. Doses já registradas (TOMADA,
  * NAO_TOMADA, CONFIRMADA_COM_ATRASO) formam o histórico de adesão e nunca podem mudar. Cada transição cria a
  * versão registrada SOMENTE a partir de uma dose PENDENTE e devolve uma nova instância (ver
- * {@link #marcarComoNaoTomada()}); a confirmação de dose, quando implementada, deve seguir o mesmo padrão.
+ * {@link #marcarComoNaoTomada()} e {@link #confirmar}).
  *
  * <p>{@code tratamentoId} nulo = dose anonimizada: o tratamento foi apagado na exclusão de conta (LGPD).
  */
@@ -61,6 +61,30 @@ public class Dose {
                 .tratamentoId(tratamentoId)
                 .horarioProgramado(horarioProgramado)
                 .status(StatusDose.NAO_TOMADA)
+                .build();
+    }
+
+    /**
+     * Versão confirmada desta dose (pelo idoso), em {@code agora}. Não altera esta instância. O status (TOMADA ou
+     * CONFIRMADA_COM_ATRASO) vem da {@link PoliticaDeJanela}; no banco, a gravação também é um UPDATE condicionado a
+     * status = 'PENDENTE' ({@link DoseRepositoryPort#registrarSePendente}).
+     *
+     * @throws TransicaoDeDoseInvalidaException se a dose não estiver PENDENTE
+     * @throws IllegalArgumentException         se {@code statusConfirmado} não for TOMADA nem CONFIRMADA_COM_ATRASO
+     */
+    public Dose confirmar(StatusDose statusConfirmado, LocalDateTime agora) {
+        if (statusConfirmado != StatusDose.TOMADA && statusConfirmado != StatusDose.CONFIRMADA_COM_ATRASO) {
+            throw new IllegalArgumentException("Confirmação só pode gerar TOMADA ou CONFIRMADA_COM_ATRASO");
+        }
+        if (status != StatusDose.PENDENTE) {
+            throw new TransicaoDeDoseInvalidaException(id, status, statusConfirmado);
+        }
+        return Dose.builder()
+                .id(id)
+                .tratamentoId(tratamentoId)
+                .horarioProgramado(horarioProgramado)
+                .horaConfirmacao(agora)
+                .status(statusConfirmado)
                 .build();
     }
 }

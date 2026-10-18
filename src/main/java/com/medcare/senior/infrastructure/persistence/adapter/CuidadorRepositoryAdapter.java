@@ -69,6 +69,12 @@ public class CuidadorRepositoryAdapter implements CuidadorRepositoryPort {
 
     @Override
     @Transactional
+    public void removerFcmToken(Long cuidadorId) {
+        cuidadorRepository.removerFcmToken(cuidadorId);
+    }
+
+    @Override
+    @Transactional
     public void deleteById(Long id) {
         cuidadorRepository.deleteById(id);
     }

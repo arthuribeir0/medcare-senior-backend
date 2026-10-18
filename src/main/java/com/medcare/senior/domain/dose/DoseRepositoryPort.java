@@ -1,5 +1,8 @@
 package com.medcare.senior.domain.dose;
 
+import com.medcare.senior.domain.historico.FiltroHistorico;
+import com.medcare.senior.domain.historico.Pagina;
+
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -44,6 +47,13 @@ public interface DoseRepositoryPort {
      * removido logicamente.
      */
     List<DoseDetalhada> findDetalhadasDoIdosoEntre(Long idosoId, LocalDateTime inicio, LocalDateTime fim);
+
+    /**
+     * Página do histórico de doses dos idosos do cuidador (UC-011), da mais recente para a mais antiga, em uma consulta
+     * com projeção (mais a contagem). Inclui doses de tratamento ou medicamento removidos logicamente (o histórico é
+     * preservado, RN-008); doses anonimizadas não têm dono e ficam de fora.
+     */
+    Pagina<DoseDetalhada> findHistorico(Long cuidadorId, FiltroHistorico filtro);
 
     /**
      * A dose, SOMENTE se pertencer ao idoso (dose -> tratamento -> medicamento -> idoso) e o tratamento e o

@@ -10,6 +10,7 @@ import com.medcare.senior.domain.exception.IdosoJaCadastradoException;
 import com.medcare.senior.domain.exception.RecursoNaoEncontradoException;
 import com.medcare.senior.domain.exception.SenhaFracaException;
 import com.medcare.senior.domain.configuracao.ToleranciaInvalidaException;
+import com.medcare.senior.domain.exception.ParametroInvalidoException;
 import com.medcare.senior.domain.exception.SessaoInvalidaException;
 import com.medcare.senior.domain.exception.TokenDispositivoInvalidoException;
 import com.medcare.senior.domain.medicamento.DadosObrigatoriosMedicamentoException;
@@ -69,6 +70,13 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErroResponse> handleToleranciaInvalida(ToleranciaInvalidaException ex) {
         return construirResposta(HttpStatus.BAD_REQUEST, CodigoErro.VALIDACAO, "Um ou mais campos são inválidos",
                 List.of(new ErroResponse.CampoInvalido("toleranciaMinutos", ex.getMessage())));
+    }
+
+    // Parâmetro de consulta fora da regra (ex.: período com início depois do fim): mesmo formato da validação de campo
+    @ExceptionHandler(ParametroInvalidoException.class)
+    public ResponseEntity<ErroResponse> handleParametroForaDaRegra(ParametroInvalidoException ex) {
+        return construirResposta(HttpStatus.BAD_REQUEST, CodigoErro.VALIDACAO, "Um ou mais campos são inválidos",
+                List.of(new ErroResponse.CampoInvalido(ex.getCampo(), ex.getMessage())));
     }
 
     @ExceptionHandler(CredenciaisInvalidasException.class)

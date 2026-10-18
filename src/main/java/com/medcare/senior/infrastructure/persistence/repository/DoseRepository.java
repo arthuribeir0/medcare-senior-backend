@@ -29,20 +29,23 @@ public interface DoseRepository extends JpaRepository<DoseEntity, Long> {
                                                      @Param("desde") LocalDateTime desde);
 
     // Fase de AVISO da varredura. Nativa por causa da soma horário + tolerância em minutos (make_interval), que é
-    // por linha (a tolerância por cuidador entra no lugar do parâmetro). "horario > :encerradasAte" limita a faixa
-    // no índice (status, horario_programado) da V11; o NOT EXISTS usa o UNIQUE de evento_notificacao.dose_id.
-    // JOINs internos: dose anonimizada (sem tratamento) fica de fora. Da mais antiga para a mais nova.
+    // por linha: a do cuidador dono do idoso (configuracao_alerta, LEFT JOIN) ou a padrão (COALESCE com o parâmetro).
+    // "horario > :encerradasAte" limita a faixa no índice (status, horario_programado) da V11; o NOT EXISTS usa o
+    // UNIQUE de evento_notificacao.dose_id. JOINs internos: dose anonimizada (sem tratamento) fica de fora. Da mais
+    // antiga para a mais nova.
     @Query(value = "SELECT d.id AS doseId, d.horario_programado AS horarioProgramado, i.cuidador_id AS cuidadorId, "
             + "i.id AS idosoId, i.nome AS nomeIdoso "
             + "FROM dose d JOIN tratamento t ON t.id = d.tratamento_id JOIN medicamento m ON m.id = t.medicamento_id "
             + "JOIN idoso i ON i.id = m.idoso_id "
+            + "LEFT JOIN configuracao_alerta c ON c.cuidador_id = i.cuidador_id "
             + "WHERE d.status = 'PENDENTE' AND t.removido_em IS NULL AND m.removido_em IS NULL "
             + "AND d.horario_programado > :encerradasAte "
-            + "AND d.horario_programado + make_interval(mins => :toleranciaMinutos) <= :agora "
+            + "AND d.horario_programado + make_interval(mins => COALESCE(c.tolerancia_minutos, :toleranciaPadraoMinutos)) "
+            + "<= :agora "
             + "AND NOT EXISTS (SELECT 1 FROM evento_notificacao e WHERE e.dose_id = d.id) "
             + "ORDER BY d.horario_programado, d.id LIMIT :limite", nativeQuery = true)
     List<DoseParaAvisoView> findParaAviso(@Param("agora") LocalDateTime agora,
-                                          @Param("toleranciaMinutos") int toleranciaMinutos,
+                                          @Param("toleranciaPadraoMinutos") int toleranciaPadraoMinutos,
                                           @Param("encerradasAte") LocalDateTime encerradasAte,
                                           @Param("limite") int limite);
 
@@ -57,10 +60,13 @@ public interface DoseRepository extends JpaRepository<DoseEntity, Long> {
                                          Pageable pagina);
 
     // JOINs internos: dose anonimizada (sem tratamento) fica de fora; removidos (tratamento ou medicamento) também.
+    // LEFT JOIN na configuração de alerta do cuidador dono do idoso: tolerância própria ou nula (vale a padrão).
     // Intervalo semiaberto [inicio, fim): um dia é [data 00:00, data+1 00:00).
     @Query("SELECT new com.medcare.senior.infrastructure.persistence.projection.DoseDetalhadaProjection("
-            + "d.id, t.id, d.horarioProgramado, d.horaConfirmacao, d.status, i.id, i.nome, m.id, m.nome, m.dosagem, m.tipo) "
+            + "d.id, t.id, d.horarioProgramado, d.horaConfirmacao, d.status, i.id, i.nome, m.id, m.nome, m.dosagem, m.tipo, "
+            + "c.toleranciaMinutos) "
             + "FROM DoseEntity d JOIN d.tratamento t JOIN t.medicamento m JOIN m.idoso i "
+            + "LEFT JOIN ConfiguracaoAlertaEntity c ON c.cuidadorId = i.cuidador.id "
             + "WHERE i.id = :idosoId AND d.horarioProgramado >= :inicio AND d.horarioProgramado < :fim "
             + "AND t.removidoEm IS NULL AND m.removidoEm IS NULL "
             + "ORDER BY d.horarioProgramado, d.id")
@@ -69,8 +75,10 @@ public interface DoseRepository extends JpaRepository<DoseEntity, Long> {
                                                              @Param("fim") LocalDateTime fim);
 
     @Query("SELECT new com.medcare.senior.infrastructure.persistence.projection.DoseDetalhadaProjection("
-            + "d.id, t.id, d.horarioProgramado, d.horaConfirmacao, d.status, i.id, i.nome, m.id, m.nome, m.dosagem, m.tipo) "
+            + "d.id, t.id, d.horarioProgramado, d.horaConfirmacao, d.status, i.id, i.nome, m.id, m.nome, m.dosagem, m.tipo, "
+            + "c.toleranciaMinutos) "
             + "FROM DoseEntity d JOIN d.tratamento t JOIN t.medicamento m JOIN m.idoso i "
+            + "LEFT JOIN ConfiguracaoAlertaEntity c ON c.cuidadorId = i.cuidador.id "
             + "WHERE d.id = :doseId AND i.id = :idosoId AND t.removidoEm IS NULL AND m.removidoEm IS NULL")
     Optional<DoseDetalhadaProjection> findDetalhadaByIdAndIdosoId(@Param("doseId") Long doseId,
                                                                   @Param("idosoId") Long idosoId);

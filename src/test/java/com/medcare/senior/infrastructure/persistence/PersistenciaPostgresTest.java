@@ -18,6 +18,7 @@ import com.medcare.senior.domain.exception.RecursoNaoEncontradoException;
 import com.medcare.senior.domain.notificacao.MotivoFalhaNotificacao;
 import com.medcare.senior.domain.usuario.CodigoVinculo;
 import com.medcare.senior.infrastructure.persistence.adapter.CodigoVinculoRepositoryAdapter;
+import com.medcare.senior.infrastructure.persistence.adapter.ConfiguracaoAlertaRepositoryAdapter;
 import com.medcare.senior.infrastructure.persistence.adapter.CuidadorRepositoryAdapter;
 import com.medcare.senior.infrastructure.persistence.adapter.DoseRepositoryAdapter;
 import com.medcare.senior.infrastructure.persistence.adapter.EventoNotificacaoRepositoryAdapter;
@@ -69,7 +70,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 @Import({
         CuidadorRepositoryAdapter.class, IdosoRepositoryAdapter.class, MedicamentoRepositoryAdapter.class,
         TratamentoRepositoryAdapter.class, DoseRepositoryAdapter.class, CodigoVinculoRepositoryAdapter.class,
-        EventoNotificacaoRepositoryAdapter.class,
+        EventoNotificacaoRepositoryAdapter.class, ConfiguracaoAlertaRepositoryAdapter.class,
         CuidadorMapper.class, IdosoMapper.class, MedicamentoMapper.class, TratamentoMapper.class, DoseMapper.class,
         CodigoVinculoMapper.class,
         ExcluirContaUseCase.class, RemoverMedicamentoUseCase.class, EditarTratamentoUseCase.class,
@@ -123,6 +124,9 @@ class PersistenciaPostgresTest {
 
     @Autowired
     private EventoNotificacaoRepositoryAdapter eventoAdapter;
+
+    @Autowired
+    private ConfiguracaoAlertaRepositoryAdapter configuracaoAdapter;
 
     @Autowired
     private CuidadorRepositoryAdapter cuidadorAdapter;
@@ -767,6 +771,98 @@ class PersistenciaPostgresTest {
     }
 
     // ---------------------------------------------------------------------------------------------------------
+    // Configuração de alerta (V13): tolerância por cuidador
+    // ---------------------------------------------------------------------------------------------------------
+
+    @Test
+    void semConfiguracaoNaoHaToleranciaPropriaESalvarDuasVezesAtualiza() {
+        CuidadorEntity cuidador = cuidador();
+
+        assertThat(configuracaoAdapter.findToleranciaMinutos(cuidador.getId())).isEmpty();
+
+        configuracaoAdapter.salvarToleranciaMinutos(cuidador.getId(), 45);
+        configuracaoAdapter.salvarToleranciaMinutos(cuidador.getId(), 90);
+
+        assertThat(configuracaoAdapter.findToleranciaMinutos(cuidador.getId())).contains(90);
+        assertThat(contarPorCuidador("configuracao_alerta", cuidador.getId())).isEqualTo(1);
+    }
+
+    @Test
+    void checkDaConfiguracaoRecusaToleranciaForaDe5a120() {
+        CuidadorEntity cuidador = cuidador();
+
+        assertThatThrownBy(() -> configuracaoAdapter.salvarToleranciaMinutos(cuidador.getId(), 4))
+                .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    @Test
+    void checkDaConfiguracaoRecusaToleranciaAcimaDe120() {
+        CuidadorEntity cuidador = cuidador();
+
+        assertThatThrownBy(() -> configuracaoAdapter.salvarToleranciaMinutos(cuidador.getId(), 121))
+                .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    @Test
+    void exclusaoDeContaApagaAConfiguracaoDeAlerta() {
+        CuidadorEntity cuidador = cuidador();
+        configuracaoAdapter.salvarToleranciaMinutos(cuidador.getId(), 15);
+        CuidadorEntity outro = cuidador();
+        configuracaoAdapter.salvarToleranciaMinutos(outro.getId(), 20);
+
+        excluirContaUseCase.executar(cuidador.getId());
+
+        assertThat(contarPorCuidador("configuracao_alerta", cuidador.getId())).isZero();
+        assertThat(configuracaoAdapter.findToleranciaMinutos(outro.getId())).contains(20);
+    }
+
+    @Test
+    void avisoUsaAToleranciaDoCuidadorDonoDeCadaIdoso() {
+        LocalDateTime agora = LocalDateTime.of(2000, 1, 10, 12, 0);
+        java.time.Duration padrao = java.time.Duration.ofMinutes(30);
+        CuidadorEntity comDez = cuidador();
+        CuidadorEntity comSessenta = cuidador();
+        CuidadorEntity semConfiguracao = cuidador();
+        configuracaoAdapter.salvarToleranciaMinutos(comDez.getId(), 10);
+        configuracaoAdapter.salvarToleranciaMinutos(comSessenta.getId(), 60);
+        // Todas às 11:45: 11:55 (10 min) já passou; 12:15 (padrão 30) e 12:45 (60) ainda não
+        DoseEntity doDez = dose(tratamento(medicamento(idoso(comDez), null), null), agora.minusMinutes(15), StatusDose.PENDENTE);
+        DoseEntity doSessenta = dose(tratamento(medicamento(idoso(comSessenta), null), null), agora.minusMinutes(15),
+                StatusDose.PENDENTE);
+        TratamentoEntity tratamentoPadrao = tratamento(medicamento(idoso(semConfiguracao), null), null);
+        DoseEntity doPadraoNoPrazo = dose(tratamentoPadrao, agora.minusMinutes(15), StatusDose.PENDENTE);
+        // 11:30 + 30 (padrão) = 12:00: no limite, já é aviso
+        DoseEntity doPadraoNoLimite = dose(tratamentoPadrao, agora.minusMinutes(30), StatusDose.PENDENTE);
+
+        List<Long> paraAviso = doseAdapter.findPendentesParaAviso(agora, padrao, agora.minusMinutes(180), 100).stream()
+                .map(DoseParaAviso::doseId)
+                .toList();
+
+        assertThat(paraAviso).contains(doDez.getId(), doPadraoNoLimite.getId())
+                .doesNotContain(doSessenta.getId(), doPadraoNoPrazo.getId());
+    }
+
+    @Test
+    void dosesDetalhadasTrazemAToleranciaPropriaDoCuidadorOuNula() {
+        CuidadorEntity comConfiguracao = cuidador();
+        configuracaoAdapter.salvarToleranciaMinutos(comConfiguracao.getId(), 60);
+        IdosoEntity idosoComConfiguracao = idoso(comConfiguracao);
+        DoseEntity dose = dose(tratamento(medicamento(idosoComConfiguracao, null), null), AGORA.minusHours(1),
+                StatusDose.PENDENTE);
+        IdosoEntity idosoSemConfiguracao = idoso(cuidador());
+        dose(tratamento(medicamento(idosoSemConfiguracao, null), null), AGORA.minusHours(1), StatusDose.PENDENTE);
+
+        assertThat(doseAdapter.findDetalhadasDoIdosoEntre(idosoComConfiguracao.getId(), HOJE.atStartOfDay(),
+                HOJE.plusDays(1).atStartOfDay())).singleElement()
+                .satisfies(d -> assertThat(d.toleranciaMinutosDoCuidador()).isEqualTo(60));
+        assertThat(doseAdapter.findDetalhadaByIdAndIdosoId(dose.getId(), idosoComConfiguracao.getId()))
+                .hasValueSatisfying(d -> assertThat(d.toleranciaMinutosDoCuidador()).isEqualTo(60));
+        assertThat(doseAdapter.findDetalhadasDoIdosoEntre(idosoSemConfiguracao.getId(), HOJE.atStartOfDay(),
+                HOJE.plusDays(1).atStartOfDay())).singleElement()
+                .satisfies(d -> assertThat(d.toleranciaMinutosDoCuidador()).isNull());
+    }
+
+    // ---------------------------------------------------------------------------------------------------------
     // Montagem de dados e consultas de verificação (SQL nativo: lê o estado real do banco)
     // ---------------------------------------------------------------------------------------------------------
 
@@ -924,6 +1020,14 @@ class PersistenciaPostgresTest {
                         ? timestamp.toLocalDateTime()
                         : (LocalDateTime) valor)
                 .toList();
+    }
+
+    private long contarPorCuidador(String tabela, Long cuidadorId) {
+        Number total = (Number) em.getEntityManager()
+                .createNativeQuery("SELECT COUNT(*) FROM " + tabela + " WHERE cuidador_id = ?1")
+                .setParameter(1, cuidadorId)
+                .getSingleResult();
+        return total.longValue();
     }
 
     private long eventosDaDose(Long doseId) {

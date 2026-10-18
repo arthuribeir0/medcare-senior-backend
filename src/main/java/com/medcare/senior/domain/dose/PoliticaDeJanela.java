@@ -51,6 +51,15 @@ public record PoliticaDeJanela(Duration antecedencia, Duration toleranciaPadrao,
         return tolerancia;
     }
 
+    /**
+     * Tolerância a aplicar para um cuidador: a própria (em minutos) ou, se ele não tem, a padrão.
+     *
+     * @throws IllegalArgumentException se a própria não for positiva ou não for menor que o encerramento
+     */
+    public Duration toleranciaEfetiva(Integer minutosDoCuidador) {
+        return minutosDoCuidador == null ? toleranciaPadrao : exigirTolerancia(Duration.ofMinutes(minutosDoCuidador));
+    }
+
     public LocalDateTime abreEm(LocalDateTime horarioProgramado) {
         return horarioProgramado.minus(antecedencia);
     }

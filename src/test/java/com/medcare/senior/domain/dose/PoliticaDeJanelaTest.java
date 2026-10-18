@@ -1,5 +1,6 @@
 package com.medcare.senior.domain.dose;
 
+import com.medcare.senior.domain.configuracao.Tolerancia;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
@@ -140,9 +141,20 @@ class PoliticaDeJanelaTest {
 
     @Test
     void toleranciaMaximaDaConfiguracaoCabeAntesDoEncerramento() {
-        // A configuração do cuidador vai de 5 a 120 minutos; o encerramento (180) precisa ficar sempre depois
-        assertThat(politica.avisoEm(HORARIO, Duration.ofMinutes(120))).isBefore(politica.encerraEm(HORARIO));
-        assertThat(politica.avisoEm(HORARIO, Duration.ofMinutes(5))).isEqualTo(HORARIO.plusMinutes(5));
+        // A configuração do cuidador vai de 5 a 120 minutos; o encerramento (180, fixo) precisa ficar sempre depois
+        assertThat(Tolerancia.MAXIMO_MINUTOS).isLessThan(180);
+        assertThat(politica.avisoEm(HORARIO, Duration.ofMinutes(Tolerancia.MAXIMO_MINUTOS)))
+                .isBefore(politica.encerraEm(HORARIO));
+        assertThat(politica.avisoEm(HORARIO, Duration.ofMinutes(Tolerancia.MINIMO_MINUTOS)))
+                .isEqualTo(HORARIO.plusMinutes(5));
+    }
+
+    @Test
+    void toleranciaEfetivaEhADoCuidadorOuAPadrao() {
+        assertThat(politica.toleranciaEfetiva(null)).isEqualTo(TOLERANCIA);
+        assertThat(politica.toleranciaEfetiva(45)).isEqualTo(Duration.ofMinutes(45));
+        assertThatThrownBy(() -> politica.toleranciaEfetiva(180)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> politica.toleranciaEfetiva(0)).isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test

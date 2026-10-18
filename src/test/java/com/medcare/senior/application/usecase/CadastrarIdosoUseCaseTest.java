@@ -1,7 +1,7 @@
 package com.medcare.senior.application.usecase;
 
 import com.medcare.senior.domain.exception.IdosoJaCadastradoException;
-import com.medcare.senior.domain.exception.RecursoNaoEncontradoException;
+import com.medcare.senior.domain.exception.SessaoInvalidaException;
 import com.medcare.senior.domain.usuario.CuidadorRepositoryPort;
 import com.medcare.senior.domain.usuario.Idoso;
 import com.medcare.senior.domain.usuario.IdosoRepositoryPort;
@@ -97,7 +97,7 @@ class CadastrarIdosoUseCaseTest {
         when(cuidadorRepository.existsById(CUIDADOR_ID)).thenReturn(false);
 
         assertThatThrownBy(() -> useCase.executar("Maria Silva", NASCIMENTO, null, CUIDADOR_ID))
-                .isInstanceOf(RecursoNaoEncontradoException.class);
+                .isInstanceOf(SessaoInvalidaException.class);
 
         verify(idosoRepository, never()).save(any());
     }

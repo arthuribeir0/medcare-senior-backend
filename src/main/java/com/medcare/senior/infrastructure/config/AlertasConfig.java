@@ -9,24 +9,21 @@ import org.springframework.context.annotation.Configuration;
 import java.time.Duration;
 
 /**
- * Parâmetros da verificação de doses vencidas e da janela de confirmação (app.alertas.*). Valores inválidos
- * (negativos, zero, lote zero, tolerância maior ou igual ao encerramento) impedem a aplicação de subir.
+ * Parâmetros da varredura de doses e da janela de confirmação (app.alertas.*). Valores inválidos (negativos, zero,
+ * lote zero, tolerância maior ou igual ao encerramento) impedem a aplicação de subir.
  */
 @Configuration
 public class AlertasConfig {
 
     @Bean
     public VerificarDosesVencidasUseCase.Parametros parametrosDeAlerta(
-            @Value("${app.alertas.tolerancia-minutos:30}") long toleranciaMinutos,
-            @Value("${app.alertas.janela-notificacao-horas:24}") long janelaNotificacaoHoras,
             @Value("${app.alertas.lote-maximo:500}") int loteMaximo) {
-        return new VerificarDosesVencidasUseCase.Parametros(
-                Duration.ofMinutes(toleranciaMinutos), Duration.ofHours(janelaNotificacaoHoras), loteMaximo);
+        return new VerificarDosesVencidasUseCase.Parametros(loteMaximo);
     }
 
     /**
-     * Janela de confirmação de dose. O construtor de PoliticaDeJanela valida: todos positivos e tolerância menor que
-     * o encerramento.
+     * Janela da dose. app.alertas.tolerancia-minutos é a tolerância PADRÃO (quando o cuidador não tem a sua). O
+     * construtor de PoliticaDeJanela valida: todos positivos e tolerância menor que o encerramento.
      */
     @Bean
     public PoliticaDeJanela politicaDeJanela(

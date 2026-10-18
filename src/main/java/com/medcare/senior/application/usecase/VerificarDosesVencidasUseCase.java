@@ -1,34 +1,39 @@
 package com.medcare.senior.application.usecase;
 
+import com.medcare.senior.application.service.EnvioDeAvisoService;
+import com.medcare.senior.domain.dose.Dose;
+import com.medcare.senior.domain.dose.DoseParaAviso;
 import com.medcare.senior.domain.dose.DoseRepositoryPort;
-import com.medcare.senior.domain.dose.DoseVencida;
+import com.medcare.senior.domain.dose.PoliticaDeJanela;
 import com.medcare.senior.domain.notificacao.DoseNaoTomadaNotificacao;
-import com.medcare.senior.domain.notificacao.NotificadorDeDoseNaoTomadaPort;
+import com.medcare.senior.domain.notificacao.EventoNotificacaoRepositoryPort;
+import com.medcare.senior.domain.notificacao.ResultadoEnvioPush;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.time.Clock;
-import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 /**
- * Varredura de doses vencidas: dose PENDENTE cujo horário programado + tolerância já passou vira NAO_TOMADA, e o
- * cuidador é avisado.
+ * Varredura de doses (RN-009, RN-014), em duas fases independentes:
  *
- * <ul>
- *   <li>Busca no máximo {@code loteMaximo} doses por execução, das mais antigas para as mais novas; o restante fica
- *       para a próxima execução.</li>
- *   <li>A gravação é um UPDATE atômico condicionado a status = PENDENTE: se o idoso confirmou a dose ao mesmo tempo,
- *       a confirmação vence, nada muda e ninguém é avisado.</li>
- *   <li>Só avisa se a dose venceu (horário + tolerância) há menos de {@code janelaNotificacao}. Doses muito antigas
- *       (ex.: aplicação parada por um dia) são marcadas, mas não geram aviso atrasado.</li>
- *   <li>Doses anonimizadas e de tratamento ou medicamento removido nem chegam aqui (a busca as ignora).</li>
- * </ul>
+ * <ol>
+ *   <li><b>Encerramento</b>: dose PENDENTE com horário + encerramento (180 min) <= agora vira NAO_TOMADA, por UPDATE
+ *       atômico condicionado a status = PENDENTE (se o idoso confirmou ao mesmo tempo, a confirmação vence). Sem push:
+ *       o cuidador já foi avisado no fim da tolerância. Dose que chega aqui sem ter sido avisada (aplicação parada)
+ *       é encerrada sem aviso.</li>
+ *   <li><b>Aviso</b>: dose PENDENTE com horário + tolerância <= agora, ainda antes do encerramento e sem evento de
+ *       notificação: cria o evento ({@code INSERT ... ON CONFLICT DO NOTHING}) e, SÓ se esta execução o criou e
+ *       ganhou a primeira tentativa, envia o push. A dose CONTINUA PENDENTE: o idoso ainda pode confirmar (com
+ *       atraso) até o encerramento.</li>
+ * </ol>
+ * Cada fase trata no máximo {@code loteMaximo} doses por execução; o restante fica para a próxima.
  *
- * <p>NÃO é @Transactional de propósito: cada UPDATE roda na própria transação, para que o aviso só saia depois que a
- * mudança foi gravada e um erro em uma dose não desfaça nem interrompa as demais.
+ * <p>NÃO é @Transactional de propósito: cada gravação roda na própria transação, para que o push só saia depois que o
+ * evento foi gravado e um erro em uma dose não desfaça nem interrompa as demais.
  */
 @Service
 public class VerificarDosesVencidasUseCase {
@@ -36,79 +41,106 @@ public class VerificarDosesVencidasUseCase {
     private static final Logger log = LoggerFactory.getLogger(VerificarDosesVencidasUseCase.class);
 
     private final DoseRepositoryPort doseRepository;
-    private final NotificadorDeDoseNaoTomadaPort notificador;
+    private final EventoNotificacaoRepositoryPort eventos;
+    private final EnvioDeAvisoService envioDeAviso;
+    private final PoliticaDeJanela politicaDeJanela;
     private final Parametros parametros;
     private final Clock clock;
 
     public VerificarDosesVencidasUseCase(DoseRepositoryPort doseRepository,
-                                         NotificadorDeDoseNaoTomadaPort notificador,
+                                         EventoNotificacaoRepositoryPort eventos,
+                                         EnvioDeAvisoService envioDeAviso,
+                                         PoliticaDeJanela politicaDeJanela,
                                          Parametros parametros,
                                          Clock clock) {
         this.doseRepository = doseRepository;
-        this.notificador = notificador;
+        this.eventos = eventos;
+        this.envioDeAviso = envioDeAviso;
+        this.politicaDeJanela = politicaDeJanela;
         this.parametros = parametros;
         this.clock = clock;
     }
 
     public Resultado executar() {
         LocalDateTime agora = LocalDateTime.now(clock);
-        // Vencida = horário programado + tolerância <= agora, ou seja, horário programado <= agora - tolerância
-        LocalDateTime vencidasAte = agora.minus(parametros.tolerancia());
-        // Venceu há menos da janela = horário programado + tolerância > agora - janela
-        LocalDateTime notificarVencidasDepoisDe = agora.minus(parametros.janelaNotificacao());
+        // Encerrada = horário + encerramento <= agora, ou seja, horário <= agora - encerramento
+        LocalDateTime encerradasAte = agora.minus(politicaDeJanela.encerramento());
 
-        List<DoseVencida> vencidas = doseRepository.findPendentesVencidas(vencidasAte, parametros.loteMaximo());
+        Contagem contagem = new Contagem();
+        encerrar(encerradasAte, contagem);
+        avisar(agora, encerradasAte, contagem);
 
-        int marcadas = 0;
-        int notificadas = 0;
-        int falhas = 0;
-        for (DoseVencida vencida : vencidas) {
+        if (contagem.encerradas + contagem.avisos + contagem.falhas > 0) {
+            log.info("Verificação de doses: {} encerrada(s) como NAO_TOMADA, {} aviso(s) criado(s), {} enviado(s), "
+                    + "{} falha(s)", contagem.encerradas, contagem.avisos, contagem.enviados, contagem.falhas);
+        }
+        return new Resultado(contagem.encerradas, contagem.avisos, contagem.enviados, contagem.falhas);
+    }
+
+    private void encerrar(LocalDateTime encerradasAte, Contagem contagem) {
+        for (Dose dose : doseRepository.findPendentesEncerradas(encerradasAte, parametros.loteMaximo())) {
             try {
-                if (doseRepository.registrarSePendente(vencida.dose().marcarComoNaoTomada()) == 0) {
-                    // Perdeu a corrida: a dose foi registrada (ex.: confirmada) entre a busca e o UPDATE
-                    continue;
-                }
-                marcadas++;
-
-                LocalDateTime vencimento = vencida.horarioProgramado().plus(parametros.tolerancia());
-                if (vencimento.isAfter(notificarVencidasDepoisDe)) {
-                    notificador.notificar(new DoseNaoTomadaNotificacao(vencida.doseId(), vencida.cuidadorId(),
-                            vencida.nomeIdoso(), vencida.nomeMedicamento(), vencida.horarioProgramado()));
-                    notificadas++;
+                // 0 = perdeu a corrida: a dose foi confirmada entre a busca e o UPDATE
+                if (doseRepository.registrarSePendente(dose.marcarComoNaoTomada()) == 1) {
+                    contagem.encerradas++;
                 }
             } catch (RuntimeException e) {
-                falhas++;
-                log.error("Falha ao verificar a dose {}; seguindo para as demais", vencida.doseId(), e);
+                contagem.falhas++;
+                log.error("Falha ao encerrar a dose {}; seguindo para as demais", dose.getId(), e);
             }
         }
+    }
 
-        if (!vencidas.isEmpty()) {
-            log.info("Verificação de doses: {} vencida(s) encontrada(s), {} marcada(s) como NAO_TOMADA, "
-                    + "{} aviso(s) enviado(s), {} falha(s)", vencidas.size(), marcadas, notificadas, falhas);
+    private void avisar(LocalDateTime agora, LocalDateTime encerradasAte, Contagem contagem) {
+        // Tolerância global por enquanto; a busca já calcula horário + tolerância por linha (pronta para a do cuidador)
+        List<DoseParaAviso> doses = doseRepository.findPendentesParaAviso(agora, politicaDeJanela.toleranciaPadrao(),
+                encerradasAte, parametros.loteMaximo());
+        for (DoseParaAviso dose : doses) {
+            try {
+                Optional<Long> evento = eventos.criarSeAusente(dose.doseId());
+                // Vazio = outra execução criou o evento antes; não reivindicou = a retentativa pegou a primeira
+                // tentativa. Nos dois casos, quem venceu envia.
+                if (evento.isEmpty() || !eventos.reivindicar(evento.get(), 0, agora)) {
+                    continue;
+                }
+                contagem.avisos++;
+                ResultadoEnvioPush resultado = envioDeAviso.enviar(evento.get(), new DoseNaoTomadaNotificacao(
+                        dose.doseId(), dose.cuidadorId(), dose.idosoId(), dose.nomeIdoso(), dose.horarioProgramado()));
+                if (resultado == ResultadoEnvioPush.ENVIADO) {
+                    contagem.enviados++;
+                }
+            } catch (RuntimeException e) {
+                contagem.falhas++;
+                log.error("Falha ao avisar a dose {}; seguindo para as demais", dose.doseId(), e);
+            }
         }
-        return new Resultado(vencidas.size(), marcadas, notificadas, falhas);
+    }
+
+    private static final class Contagem {
+        private int encerradas;
+        private int avisos;
+        private int enviados;
+        private int falhas;
     }
 
     /**
-     * @param tolerancia        quanto tempo depois do horário programado a dose ainda pode ser confirmada
-     * @param janelaNotificacao até quanto tempo depois de vencer a dose ainda gera aviso ao cuidador
-     * @param loteMaximo        máximo de doses tratadas por execução
+     * @param loteMaximo máximo de doses tratadas por fase em cada execução
      */
-    public record Parametros(Duration tolerancia, Duration janelaNotificacao, int loteMaximo) {
+    public record Parametros(int loteMaximo) {
 
         public Parametros {
-            if (tolerancia == null || tolerancia.isNegative()) {
-                throw new IllegalArgumentException("A tolerância deve ser zero ou positiva");
-            }
-            if (janelaNotificacao == null || janelaNotificacao.isNegative() || janelaNotificacao.isZero()) {
-                throw new IllegalArgumentException("A janela de notificação deve ser positiva");
-            }
             if (loteMaximo < 1) {
                 throw new IllegalArgumentException("O lote máximo deve ser de pelo menos 1 dose");
             }
         }
     }
 
-    public record Resultado(int vencidas, int marcadas, int notificadas, int falhas) {
+    /**
+     * @param encerradas doses que passaram a NAO_TOMADA nesta execução
+     * @param avisos     eventos de notificação criados e com a primeira tentativa feita nesta execução
+     * @param enviados   avisos aceitos pelo provedor (ou registrados em log, com o FCM desligado)
+     * @param falhas     erros inesperados em alguma dose (as demais seguiram)
+     */
+    public record Resultado(int encerradas, int avisos, int enviados, int falhas) {
     }
 }

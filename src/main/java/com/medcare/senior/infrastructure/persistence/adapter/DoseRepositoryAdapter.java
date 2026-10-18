@@ -2,8 +2,8 @@ package com.medcare.senior.infrastructure.persistence.adapter;
 
 import com.medcare.senior.domain.dose.Dose;
 import com.medcare.senior.domain.dose.DoseDetalhada;
+import com.medcare.senior.domain.dose.DoseParaAviso;
 import com.medcare.senior.domain.dose.DoseRepositoryPort;
-import com.medcare.senior.domain.dose.DoseVencida;
 import com.medcare.senior.domain.dose.StatusDose;
 import com.medcare.senior.infrastructure.persistence.mapper.DoseMapper;
 import com.medcare.senior.infrastructure.persistence.projection.DoseDetalhadaProjection;
@@ -13,6 +13,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.List;
@@ -40,19 +41,20 @@ public class DoseRepositoryAdapter implements DoseRepositoryPort {
     }
 
     @Override
-    public List<DoseVencida> findPendentesVencidas(LocalDateTime vencidasAte, int limite) {
-        return doseRepository.findVencidasByStatus(StatusDose.PENDENTE, vencidasAte, PageRequest.of(0, limite))
+    public List<DoseParaAviso> findPendentesParaAviso(LocalDateTime agora, Duration toleranciaPadrao,
+                                                      LocalDateTime encerradasAte, int limite) {
+        return doseRepository.findParaAviso(agora, Math.toIntExact(toleranciaPadrao.toMinutes()), encerradasAte, limite)
                 .stream()
-                .map(linha -> new DoseVencida(
-                        Dose.builder()
-                                .id(linha.doseId())
-                                .tratamentoId(linha.tratamentoId())
-                                .horarioProgramado(linha.horarioProgramado())
-                                .status(StatusDose.PENDENTE)
-                                .build(),
-                        linha.cuidadorId(),
-                        linha.nomeIdoso(),
-                        linha.nomeMedicamento()))
+                .map(linha -> new DoseParaAviso(linha.getDoseId(), linha.getHorarioProgramado(), linha.getCuidadorId(),
+                        linha.getIdosoId(), linha.getNomeIdoso()))
+                .toList();
+    }
+
+    @Override
+    public List<Dose> findPendentesEncerradas(LocalDateTime encerradasAte, int limite) {
+        return doseRepository.findEncerradasByStatus(StatusDose.PENDENTE, encerradasAte, PageRequest.of(0, limite))
+                .stream()
+                .map(doseMapper::toDomain)
                 .toList();
     }
 

@@ -1,7 +1,7 @@
 package com.medcare.senior.application.usecase;
 
 import com.medcare.senior.domain.exception.IdosoJaCadastradoException;
-import com.medcare.senior.domain.exception.RecursoNaoEncontradoException;
+import com.medcare.senior.domain.exception.SessaoInvalidaException;
 import com.medcare.senior.domain.usuario.CuidadorRepositoryPort;
 import com.medcare.senior.domain.usuario.Idoso;
 import com.medcare.senior.domain.usuario.IdosoRepositoryPort;
@@ -29,7 +29,7 @@ public class CadastrarIdosoUseCase {
         }
 
         if (!cuidadorRepository.existsById(cuidadorId)) {
-            throw new RecursoNaoEncontradoException("Cuidador não encontrado");
+            throw SessaoInvalidaException.doCuidador();
         }
 
         Idoso idoso = Idoso.builder()

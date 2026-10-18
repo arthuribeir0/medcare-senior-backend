@@ -1,5 +1,7 @@
 package com.medcare.senior.infrastructure.notificacao;
 
+import com.google.firebase.messaging.AndroidConfig;
+import com.google.firebase.messaging.AndroidNotification;
 import com.google.firebase.messaging.FirebaseMessaging;
 import com.google.firebase.messaging.FirebaseMessagingException;
 import com.google.firebase.messaging.Message;
@@ -12,6 +14,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
+
+import java.util.Map;
 
 /**
  * Envio de push pelo Firebase Cloud Messaging (UC-007). Só existe com app.fcm.enabled=true.
@@ -42,11 +46,23 @@ public class FCMService implements NotificacaoPushPort {
         }
     }
 
+    /**
+     * Canal de notificação do Android criado pelo app (importância alta, "Alertas de dose"). Se o app ainda não o
+     * criou, o Android usa o canal padrão.
+     */
+    static final String CANAL_ANDROID = "alertas-dose";
+
     @Override
-    public ResultadoEnvioPush enviar(String tokenDestino, String titulo, String corpo) {
+    public ResultadoEnvioPush enviar(String tokenDestino, String titulo, String corpo, Map<String, String> dados) {
         Message mensagem = Message.builder()
                 .setToken(tokenDestino)
                 .setNotification(Notification.builder().setTitle(titulo).setBody(corpo).build())
+                .putAllData(dados == null ? Map.of() : dados)
+                // Prioridade alta: entrega imediata mesmo com o aparelho em economia de bateria (Doze)
+                .setAndroidConfig(AndroidConfig.builder()
+                        .setPriority(AndroidConfig.Priority.HIGH)
+                        .setNotification(AndroidNotification.builder().setChannelId(CANAL_ANDROID).build())
+                        .build())
                 .build();
         try {
             firebaseMessaging.send(mensagem, dryRun);

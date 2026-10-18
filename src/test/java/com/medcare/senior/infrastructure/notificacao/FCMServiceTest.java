@@ -13,6 +13,8 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.Map;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
@@ -39,11 +41,12 @@ class FCMServiceTest {
     }
 
     @Test
-    void enviaParaOTokenComTituloECorpoSemDryRunPorPadrao() throws Exception {
+    void enviaParaOTokenComTituloCorpoDadosEPrioridadeAltaSemDryRunPorPadrao() throws Exception {
         FCMService service = new FCMService(firebaseMessaging, false);
         when(firebaseMessaging.send(any(Message.class), anyBoolean())).thenReturn("projects/x/messages/1");
 
-        ResultadoEnvioPush resultado = service.enviar(TOKEN, "Dose não confirmada", "Maria não confirmou Losartana");
+        ResultadoEnvioPush resultado = service.enviar(TOKEN, "Dose não confirmada", "Maria ainda não confirmou a dose das 08:00",
+                Map.of("tipo", "DOSE_NAO_CONFIRMADA", "doseId", "10"));
 
         assertThat(resultado).isEqualTo(ResultadoEnvioPush.ENVIADO);
         ArgumentCaptor<Message> mensagem = ArgumentCaptor.forClass(Message.class);
@@ -53,7 +56,12 @@ class FCMServiceTest {
         assertThat(mensagem.getValue()).hasFieldOrPropertyWithValue("token", TOKEN);
         assertThat(mensagem.getValue()).extracting("notification")
                 .hasFieldOrPropertyWithValue("title", "Dose não confirmada")
-                .hasFieldOrPropertyWithValue("body", "Maria não confirmou Losartana");
+                .hasFieldOrPropertyWithValue("body", "Maria ainda não confirmou a dose das 08:00");
+        assertThat(mensagem.getValue()).hasFieldOrPropertyWithValue("data", Map.of("tipo", "DOSE_NAO_CONFIRMADA", "doseId", "10"));
+        // Android: prioridade alta (entrega imediata mesmo em economia de bateria) e o canal "alertas-dose" criado pelo app
+        assertThat(mensagem.getValue()).extracting("androidConfig").hasFieldOrPropertyWithValue("priority", "high");
+        assertThat(mensagem.getValue()).extracting("androidConfig.notification")
+                .hasFieldOrPropertyWithValue("channelId", FCMService.CANAL_ANDROID);
     }
 
     @Test
@@ -61,7 +69,7 @@ class FCMServiceTest {
         FCMService service = new FCMService(firebaseMessaging, true);
         when(firebaseMessaging.send(any(Message.class), anyBoolean())).thenReturn("projects/x/messages/fake");
 
-        assertThat(service.enviar(TOKEN, "t", "c")).isEqualTo(ResultadoEnvioPush.ENVIADO);
+        assertThat(service.enviar(TOKEN, "t", "c", Map.of())).isEqualTo(ResultadoEnvioPush.ENVIADO);
 
         verify(firebaseMessaging).send(any(Message.class), eq(true));
     }
@@ -73,7 +81,7 @@ class FCMServiceTest {
         FirebaseMessagingException excecao = erro(codigo);
         when(firebaseMessaging.send(any(Message.class), anyBoolean())).thenThrow(excecao);
 
-        assertThat(service.enviar(TOKEN, "t", "c")).isEqualTo(ResultadoEnvioPush.TOKEN_INVALIDO);
+        assertThat(service.enviar(TOKEN, "t", "c", Map.of())).isEqualTo(ResultadoEnvioPush.TOKEN_INVALIDO);
     }
 
     @ParameterizedTest
@@ -84,7 +92,7 @@ class FCMServiceTest {
         FirebaseMessagingException excecao = erro(codigo);
         when(firebaseMessaging.send(any(Message.class), anyBoolean())).thenThrow(excecao);
 
-        assertThat(service.enviar(TOKEN, "t", "c")).isEqualTo(ResultadoEnvioPush.FALHA_TEMPORARIA);
+        assertThat(service.enviar(TOKEN, "t", "c", Map.of())).isEqualTo(ResultadoEnvioPush.FALHA_TEMPORARIA);
     }
 
     @Test
@@ -93,7 +101,7 @@ class FCMServiceTest {
         FirebaseMessagingException excecao = erro(null);
         when(firebaseMessaging.send(any(Message.class), anyBoolean())).thenThrow(excecao);
 
-        assertThat(service.enviar(TOKEN, "t", "c")).isEqualTo(ResultadoEnvioPush.FALHA_TEMPORARIA);
+        assertThat(service.enviar(TOKEN, "t", "c", Map.of())).isEqualTo(ResultadoEnvioPush.FALHA_TEMPORARIA);
     }
 
     @Test
@@ -101,7 +109,7 @@ class FCMServiceTest {
         FCMService service = new FCMService(firebaseMessaging, false);
         when(firebaseMessaging.send(any(Message.class), anyBoolean())).thenThrow(new IllegalStateException("rede"));
 
-        assertThat(service.enviar(TOKEN, "t", "c")).isEqualTo(ResultadoEnvioPush.FALHA_TEMPORARIA);
+        assertThat(service.enviar(TOKEN, "t", "c", Map.of())).isEqualTo(ResultadoEnvioPush.FALHA_TEMPORARIA);
     }
 
     @Test

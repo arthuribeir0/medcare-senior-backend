@@ -1,6 +1,6 @@
 package com.medcare.senior.application.usecase;
 
-import com.medcare.senior.domain.exception.RecursoNaoEncontradoException;
+import com.medcare.senior.domain.exception.SessaoInvalidaException;
 import com.medcare.senior.domain.exception.TokenDispositivoInvalidoException;
 import com.medcare.senior.domain.usuario.CuidadorRepositoryPort;
 import lombok.RequiredArgsConstructor;
@@ -25,7 +25,7 @@ public class RegistrarTokenDispositivoUseCase {
     /**
      * @param cuidadorId ID do cuidador autenticado, extraído do JWT
      * @throws TokenDispositivoInvalidoException se o token for vazio ou maior que 512 caracteres
-     * @throws RecursoNaoEncontradoException     se a conta não existir (ex.: excluída com o token ainda válido)
+     * @throws SessaoInvalidaException           se a conta não existir (ex.: excluída com o token ainda válido)
      */
     @Transactional
     public void executar(Long cuidadorId, String fcmToken) {
@@ -35,7 +35,7 @@ public class RegistrarTokenDispositivoUseCase {
         }
 
         if (!cuidadorRepository.atualizarFcmToken(cuidadorId, token)) {
-            throw new RecursoNaoEncontradoException("Cuidador não encontrado");
+            throw SessaoInvalidaException.doCuidador();
         }
         cuidadorRepository.removerFcmTokenDosOutrosCuidadores(token, cuidadorId);
     }

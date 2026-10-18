@@ -1,5 +1,6 @@
 package com.medcare.senior.domain.dose;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -20,11 +21,21 @@ public interface DoseRepositoryPort {
     Set<LocalDateTime> findHorariosProgramadosByTratamentoIdDesde(Long tratamentoId, LocalDateTime desde);
 
     /**
-     * Até {@code limite} doses PENDENTES com horário programado igual ou anterior a {@code vencidasAte}, das mais
-     * antigas para as mais novas. Ignora doses anonimizadas (sem tratamento) e doses de tratamento ou medicamento
-     * removido logicamente.
+     * Até {@code limite} doses PENDENTES que devem ser avisadas em {@code agora}: horário + tolerância <= agora,
+     * horário > {@code encerradasAte} (ainda não chegaram ao encerramento) e sem evento de notificação. Das mais
+     * antigas para as mais novas. Ignora doses anonimizadas e de tratamento ou medicamento removido logicamente.
+     *
+     * @param toleranciaPadrao tolerância aplicada a todas as doses (a configuração por cuidador entra aqui depois)
      */
-    List<DoseVencida> findPendentesVencidas(LocalDateTime vencidasAte, int limite);
+    List<DoseParaAviso> findPendentesParaAviso(LocalDateTime agora, Duration toleranciaPadrao, LocalDateTime encerradasAte,
+                                               int limite);
+
+    /**
+     * Até {@code limite} doses PENDENTES com horário programado igual ou anterior a {@code encerradasAte} (horário +
+     * encerramento <= agora), das mais antigas para as mais novas. Ignora doses anonimizadas e de tratamento ou
+     * medicamento removido logicamente.
+     */
+    List<Dose> findPendentesEncerradas(LocalDateTime encerradasAte, int limite);
 
     /**
      * Doses do idoso com horário programado em [{@code inicio}, {@code fim}), com idoso e medicamento, em uma única

@@ -47,19 +47,18 @@ app:
       # Cron do Spring (segundo minuto hora dia mes dia-da-semana), no fuso app.timezone. Padrao: 00:05 todo dia.
       cron: ${REABASTECER_DOSES_CRON:0 5 0 * * *}
     verificar-doses:
-      # Varredura de doses vencidas (PENDENTE -> NAO_TOMADA + aviso ao cuidador). Padrao: segundo 0 de cada minuto.
+      # Varredura de doses: aviso ao cuidador no fim da tolerancia (dose segue PENDENTE) e encerramento como NAO_TOMADA
+      # depois de encerramento-minutos. Padrao: segundo 0 de cada minuto.
       cron: ${VERIFICAR_DOSES_CRON:0 * * * * *}
   alertas:
-    # Minutos apos o horario programado em que a dose ainda pode ser confirmada antes de virar NAO_TOMADA
-    # (tambem e o fim do "no prazo" da janela de confirmacao: depois disto a dose aparece ATRASADA)
+    # Tolerancia PADRAO (minutos apos o horario programado): no fim dela o cuidador e avisado (a dose continua PENDENTE
+    # e aparece ATRASADA; confirmar depois disto da CONFIRMADA_COM_ATRASO). Vale quando o cuidador nao tem a sua.
     tolerancia-minutos: ${ALERTAS_TOLERANCIA_MINUTOS:30}
     # Janela de confirmacao de dose (calculada no servidor): abre N minutos ANTES do horario programado...
     antecedencia-confirmacao-minutos: ${ALERTAS_ANTECEDENCIA_CONFIRMACAO_MINUTOS:60}
-    # ...e encerra N minutos DEPOIS dele. Deve ser maior que a tolerancia (validado na subida).
+    # ...e encerra N minutos DEPOIS dele (a dose vira NAO_TOMADA). Deve ser maior que a tolerancia (validado na subida).
     encerramento-minutos: ${ALERTAS_ENCERRAMENTO_MINUTOS:180}
-    # Dose que venceu ha mais que isto e marcada NAO_TOMADA, mas nao gera aviso (evita avisos muito atrasados)
-    janela-notificacao-horas: ${ALERTAS_JANELA_NOTIFICACAO_HORAS:24}
-    # Maximo de doses tratadas por execucao da varredura; o restante fica para a proxima
+    # Maximo de doses tratadas por fase (encerramento e aviso) em cada execucao da varredura; o resto fica para a proxima
     lote-maximo: ${ALERTAS_LOTE_MAXIMO:500}
   fcm:
     # Push via Firebase Cloud Messaging. Desligado por padrao (e nos testes e no CI): os avisos so vao para o log.

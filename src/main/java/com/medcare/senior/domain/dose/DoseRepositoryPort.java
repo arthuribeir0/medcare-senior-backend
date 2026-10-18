@@ -2,6 +2,7 @@ package com.medcare.senior.domain.dose;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 /**
@@ -24,6 +25,19 @@ public interface DoseRepositoryPort {
      * removido logicamente.
      */
     List<DoseVencida> findPendentesVencidas(LocalDateTime vencidasAte, int limite);
+
+    /**
+     * Doses do idoso com horário programado em [{@code inicio}, {@code fim}), com idoso e medicamento, em uma única
+     * consulta, ordenadas por horário. Ignora doses anonimizadas (sem tratamento) e de tratamento ou medicamento
+     * removido logicamente.
+     */
+    List<DoseDetalhada> findDetalhadasDoIdosoEntre(Long idosoId, LocalDateTime inicio, LocalDateTime fim);
+
+    /**
+     * A dose, SOMENTE se pertencer ao idoso (dose -> tratamento -> medicamento -> idoso) e o tratamento e o
+     * medicamento não estiverem removidos. Dose de outro idoso, anonimizada ou de item removido volta vazia.
+     */
+    Optional<DoseDetalhada> findDetalhadaByIdAndIdosoId(Long doseId, Long idosoId);
 
     /**
      * Grava a versão registrada da dose (status e hora de confirmação) SOMENTE se no banco ela ainda estiver

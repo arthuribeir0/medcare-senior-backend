@@ -16,6 +16,17 @@ public record ErroResponse(
         @Schema(example = "Bad Request")
         String erro,
 
+        @Schema(description = "Código estável do erro (UPPER_SNAKE_CASE), para o app decidir o que fazer sem depender "
+                + "da mensagem. Ver a tabela em CodigoErro.", example = "VALIDACAO",
+                allowableValues = {"VALIDACAO", "CORPO_INVALIDO", "REQUISICAO_INVALIDA", "SENHA_FRACA",
+                        "CONSENTIMENTO_OBRIGATORIO", "TOKEN_DISPOSITIVO_INVALIDO", "CODIGO_INVALIDO",
+                        "DADOS_OBRIGATORIOS_MEDICAMENTO", "TRATAMENTO_INVALIDO", "CREDENCIAIS_INVALIDAS", "SESSAO_INVALIDA",
+                        "ACESSO_NEGADO",
+                        "RECURSO_NAO_ENCONTRADO", "METODO_NAO_PERMITIDO", "EMAIL_DUPLICADO", "IDOSO_DUPLICADO",
+                        "TRATAMENTO_ATIVO", "DOSE_JA_REGISTRADA", "DOSE_MUITO_CEDO", "DOSE_ENCERRADA",
+                        "LIMITE_TENTATIVAS", "ERRO_INTERNO"})
+        String codigo,
+
         @Schema(example = "Um ou mais campos são inválidos")
         String mensagem,
 

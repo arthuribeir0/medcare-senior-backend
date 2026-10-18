@@ -12,10 +12,13 @@ public record CuidadorResponseDTO(
         String nome,
 
         @Schema(example = "ana@email.com")
-        String email
+        String email,
+
+        @Schema(description = "Telefone de contato (pode ser null)", example = "11999999999", nullable = true)
+        String telefone
 ) {
 
     public static CuidadorResponseDTO from(Cuidador cuidador) {
-        return new CuidadorResponseDTO(cuidador.getId(), cuidador.getNome(), cuidador.getEmail());
+        return new CuidadorResponseDTO(cuidador.getId(), cuidador.getNome(), cuidador.getEmail(), cuidador.getTelefone());
     }
 }

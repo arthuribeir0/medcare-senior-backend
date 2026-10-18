@@ -1,5 +1,6 @@
 package com.medcare.senior.presentation.controller;
 
+import com.medcare.senior.application.usecase.BuscarMedicamentoUseCase;
 import com.medcare.senior.application.usecase.CadastrarMedicamentoUseCase;
 import com.medcare.senior.application.usecase.EditarMedicamentoUseCase;
 import com.medcare.senior.application.usecase.ListarMedicamentosUseCase;
@@ -48,6 +49,7 @@ public class MedicamentoController {
     private final EditarMedicamentoUseCase editarMedicamentoUseCase;
     private final ListarMedicamentosUseCase listarMedicamentosUseCase;
     private final RemoverMedicamentoUseCase removerMedicamentoUseCase;
+    private final BuscarMedicamentoUseCase buscarMedicamentoUseCase;
 
     @PostMapping
     @Operation(summary = "Cadastra um medicamento para um idoso do cuidador",
@@ -76,6 +78,17 @@ public class MedicamentoController {
                 .map(MedicamentoResponseDTO::from)
                 .toList();
         return ResponseEntity.ok(medicamentos);
+    }
+
+    @GetMapping("/{id}")
+    @Operation(summary = "Busca um medicamento de um idoso do cuidador")
+    @ApiResponse(responseCode = "200", description = "Medicamento encontrado")
+    @ApiResponse(responseCode = "404", description = "Medicamento inexistente, removido ou de outro cuidador",
+            content = @Content(schema = @Schema(implementation = ErroResponse.class)))
+    public ResponseEntity<MedicamentoResponseDTO> buscar(@Parameter(description = "ID do medicamento") @PathVariable Long id,
+                                                         @Parameter(hidden = true)
+                                                         @AuthenticationPrincipal AuthenticatedUser usuario) {
+        return ResponseEntity.ok(MedicamentoResponseDTO.from(buscarMedicamentoUseCase.executar(id, usuario.cuidadorId())));
     }
 
     @PutMapping("/{id}")

@@ -55,9 +55,14 @@ public class SecurityConfig {
                             .requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll()
                             .requestMatchers(HttpMethod.POST, "/api/vinculo/validar").permitAll()
                             .requestMatchers("/error").permitAll()
+                            .requestMatchers(HttpMethod.GET, "/api/cuidadores/me").hasRole(Role.CUIDADOR.name())
                             .requestMatchers(HttpMethod.DELETE, "/api/cuidadores/me").hasRole(Role.CUIDADOR.name())
                             .requestMatchers(HttpMethod.PUT, "/api/cuidadores/me/fcm-token").hasRole(Role.CUIDADOR.name())
+                            .requestMatchers(HttpMethod.DELETE, "/api/cuidadores/me/fcm-token").hasRole(Role.CUIDADOR.name())
+                            // Rotas do aparelho do idoso: ANTES de /api/idosos/** (a primeira regra que casa vence)
+                            .requestMatchers(HttpMethod.GET, "/api/idosos/me", "/api/idosos/me/doses").hasRole(Role.IDOSO.name())
                             .requestMatchers("/api/idosos/**").hasRole(Role.CUIDADOR.name())
+                            .requestMatchers(HttpMethod.PUT, "/api/doses/*/confirmar").hasRole(Role.IDOSO.name())
                             .requestMatchers("/api/medicamentos/**").hasRole(Role.CUIDADOR.name())
                             .requestMatchers("/api/tratamentos/**").hasRole(Role.CUIDADOR.name());
 

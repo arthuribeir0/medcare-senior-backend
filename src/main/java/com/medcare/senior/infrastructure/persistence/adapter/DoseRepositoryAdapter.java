@@ -1,10 +1,12 @@
 package com.medcare.senior.infrastructure.persistence.adapter;
 
 import com.medcare.senior.domain.dose.Dose;
+import com.medcare.senior.domain.dose.DoseDetalhada;
 import com.medcare.senior.domain.dose.DoseRepositoryPort;
 import com.medcare.senior.domain.dose.DoseVencida;
 import com.medcare.senior.domain.dose.StatusDose;
 import com.medcare.senior.infrastructure.persistence.mapper.DoseMapper;
+import com.medcare.senior.infrastructure.persistence.projection.DoseDetalhadaProjection;
 import com.medcare.senior.infrastructure.persistence.repository.DoseRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
@@ -14,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 @Component
@@ -51,6 +54,30 @@ public class DoseRepositoryAdapter implements DoseRepositoryPort {
                         linha.nomeIdoso(),
                         linha.nomeMedicamento()))
                 .toList();
+    }
+
+    @Override
+    public List<DoseDetalhada> findDetalhadasDoIdosoEntre(Long idosoId, LocalDateTime inicio, LocalDateTime fim) {
+        return doseRepository.findDetalhadasDoIdosoEntre(idosoId, inicio, fim).stream()
+                .map(DoseRepositoryAdapter::toDetalhada)
+                .toList();
+    }
+
+    @Override
+    public Optional<DoseDetalhada> findDetalhadaByIdAndIdosoId(Long doseId, Long idosoId) {
+        return doseRepository.findDetalhadaByIdAndIdosoId(doseId, idosoId).map(DoseRepositoryAdapter::toDetalhada);
+    }
+
+    private static DoseDetalhada toDetalhada(DoseDetalhadaProjection linha) {
+        Dose dose = Dose.builder()
+                .id(linha.doseId())
+                .tratamentoId(linha.tratamentoId())
+                .horarioProgramado(linha.horarioProgramado())
+                .horaConfirmacao(linha.horaConfirmacao())
+                .status(linha.status())
+                .build();
+        return new DoseDetalhada(dose, linha.idosoId(), linha.idosoNome(), linha.medicamentoId(), linha.medicamentoNome(),
+                linha.dosagem(), linha.tipo());
     }
 
     @Override

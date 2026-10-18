@@ -4,6 +4,7 @@ import com.medcare.senior.domain.dose.StatusDose;
 import com.medcare.senior.infrastructure.persistence.entity.DoseEntity;
 import com.medcare.senior.infrastructure.persistence.projection.DoseDetalhadaProjection;
 import com.medcare.senior.infrastructure.persistence.projection.DoseParaAvisoView;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -85,6 +86,34 @@ public interface DoseRepository extends JpaRepository<DoseEntity, Long> {
 
     @Query("SELECT d.status FROM DoseEntity d WHERE d.id = :id")
     Optional<StatusDose> findStatusById(@Param("id") Long id);
+
+    // Histórico (UC-011): doses dos idosos do cuidador, com filtros opcionais (nulo = sem filtro), da mais recente para
+    // a mais antiga. Sem filtro de remoção: o histórico de item removido logicamente é preservado (RN-008). JOINs
+    // internos: dose anonimizada não tem dono e fica de fora. Intervalo semiaberto [inicio, fim).
+    @Query(value = "SELECT new com.medcare.senior.infrastructure.persistence.projection.DoseDetalhadaProjection("
+            + "d.id, t.id, d.horarioProgramado, d.horaConfirmacao, d.status, i.id, i.nome, m.id, m.nome, m.dosagem, m.tipo, "
+            + "c.toleranciaMinutos) "
+            + "FROM DoseEntity d JOIN d.tratamento t JOIN t.medicamento m JOIN m.idoso i "
+            + "LEFT JOIN ConfiguracaoAlertaEntity c ON c.cuidadorId = i.cuidador.id "
+            + "WHERE i.cuidador.id = :cuidadorId "
+            + "AND (:idosoId IS NULL OR i.id = :idosoId) "
+            + "AND (:medicamentoId IS NULL OR m.id = :medicamentoId) "
+            + "AND (:status IS NULL OR d.status = :status) "
+            + "AND d.horarioProgramado >= :inicio AND d.horarioProgramado < :fim "
+            + "ORDER BY d.horarioProgramado DESC, d.id DESC",
+            countQuery = "SELECT COUNT(d) FROM DoseEntity d JOIN d.tratamento t JOIN t.medicamento m JOIN m.idoso i "
+                    + "WHERE i.cuidador.id = :cuidadorId "
+                    + "AND (:idosoId IS NULL OR i.id = :idosoId) "
+                    + "AND (:medicamentoId IS NULL OR m.id = :medicamentoId) "
+                    + "AND (:status IS NULL OR d.status = :status) "
+                    + "AND d.horarioProgramado >= :inicio AND d.horarioProgramado < :fim")
+    Page<DoseDetalhadaProjection> findHistorico(@Param("cuidadorId") Long cuidadorId,
+                                                @Param("idosoId") Long idosoId,
+                                                @Param("medicamentoId") Long medicamentoId,
+                                                @Param("status") StatusDose status,
+                                                @Param("inicio") LocalDateTime inicio,
+                                                @Param("fim") LocalDateTime fim,
+                                                Pageable pagina);
 
     // Transição atômica: só muda se a dose ainda estiver no status esperado (PENDENTE). Se uma confirmação
     // concorrente chegou antes, nenhuma linha muda e o retorno é 0.

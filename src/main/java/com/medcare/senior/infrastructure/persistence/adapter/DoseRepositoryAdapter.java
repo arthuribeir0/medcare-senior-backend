@@ -5,10 +5,13 @@ import com.medcare.senior.domain.dose.DoseDetalhada;
 import com.medcare.senior.domain.dose.DoseParaAviso;
 import com.medcare.senior.domain.dose.DoseRepositoryPort;
 import com.medcare.senior.domain.dose.StatusDose;
+import com.medcare.senior.domain.historico.FiltroHistorico;
+import com.medcare.senior.domain.historico.Pagina;
 import com.medcare.senior.infrastructure.persistence.mapper.DoseMapper;
 import com.medcare.senior.infrastructure.persistence.projection.DoseDetalhadaProjection;
 import com.medcare.senior.infrastructure.persistence.repository.DoseRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,6 +26,8 @@ import java.util.Set;
 @Component
 @RequiredArgsConstructor
 public class DoseRepositoryAdapter implements DoseRepositoryPort {
+
+    private static final LocalDateTime SEM_INICIO = LocalDateTime.of(1900, 1, 1, 0, 0);
 
     private final DoseRepository doseRepository;
     private final DoseMapper doseMapper;
@@ -63,6 +68,17 @@ public class DoseRepositoryAdapter implements DoseRepositoryPort {
         return doseRepository.findDetalhadasDoIdosoEntre(idosoId, inicio, fim).stream()
                 .map(DoseRepositoryAdapter::toDetalhada)
                 .toList();
+    }
+
+    @Override
+    public Pagina<DoseDetalhada> findHistorico(Long cuidadorId, FiltroHistorico filtro) {
+        // Sem "de": desde o início (data anterior a qualquer dose do sistema). "ate" é inclusivo: até o dia seguinte
+        LocalDateTime inicio = filtro.de() != null ? filtro.de().atStartOfDay() : SEM_INICIO;
+        LocalDateTime fim = filtro.ate().plusDays(1).atStartOfDay();
+        Page<DoseDetalhadaProjection> pagina = doseRepository.findHistorico(cuidadorId, filtro.idosoId(),
+                filtro.medicamentoId(), filtro.status(), inicio, fim, PageRequest.of(filtro.pagina(), filtro.tamanho()));
+        return new Pagina<>(pagina.getContent().stream().map(DoseRepositoryAdapter::toDetalhada).toList(),
+                filtro.pagina(), filtro.tamanho(), pagina.getTotalElements());
     }
 
     @Override

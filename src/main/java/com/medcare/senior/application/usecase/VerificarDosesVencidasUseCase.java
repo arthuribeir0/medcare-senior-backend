@@ -92,7 +92,8 @@ public class VerificarDosesVencidasUseCase {
     }
 
     private void avisar(LocalDateTime agora, LocalDateTime encerradasAte, Contagem contagem) {
-        // Tolerância global por enquanto; a busca já calcula horário + tolerância por linha (pronta para a do cuidador)
+        // A busca usa a tolerância do cuidador dono de cada idoso (ou a padrão). Mudar a tolerância só afeta avisos
+        // ainda não enviados: dose que já tem evento de notificação não é avisada de novo
         List<DoseParaAviso> doses = doseRepository.findPendentesParaAviso(agora, politicaDeJanela.toleranciaPadrao(),
                 encerradasAte, parametros.loteMaximo());
         for (DoseParaAviso dose : doses) {

@@ -67,8 +67,8 @@ public class ConfirmarDoseUseCase {
             throw new DoseNaoConfirmavelException(confirmabilidade);
         }
 
-        // Tolerância global por enquanto (a do cuidador dono do idoso entra aqui)
-        Duration tolerancia = politicaDeJanela.toleranciaPadrao();
+        // Tolerância do cuidador dono do idoso (ou a padrão), lida junto com a dose
+        Duration tolerancia = politicaDeJanela.toleranciaEfetiva(detalhe.toleranciaMinutosDoCuidador());
         Dose confirmada = dose.confirmar(politicaDeJanela.statusDaConfirmacao(dose.getHorarioProgramado(), agora, tolerancia),
                 agora);
         if (doseRepository.registrarSePendente(confirmada) == 0) {
@@ -77,6 +77,7 @@ public class ConfirmarDoseUseCase {
         }
 
         return politicaDeJanela.avaliar(new DoseDetalhada(confirmada, detalhe.idosoId(), detalhe.idosoNome(),
-                detalhe.medicamentoId(), detalhe.medicamentoNome(), detalhe.dosagem(), detalhe.tipo()), agora, tolerancia);
+                detalhe.medicamentoId(), detalhe.medicamentoNome(), detalhe.dosagem(), detalhe.tipo(),
+                detalhe.toleranciaMinutosDoCuidador()), agora, tolerancia);
     }
 }

@@ -9,6 +9,7 @@ import com.medcare.senior.domain.exception.EmailJaCadastradoException;
 import com.medcare.senior.domain.exception.IdosoJaCadastradoException;
 import com.medcare.senior.domain.exception.RecursoNaoEncontradoException;
 import com.medcare.senior.domain.exception.SenhaFracaException;
+import com.medcare.senior.domain.configuracao.ToleranciaInvalidaException;
 import com.medcare.senior.domain.exception.SessaoInvalidaException;
 import com.medcare.senior.domain.exception.TokenDispositivoInvalidoException;
 import com.medcare.senior.domain.medicamento.DadosObrigatoriosMedicamentoException;
@@ -61,6 +62,13 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(TokenDispositivoInvalidoException.class)
     public ResponseEntity<ErroResponse> handleTokenDispositivoInvalido(TokenDispositivoInvalidoException ex) {
         return construirResposta(HttpStatus.BAD_REQUEST, CodigoErro.TOKEN_DISPOSITIVO_INVALIDO, ex.getMessage(), List.of());
+    }
+
+    // Garantia do domínio (a validação do corpo normalmente barra antes): mesmo formato da validação de campo
+    @ExceptionHandler(ToleranciaInvalidaException.class)
+    public ResponseEntity<ErroResponse> handleToleranciaInvalida(ToleranciaInvalidaException ex) {
+        return construirResposta(HttpStatus.BAD_REQUEST, CodigoErro.VALIDACAO, "Um ou mais campos são inválidos",
+                List.of(new ErroResponse.CampoInvalido("toleranciaMinutos", ex.getMessage())));
     }
 
     @ExceptionHandler(CredenciaisInvalidasException.class)

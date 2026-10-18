@@ -21,11 +21,12 @@ public interface DoseRepositoryPort {
     Set<LocalDateTime> findHorariosProgramadosByTratamentoIdDesde(Long tratamentoId, LocalDateTime desde);
 
     /**
-     * Até {@code limite} doses PENDENTES que devem ser avisadas em {@code agora}: horário + tolerância <= agora,
+     * Até {@code limite} doses PENDENTES que devem ser avisadas em {@code agora}: horário + tolerância do cuidador dono
+     * do idoso (ou {@code toleranciaPadrao}, se ele não tem uma própria) <= agora,
      * horário > {@code encerradasAte} (ainda não chegaram ao encerramento) e sem evento de notificação. Das mais
      * antigas para as mais novas. Ignora doses anonimizadas e de tratamento ou medicamento removido logicamente.
      *
-     * @param toleranciaPadrao tolerância aplicada a todas as doses (a configuração por cuidador entra aqui depois)
+     * @param toleranciaPadrao tolerância de quem não configurou a sua (app.alertas.tolerancia-minutos)
      */
     List<DoseParaAviso> findPendentesParaAviso(LocalDateTime agora, Duration toleranciaPadrao, LocalDateTime encerradasAte,
                                                int limite);
@@ -38,8 +39,8 @@ public interface DoseRepositoryPort {
     List<Dose> findPendentesEncerradas(LocalDateTime encerradasAte, int limite);
 
     /**
-     * Doses do idoso com horário programado em [{@code inicio}, {@code fim}), com idoso e medicamento, em uma única
-     * consulta, ordenadas por horário. Ignora doses anonimizadas (sem tratamento) e de tratamento ou medicamento
+     * Doses do idoso com horário programado em [{@code inicio}, {@code fim}), com idoso, medicamento e a tolerância
+     * própria do cuidador (nula = padrão), em uma única consulta, ordenadas por horário. Ignora doses anonimizadas (sem tratamento) e de tratamento ou medicamento
      * removido logicamente.
      */
     List<DoseDetalhada> findDetalhadasDoIdosoEntre(Long idosoId, LocalDateTime inicio, LocalDateTime fim);

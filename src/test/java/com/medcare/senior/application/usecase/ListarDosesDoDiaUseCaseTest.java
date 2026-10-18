@@ -113,6 +113,23 @@ class ListarDosesDoDiaUseCaseTest {
     }
 
     @Test
+    void usaAToleranciaDoCuidadorDonoDoIdosoNaJanelaENoStatus() {
+        when(idosoRepository.findByIdAndCuidadorId(IDOSO_ID, CUIDADOR_ID))
+                .thenReturn(Optional.of(Idoso.builder().id(IDOSO_ID).cuidadorId(CUIDADOR_ID).build()));
+        Dose dose = Dose.builder().id(1L).tratamentoId(1000L).horarioProgramado(HOJE.atTime(23, 0))
+                .status(StatusDose.PENDENTE).build();
+        // 23:30: com a padrão (30 min) a dose das 23:00 ainda estaria no prazo; com 10 min, já está ATRASADA
+        when(doseRepository.findDetalhadasDoIdosoEntre(IDOSO_ID, HOJE.atStartOfDay(), HOJE.plusDays(1).atStartOfDay()))
+                .thenReturn(List.of(new DoseDetalhada(dose, IDOSO_ID, "José", 100L, "Losartana", "50mg", "COMPRIMIDO", 10)));
+
+        DoseAvaliada avaliada = useCase.executarComoCuidador(IDOSO_ID, CUIDADOR_ID, null).get(0);
+
+        assertThat(avaliada.toleranciaMinutos()).isEqualTo(10);
+        assertThat(avaliada.janela().avisoEm()).isEqualTo(HOJE.atTime(23, 10));
+        assertThat(avaliada.statusExibicao()).isEqualTo(StatusExibicao.ATRASADA);
+    }
+
+    @Test
     void cuidadorNaoVeDosesDeIdosoDeOutroCuidador() {
         when(idosoRepository.findByIdAndCuidadorId(IDOSO_ID, CUIDADOR_ID)).thenReturn(Optional.empty());
 

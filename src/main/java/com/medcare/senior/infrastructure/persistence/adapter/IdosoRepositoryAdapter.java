@@ -42,6 +42,11 @@ public class IdosoRepositoryAdapter implements IdosoRepositoryPort {
     }
 
     @Override
+    public Optional<Idoso> findById(Long id) {
+        return idosoRepository.findById(id).map(idosoMapper::toDomain);
+    }
+
+    @Override
     public List<Idoso> findAllByCuidadorId(Long cuidadorId) {
         return idosoRepository.findAllByCuidadorIdOrderByNome(cuidadorId).stream()
                 .map(idosoMapper::toDomain)

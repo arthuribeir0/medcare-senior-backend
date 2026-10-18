@@ -2,6 +2,7 @@ package com.medcare.senior.infrastructure.persistence.repository;
 
 import com.medcare.senior.domain.dose.StatusDose;
 import com.medcare.senior.infrastructure.persistence.entity.DoseEntity;
+import com.medcare.senior.infrastructure.persistence.projection.DoseDetalhadaProjection;
 import com.medcare.senior.infrastructure.persistence.projection.DoseVencidaProjection;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -37,6 +38,18 @@ public interface DoseRepository extends JpaRepository<DoseEntity, Long> {
     List<DoseVencidaProjection> findVencidasByStatus(@Param("status") StatusDose status,
                                                      @Param("vencidasAte") LocalDateTime vencidasAte,
                                                      Pageable pagina);
+
+    // JOINs internos: dose anonimizada (sem tratamento) fica de fora; removidos (tratamento ou medicamento) também.
+    // Intervalo semiaberto [inicio, fim): um dia é [data 00:00, data+1 00:00).
+    @Query("SELECT new com.medcare.senior.infrastructure.persistence.projection.DoseDetalhadaProjection("
+            + "d.id, t.id, d.horarioProgramado, d.horaConfirmacao, d.status, i.id, i.nome, m.id, m.nome, m.dosagem, m.tipo) "
+            + "FROM DoseEntity d JOIN d.tratamento t JOIN t.medicamento m JOIN m.idoso i "
+            + "WHERE i.id = :idosoId AND d.horarioProgramado >= :inicio AND d.horarioProgramado < :fim "
+            + "AND t.removidoEm IS NULL AND m.removidoEm IS NULL "
+            + "ORDER BY d.horarioProgramado, d.id")
+    List<DoseDetalhadaProjection> findDetalhadasDoIdosoEntre(@Param("idosoId") Long idosoId,
+                                                             @Param("inicio") LocalDateTime inicio,
+                                                             @Param("fim") LocalDateTime fim);
 
     // Transição atômica: só muda se a dose ainda estiver no status esperado (PENDENTE). Se uma confirmação
     // concorrente chegou antes, nenhuma linha muda e o retorno é 0.

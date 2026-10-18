@@ -8,6 +8,7 @@ import com.medcare.senior.application.usecase.RegistrarTokenDispositivoUseCase;
 import com.medcare.senior.application.usecase.RemoverTokenDispositivoUseCase;
 import com.medcare.senior.application.usecase.RemoverMedicamentoUseCase;
 import com.medcare.senior.domain.dose.Dose;
+import com.medcare.senior.domain.dose.DoseDetalhada;
 import com.medcare.senior.domain.dose.DoseVencida;
 import com.medcare.senior.domain.dose.StatusDose;
 import com.medcare.senior.domain.exception.RecursoNaoEncontradoException;
@@ -277,6 +278,51 @@ class PersistenciaPostgresTest {
                 .isInstanceOf(RecursoNaoEncontradoException.class);
         assertThatThrownBy(() -> buscarMedicamentoUseCase.executar(doOutro.getId(), cuidador.getId()))
                 .isInstanceOf(RecursoNaoEncontradoException.class);
+    }
+
+    // ---------------------------------------------------------------------------------------------------------
+    // Doses do dia para o app: uma consulta com idoso e medicamento
+    // ---------------------------------------------------------------------------------------------------------
+
+    @Test
+    void dosesDoDiaTrazSoODiaDoIdosoSemRemovidasNemAnonimizadasEmOrdemDeHorario() {
+        // Dia em 2000: nenhum dado de desenvolvimento do banco local interfere
+        LocalDate dia = LocalDate.of(2000, 3, 15);
+        IdosoEntity idoso = idoso(cuidador());
+        MedicamentoEntity medicamento = medicamento(idoso, null);
+        TratamentoEntity tratamento = tratamento(medicamento, null);
+        DoseEntity noite = dose(tratamento, dia.atTime(20, 0), StatusDose.PENDENTE);
+        DoseEntity meiaNoite = dose(tratamento, dia.atStartOfDay(), StatusDose.TOMADA);
+        DoseEntity manha = dose(tratamento, dia.atTime(8, 0), StatusDose.CONFIRMADA_COM_ATRASO);
+        DoseEntity diaSeguinte = dose(tratamento, dia.plusDays(1).atStartOfDay(), StatusDose.PENDENTE);
+        DoseEntity diaAnterior = dose(tratamento, dia.minusDays(1).atTime(23, 59), StatusDose.PENDENTE);
+        DoseEntity deTratamentoRemovido = dose(tratamento(medicamento, dia.atStartOfDay()), dia.atTime(9, 0), StatusDose.PENDENTE);
+        DoseEntity deMedicamentoRemovido = dose(tratamento(medicamento(idoso, dia.atStartOfDay()), null), dia.atTime(10, 0),
+                StatusDose.PENDENTE);
+        DoseEntity deOutroIdoso = dose(tratamento(medicamento(idoso(cuidador()), null), null), dia.atTime(11, 0),
+                StatusDose.PENDENTE);
+        em.getEntityManager()
+                .createNativeQuery("INSERT INTO dose (tratamento_id, horario_programado, status) VALUES (NULL, ?1, 'TOMADA')")
+                .setParameter(1, dia.atTime(12, 0))
+                .executeUpdate();
+
+        List<DoseDetalhada> doses = doseAdapter.findDetalhadasDoIdosoEntre(idoso.getId(), dia.atStartOfDay(),
+                dia.plusDays(1).atStartOfDay());
+
+        assertThat(doses).extracting(d -> d.dose().getId())
+                .containsExactly(meiaNoite.getId(), manha.getId(), noite.getId())
+                .doesNotContain(diaSeguinte.getId(), diaAnterior.getId(), deTratamentoRemovido.getId(),
+                        deMedicamentoRemovido.getId(), deOutroIdoso.getId());
+        DoseDetalhada primeira = doses.get(0);
+        assertThat(primeira.idosoId()).isEqualTo(idoso.getId());
+        assertThat(primeira.idosoNome()).isEqualTo(idoso.getNome());
+        assertThat(primeira.medicamentoId()).isEqualTo(medicamento.getId());
+        assertThat(primeira.medicamentoNome()).isEqualTo("Losartana");
+        assertThat(primeira.dosagem()).isEqualTo("50mg");
+        assertThat(primeira.tipo()).isEqualTo("COMPRIMIDO");
+        assertThat(primeira.dose().getTratamentoId()).isEqualTo(tratamento.getId());
+        assertThat(primeira.dose().getStatus()).isEqualTo(StatusDose.TOMADA);
+        assertThat(primeira.dose().getHoraConfirmacao()).isEqualTo(dia.atStartOfDay().plusMinutes(5));
     }
 
     // ---------------------------------------------------------------------------------------------------------

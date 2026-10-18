@@ -51,7 +51,12 @@ app:
       cron: ${VERIFICAR_DOSES_CRON:0 * * * * *}
   alertas:
     # Minutos apos o horario programado em que a dose ainda pode ser confirmada antes de virar NAO_TOMADA
+    # (tambem e o fim do "no prazo" da janela de confirmacao: depois disto a dose aparece ATRASADA)
     tolerancia-minutos: ${ALERTAS_TOLERANCIA_MINUTOS:30}
+    # Janela de confirmacao de dose (calculada no servidor): abre N minutos ANTES do horario programado...
+    antecedencia-confirmacao-minutos: ${ALERTAS_ANTECEDENCIA_CONFIRMACAO_MINUTOS:60}
+    # ...e encerra N minutos DEPOIS dele. Deve ser maior que a tolerancia (validado na subida).
+    encerramento-minutos: ${ALERTAS_ENCERRAMENTO_MINUTOS:180}
     # Dose que venceu ha mais que isto e marcada NAO_TOMADA, mas nao gera aviso (evita avisos muito atrasados)
     janela-notificacao-horas: ${ALERTAS_JANELA_NOTIFICACAO_HORAS:24}
     # Maximo de doses tratadas por execucao da varredura; o restante fica para a proxima

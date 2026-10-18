@@ -26,6 +26,13 @@ public interface DoseRepositoryPort {
     List<DoseVencida> findPendentesVencidas(LocalDateTime vencidasAte, int limite);
 
     /**
+     * Doses do idoso com horário programado em [{@code inicio}, {@code fim}), com idoso e medicamento, em uma única
+     * consulta, ordenadas por horário. Ignora doses anonimizadas (sem tratamento) e de tratamento ou medicamento
+     * removido logicamente.
+     */
+    List<DoseDetalhada> findDetalhadasDoIdosoEntre(Long idosoId, LocalDateTime inicio, LocalDateTime fim);
+
+    /**
      * Grava a versão registrada da dose (status e hora de confirmação) SOMENTE se no banco ela ainda estiver
      * PENDENTE, em um único UPDATE atômico ({@code ... WHERE id = ? AND status = 'PENDENTE'}). Se outra transação
      * registrou a dose antes (ex.: confirmação do idoso), nada muda.

@@ -8,6 +8,7 @@ import com.medcare.senior.domain.exception.EmailJaCadastradoException;
 import com.medcare.senior.domain.exception.IdosoJaCadastradoException;
 import com.medcare.senior.domain.exception.RecursoNaoEncontradoException;
 import com.medcare.senior.domain.exception.SenhaFracaException;
+import com.medcare.senior.domain.exception.SessaoInvalidaException;
 import com.medcare.senior.domain.exception.TokenDispositivoInvalidoException;
 import com.medcare.senior.domain.medicamento.DadosObrigatoriosMedicamentoException;
 import com.medcare.senior.domain.medicamento.MedicamentoComTratamentoAtivoException;
@@ -42,6 +43,7 @@ class GlobalExceptionHandlerTest {
                 "TOKEN_DISPOSITIVO_INVALIDO");
         assertErro(handler.handleCredenciaisInvalidas(new CredenciaisInvalidasException()), 401, "CREDENCIAIS_INVALIDAS");
         assertErro(handler.handleIdosoJaCadastrado(new IdosoJaCadastradoException()), 409, "IDOSO_DUPLICADO");
+        assertErro(handler.handleSessaoInvalida(new SessaoInvalidaException()), 401, "SESSAO_INVALIDA");
         assertErro(handler.handleRecursoNaoEncontrado(new RecursoNaoEncontradoException("Idoso não encontrado")), 404,
                 "RECURSO_NAO_ENCONTRADO");
         assertErro(handler.handleAcessoNegado(new AcessoNegadoException()), 403, "ACESSO_NEGADO");

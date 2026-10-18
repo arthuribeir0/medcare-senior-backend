@@ -8,6 +8,7 @@ import com.medcare.senior.domain.exception.EmailJaCadastradoException;
 import com.medcare.senior.domain.exception.IdosoJaCadastradoException;
 import com.medcare.senior.domain.exception.RecursoNaoEncontradoException;
 import com.medcare.senior.domain.exception.SenhaFracaException;
+import com.medcare.senior.domain.exception.SessaoInvalidaException;
 import com.medcare.senior.domain.exception.TokenDispositivoInvalidoException;
 import com.medcare.senior.domain.medicamento.DadosObrigatoriosMedicamentoException;
 import com.medcare.senior.domain.medicamento.MedicamentoComTratamentoAtivoException;
@@ -64,6 +65,12 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(CredenciaisInvalidasException.class)
     public ResponseEntity<ErroResponse> handleCredenciaisInvalidas(CredenciaisInvalidasException ex) {
         return construirResposta(HttpStatus.UNAUTHORIZED, CodigoErro.CREDENCIAIS_INVALIDAS, ex.getMessage(), List.of());
+    }
+
+    // Token válido de usuário que não existe mais: 401 para o app descartar a sessão (idoso volta ao pareamento)
+    @ExceptionHandler(SessaoInvalidaException.class)
+    public ResponseEntity<ErroResponse> handleSessaoInvalida(SessaoInvalidaException ex) {
+        return construirResposta(HttpStatus.UNAUTHORIZED, CodigoErro.SESSAO_INVALIDA, ex.getMessage(), List.of());
     }
 
     @ExceptionHandler(IdosoJaCadastradoException.class)

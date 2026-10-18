@@ -3,11 +3,13 @@ package com.medcare.senior.presentation.controller;
 import com.medcare.senior.application.usecase.BuscarIdosoUseCase;
 import com.medcare.senior.application.usecase.CadastrarIdosoUseCase;
 import com.medcare.senior.application.usecase.GerarCodigoVinculoUseCase;
+import com.medcare.senior.application.usecase.ListarDosesDoDiaUseCase;
 import com.medcare.senior.application.usecase.ListarIdososUseCase;
 import com.medcare.senior.domain.autenticacao.AuthenticatedUser;
 import com.medcare.senior.domain.usuario.CodigoVinculo;
 import com.medcare.senior.domain.usuario.Idoso;
 import com.medcare.senior.presentation.dto.CodigoVinculoResponseDTO;
+import com.medcare.senior.presentation.dto.DoseResponseDTO;
 import com.medcare.senior.presentation.dto.IdosoRequestDTO;
 import com.medcare.senior.presentation.dto.IdosoResponseDTO;
 import com.medcare.senior.presentation.exception.ErroResponse;
@@ -19,6 +21,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -27,8 +30,10 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.LocalDate;
 import java.util.List;
 
 /**
@@ -47,6 +52,7 @@ public class IdosoController {
     private final GerarCodigoVinculoUseCase gerarCodigoVinculoUseCase;
     private final ListarIdososUseCase listarIdososUseCase;
     private final BuscarIdosoUseCase buscarIdosoUseCase;
+    private final ListarDosesDoDiaUseCase listarDosesDoDiaUseCase;
 
     @PostMapping
     @Operation(summary = "Cadastra um idoso vinculado ao cuidador autenticado",
@@ -85,6 +91,25 @@ public class IdosoController {
                                                    @Parameter(hidden = true)
                                                    @AuthenticationPrincipal AuthenticatedUser usuario) {
         return ResponseEntity.ok(IdosoResponseDTO.from(buscarIdosoUseCase.executar(id, usuario.cuidadorId())));
+    }
+
+    @GetMapping("/{id}/doses")
+    @Operation(summary = "Doses de um idoso do cuidador em um dia",
+            description = "Ordenadas por horário. Janela, statusExibicao e confirmabilidade são calculados no servidor.")
+    @ApiResponse(responseCode = "200", description = "Doses do dia (pode ser vazia)")
+    @ApiResponse(responseCode = "400", description = "Data em formato inválido (codigo VALIDACAO)",
+            content = @Content(schema = @Schema(implementation = ErroResponse.class)))
+    @ApiResponse(responseCode = "404", description = "Idoso inexistente ou de outro cuidador",
+            content = @Content(schema = @Schema(implementation = ErroResponse.class)))
+    public ResponseEntity<List<DoseResponseDTO>> listarDoses(
+            @Parameter(description = "ID do idoso") @PathVariable Long id,
+            @Parameter(description = "Dia (AAAA-MM-DD); padrão: hoje no fuso da aplicação", example = "2026-10-08")
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate data,
+            @Parameter(hidden = true) @AuthenticationPrincipal AuthenticatedUser usuario) {
+        List<DoseResponseDTO> doses = listarDosesDoDiaUseCase.executarComoCuidador(id, usuario.cuidadorId(), data).stream()
+                .map(DoseResponseDTO::from)
+                .toList();
+        return ResponseEntity.ok(doses);
     }
 
     @PostMapping("/{id}/gerar-codigo")

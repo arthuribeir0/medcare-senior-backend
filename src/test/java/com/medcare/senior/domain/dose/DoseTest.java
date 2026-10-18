@@ -33,6 +33,45 @@ class DoseTest {
         assertThat(dose.isRegistrada()).isTrue();
     }
 
+    @ParameterizedTest
+    @EnumSource(value = StatusDose.class, names = {"TOMADA", "CONFIRMADA_COM_ATRASO"})
+    void dosePendentePodeSerConfirmadaSemAlterarAOriginal(StatusDose confirmado) {
+        LocalDateTime horario = LocalDateTime.of(2026, 10, 8, 8, 0);
+        LocalDateTime agora = horario.plusMinutes(40);
+        Dose pendente = Dose.builder().id(7L).tratamentoId(1000L).horarioProgramado(horario)
+                .status(StatusDose.PENDENTE).build();
+
+        Dose confirmada = pendente.confirmar(confirmado, agora);
+
+        assertThat(confirmada).isNotSameAs(pendente);
+        assertThat(confirmada.getId()).isEqualTo(7L);
+        assertThat(confirmada.getTratamentoId()).isEqualTo(1000L);
+        assertThat(confirmada.getHorarioProgramado()).isEqualTo(horario);
+        assertThat(confirmada.getStatus()).isEqualTo(confirmado);
+        assertThat(confirmada.getHoraConfirmacao()).isEqualTo(agora);
+        assertThat(pendente.getStatus()).isEqualTo(StatusDose.PENDENTE);
+        assertThat(pendente.getHoraConfirmacao()).isNull();
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = StatusDose.class, names = "PENDENTE", mode = EnumSource.Mode.EXCLUDE)
+    void doseRegistradaNaoPodeSerConfirmada(StatusDose status) {
+        Dose registrada = Dose.builder().id(7L).tratamentoId(1000L)
+                .horarioProgramado(LocalDateTime.of(2026, 10, 8, 8, 0)).status(status).build();
+
+        assertThatThrownBy(() -> registrada.confirmar(StatusDose.TOMADA, LocalDateTime.of(2026, 10, 8, 8, 5)))
+                .isInstanceOf(TransicaoDeDoseInvalidaException.class);
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = StatusDose.class, names = {"PENDENTE", "NAO_TOMADA"})
+    void confirmacaoSoGeraTomadaOuComAtraso(StatusDose invalido) {
+        Dose pendente = Dose.pendente(1000L, LocalDateTime.of(2026, 10, 8, 8, 0));
+
+        assertThatThrownBy(() -> pendente.confirmar(invalido, LocalDateTime.of(2026, 10, 8, 8, 5)))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
     @Test
     void dosePendentePodeSerMarcadaComoNaoTomadaSemAlterarAOriginal() {
         LocalDateTime horario = LocalDateTime.of(2026, 10, 8, 8, 0);

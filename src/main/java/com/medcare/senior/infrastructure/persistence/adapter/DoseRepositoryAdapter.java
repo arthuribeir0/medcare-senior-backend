@@ -16,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 @Component
@@ -60,6 +61,11 @@ public class DoseRepositoryAdapter implements DoseRepositoryPort {
         return doseRepository.findDetalhadasDoIdosoEntre(idosoId, inicio, fim).stream()
                 .map(DoseRepositoryAdapter::toDetalhada)
                 .toList();
+    }
+
+    @Override
+    public Optional<DoseDetalhada> findDetalhadaByIdAndIdosoId(Long doseId, Long idosoId) {
+        return doseRepository.findDetalhadaByIdAndIdosoId(doseId, idosoId).map(DoseRepositoryAdapter::toDetalhada);
     }
 
     private static DoseDetalhada toDetalhada(DoseDetalhadaProjection linha) {

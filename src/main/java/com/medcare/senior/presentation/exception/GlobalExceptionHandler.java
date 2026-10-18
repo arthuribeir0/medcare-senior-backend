@@ -1,6 +1,7 @@
 package com.medcare.senior.presentation.exception;
 
 import com.medcare.senior.domain.exception.AcessoNegadoException;
+import com.medcare.senior.domain.dose.DoseNaoConfirmavelException;
 import com.medcare.senior.domain.exception.CodigoVinculoInvalidoException;
 import com.medcare.senior.domain.exception.ConsentimentoLgpdObrigatorioException;
 import com.medcare.senior.domain.exception.CredenciaisInvalidasException;
@@ -112,6 +113,16 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MedicamentoComTratamentoAtivoException.class)
     public ResponseEntity<ErroResponse> handleMedicamentoComTratamentoAtivo(MedicamentoComTratamentoAtivoException ex) {
         return construirResposta(HttpStatus.CONFLICT, CodigoErro.TRATAMENTO_ATIVO, ex.getMessage(), List.of());
+    }
+
+    @ExceptionHandler(DoseNaoConfirmavelException.class)
+    public ResponseEntity<ErroResponse> handleDoseNaoConfirmavel(DoseNaoConfirmavelException ex) {
+        CodigoErro codigo = switch (ex.getMotivo()) {
+            case MUITO_CEDO -> CodigoErro.DOSE_MUITO_CEDO;
+            case ENCERRADA -> CodigoErro.DOSE_ENCERRADA;
+            case JA_REGISTRADA, OK -> CodigoErro.DOSE_JA_REGISTRADA;
+        };
+        return construirResposta(HttpStatus.CONFLICT, codigo, ex.getMessage(), List.of());
     }
 
     // RN-007: regras de validação do tratamento

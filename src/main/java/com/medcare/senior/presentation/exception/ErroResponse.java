@@ -23,7 +23,8 @@ public record ErroResponse(
                         "DADOS_OBRIGATORIOS_MEDICAMENTO", "TRATAMENTO_INVALIDO", "CREDENCIAIS_INVALIDAS", "SESSAO_INVALIDA",
                         "ACESSO_NEGADO",
                         "RECURSO_NAO_ENCONTRADO", "METODO_NAO_PERMITIDO", "EMAIL_DUPLICADO", "IDOSO_DUPLICADO",
-                        "TRATAMENTO_ATIVO", "LIMITE_TENTATIVAS", "ERRO_INTERNO"})
+                        "TRATAMENTO_ATIVO", "DOSE_JA_REGISTRADA", "DOSE_MUITO_CEDO", "DOSE_ENCERRADA",
+                        "LIMITE_TENTATIVAS", "ERRO_INTERNO"})
         String codigo,
 
         @Schema(example = "Um ou mais campos são inválidos")

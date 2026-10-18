@@ -1,5 +1,7 @@
 package com.medcare.senior.presentation.exception;
 
+import com.medcare.senior.domain.dose.Confirmabilidade;
+import com.medcare.senior.domain.dose.DoseNaoConfirmavelException;
 import com.medcare.senior.domain.exception.AcessoNegadoException;
 import com.medcare.senior.domain.exception.CodigoVinculoInvalidoException;
 import com.medcare.senior.domain.exception.ConsentimentoLgpdObrigatorioException;
@@ -53,6 +55,16 @@ class GlobalExceptionHandlerTest {
         assertErro(handler.handleMedicamentoComTratamentoAtivo(new MedicamentoComTratamentoAtivoException()), 409,
                 "TRATAMENTO_ATIVO");
         assertErro(handler.handleTratamentoInvalido(new HorariosObrigatoriosException()), 400, "TRATAMENTO_INVALIDO");
+    }
+
+    @Test
+    void doseNaoConfirmavelTemUmCodigoPorMotivo() {
+        assertErro(handler.handleDoseNaoConfirmavel(new DoseNaoConfirmavelException(Confirmabilidade.JA_REGISTRADA)), 409,
+                "DOSE_JA_REGISTRADA");
+        assertErro(handler.handleDoseNaoConfirmavel(new DoseNaoConfirmavelException(Confirmabilidade.MUITO_CEDO)), 409,
+                "DOSE_MUITO_CEDO");
+        assertErro(handler.handleDoseNaoConfirmavel(new DoseNaoConfirmavelException(Confirmabilidade.ENCERRADA)), 409,
+                "DOSE_ENCERRADA");
     }
 
     @Test

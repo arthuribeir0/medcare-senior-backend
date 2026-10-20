@@ -1,12 +1,13 @@
 package com.medcare.senior.domain.notificacao;
 
 /**
- * Resultado de um envio de push, já classificado para quem chama decidir o que fazer.
+ * Resultado de um envio de push, já classificado para quem chama decidir o que fazer com o evento de notificação.
  */
 public enum ResultadoEnvioPush {
 
     /**
-     * Aceito pelo provedor (ou validado, em dry-run).
+     * Aceito pelo provedor (ou validado, em dry-run). Com o FCM desligado, o aviso registrado em log também conta
+     * como enviado: o log é o canal de entrega nesse modo.
      */
     ENVIADO,
 
@@ -17,8 +18,13 @@ public enum ResultadoEnvioPush {
     TOKEN_INVALIDO,
 
     /**
-     * Falha que pode passar (provedor indisponível, cota, rede, erro interno ou de configuração). Pode ser tentada
-     * de novo mais tarde; a retentativa ainda não existe.
+     * Falha que pode passar (provedor indisponível, cota, rede, erro interno ou de configuração). O evento continua
+     * PENDENTE para a retentativa.
      */
-    FALHA_TEMPORARIA
+    FALHA_TEMPORARIA,
+
+    /**
+     * O cuidador não tem token de aparelho registrado (ou a conta não existe mais): não há para onde enviar.
+     */
+    SEM_TOKEN
 }

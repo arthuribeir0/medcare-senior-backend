@@ -2,17 +2,21 @@ package com.medcare.senior.infrastructure.persistence.adapter;
 
 import com.medcare.senior.domain.dose.Dose;
 import com.medcare.senior.domain.dose.DoseDetalhada;
+import com.medcare.senior.domain.dose.DoseParaAviso;
 import com.medcare.senior.domain.dose.DoseRepositoryPort;
-import com.medcare.senior.domain.dose.DoseVencida;
 import com.medcare.senior.domain.dose.StatusDose;
+import com.medcare.senior.domain.historico.FiltroHistorico;
+import com.medcare.senior.domain.historico.Pagina;
 import com.medcare.senior.infrastructure.persistence.mapper.DoseMapper;
 import com.medcare.senior.infrastructure.persistence.projection.DoseDetalhadaProjection;
 import com.medcare.senior.infrastructure.persistence.repository.DoseRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.List;
@@ -22,6 +26,8 @@ import java.util.Set;
 @Component
 @RequiredArgsConstructor
 public class DoseRepositoryAdapter implements DoseRepositoryPort {
+
+    private static final LocalDateTime SEM_INICIO = LocalDateTime.of(1900, 1, 1, 0, 0);
 
     private final DoseRepository doseRepository;
     private final DoseMapper doseMapper;
@@ -40,19 +46,20 @@ public class DoseRepositoryAdapter implements DoseRepositoryPort {
     }
 
     @Override
-    public List<DoseVencida> findPendentesVencidas(LocalDateTime vencidasAte, int limite) {
-        return doseRepository.findVencidasByStatus(StatusDose.PENDENTE, vencidasAte, PageRequest.of(0, limite))
+    public List<DoseParaAviso> findPendentesParaAviso(LocalDateTime agora, Duration toleranciaPadrao,
+                                                      LocalDateTime encerradasAte, int limite) {
+        return doseRepository.findParaAviso(agora, Math.toIntExact(toleranciaPadrao.toMinutes()), encerradasAte, limite)
                 .stream()
-                .map(linha -> new DoseVencida(
-                        Dose.builder()
-                                .id(linha.doseId())
-                                .tratamentoId(linha.tratamentoId())
-                                .horarioProgramado(linha.horarioProgramado())
-                                .status(StatusDose.PENDENTE)
-                                .build(),
-                        linha.cuidadorId(),
-                        linha.nomeIdoso(),
-                        linha.nomeMedicamento()))
+                .map(linha -> new DoseParaAviso(linha.getDoseId(), linha.getHorarioProgramado(), linha.getCuidadorId(),
+                        linha.getIdosoId(), linha.getNomeIdoso()))
+                .toList();
+    }
+
+    @Override
+    public List<Dose> findPendentesEncerradas(LocalDateTime encerradasAte, int limite) {
+        return doseRepository.findEncerradasByStatus(StatusDose.PENDENTE, encerradasAte, PageRequest.of(0, limite))
+                .stream()
+                .map(doseMapper::toDomain)
                 .toList();
     }
 
@@ -61,6 +68,17 @@ public class DoseRepositoryAdapter implements DoseRepositoryPort {
         return doseRepository.findDetalhadasDoIdosoEntre(idosoId, inicio, fim).stream()
                 .map(DoseRepositoryAdapter::toDetalhada)
                 .toList();
+    }
+
+    @Override
+    public Pagina<DoseDetalhada> findHistorico(Long cuidadorId, FiltroHistorico filtro) {
+        // Sem "de": desde o início (data anterior a qualquer dose do sistema). "ate" é inclusivo: até o dia seguinte
+        LocalDateTime inicio = filtro.de() != null ? filtro.de().atStartOfDay() : SEM_INICIO;
+        LocalDateTime fim = filtro.ate().plusDays(1).atStartOfDay();
+        Page<DoseDetalhadaProjection> pagina = doseRepository.findHistorico(cuidadorId, filtro.idosoId(),
+                filtro.medicamentoId(), filtro.status(), inicio, fim, PageRequest.of(filtro.pagina(), filtro.tamanho()));
+        return new Pagina<>(pagina.getContent().stream().map(DoseRepositoryAdapter::toDetalhada).toList(),
+                filtro.pagina(), filtro.tamanho(), pagina.getTotalElements());
     }
 
     @Override
@@ -77,7 +95,12 @@ public class DoseRepositoryAdapter implements DoseRepositoryPort {
                 .status(linha.status())
                 .build();
         return new DoseDetalhada(dose, linha.idosoId(), linha.idosoNome(), linha.medicamentoId(), linha.medicamentoNome(),
-                linha.dosagem(), linha.tipo());
+                linha.dosagem(), linha.tipo(), linha.toleranciaMinutosDoCuidador());
+    }
+
+    @Override
+    public Optional<StatusDose> findStatusById(Long doseId) {
+        return doseRepository.findStatusById(doseId);
     }
 
     @Override

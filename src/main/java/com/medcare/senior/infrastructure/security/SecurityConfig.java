@@ -64,7 +64,11 @@ public class SecurityConfig {
                             .requestMatchers("/api/idosos/**").hasRole(Role.CUIDADOR.name())
                             .requestMatchers(HttpMethod.PUT, "/api/doses/*/confirmar").hasRole(Role.IDOSO.name())
                             .requestMatchers("/api/medicamentos/**").hasRole(Role.CUIDADOR.name())
-                            .requestMatchers("/api/tratamentos/**").hasRole(Role.CUIDADOR.name());
+                            .requestMatchers("/api/tratamentos/**").hasRole(Role.CUIDADOR.name())
+                            .requestMatchers(HttpMethod.GET, "/api/configuracoes/tolerancia").hasRole(Role.CUIDADOR.name())
+                            .requestMatchers(HttpMethod.PUT, "/api/configuracoes/tolerancia").hasRole(Role.CUIDADOR.name())
+                            .requestMatchers(HttpMethod.GET, "/api/relatorios/diario").hasRole(Role.CUIDADOR.name())
+                            .requestMatchers(HttpMethod.GET, "/api/historico").hasRole(Role.CUIDADOR.name());
 
                     // Documentação OpenAPI/Swagger: liberada SOMENTE com app.docs.enabled=true (DOCS_ENABLED).
                     // Desligada, essas rotas caem no denyAll() abaixo, como qualquer outra rota sem regra.

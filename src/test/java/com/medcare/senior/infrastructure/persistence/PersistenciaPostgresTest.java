@@ -12,13 +12,16 @@ import com.medcare.senior.domain.dose.Dose;
 import com.medcare.senior.domain.dose.DoseDetalhada;
 import com.medcare.senior.domain.dose.DoseNaoConfirmavelException;
 import com.medcare.senior.domain.dose.PoliticaDeJanela;
-import com.medcare.senior.domain.dose.DoseVencida;
+import com.medcare.senior.domain.dose.DoseParaAviso;
 import com.medcare.senior.domain.dose.StatusDose;
 import com.medcare.senior.domain.exception.RecursoNaoEncontradoException;
+import com.medcare.senior.domain.notificacao.MotivoFalhaNotificacao;
 import com.medcare.senior.domain.usuario.CodigoVinculo;
 import com.medcare.senior.infrastructure.persistence.adapter.CodigoVinculoRepositoryAdapter;
+import com.medcare.senior.infrastructure.persistence.adapter.ConfiguracaoAlertaRepositoryAdapter;
 import com.medcare.senior.infrastructure.persistence.adapter.CuidadorRepositoryAdapter;
 import com.medcare.senior.infrastructure.persistence.adapter.DoseRepositoryAdapter;
+import com.medcare.senior.infrastructure.persistence.adapter.EventoNotificacaoRepositoryAdapter;
 import com.medcare.senior.infrastructure.persistence.adapter.IdosoRepositoryAdapter;
 import com.medcare.senior.infrastructure.persistence.adapter.MedicamentoRepositoryAdapter;
 import com.medcare.senior.infrastructure.persistence.adapter.TratamentoRepositoryAdapter;
@@ -67,6 +70,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 @Import({
         CuidadorRepositoryAdapter.class, IdosoRepositoryAdapter.class, MedicamentoRepositoryAdapter.class,
         TratamentoRepositoryAdapter.class, DoseRepositoryAdapter.class, CodigoVinculoRepositoryAdapter.class,
+        EventoNotificacaoRepositoryAdapter.class, ConfiguracaoAlertaRepositoryAdapter.class,
         CuidadorMapper.class, IdosoMapper.class, MedicamentoMapper.class, TratamentoMapper.class, DoseMapper.class,
         CodigoVinculoMapper.class,
         ExcluirContaUseCase.class, RemoverMedicamentoUseCase.class, EditarTratamentoUseCase.class,
@@ -117,6 +121,12 @@ class PersistenciaPostgresTest {
 
     @Autowired
     private DoseRepositoryAdapter doseAdapter;
+
+    @Autowired
+    private EventoNotificacaoRepositoryAdapter eventoAdapter;
+
+    @Autowired
+    private ConfiguracaoAlertaRepositoryAdapter configuracaoAdapter;
 
     @Autowired
     private CuidadorRepositoryAdapter cuidadorAdapter;
@@ -354,6 +364,26 @@ class PersistenciaPostgresTest {
     }
 
     @Test
+    void confirmarNaoMexeNoEstoqueDoMedicamento() {
+        // BE-29: o DRS só prevê o estoque como campo opcional do cadastro (UC-004, RN-005); não há baixa automática
+        IdosoEntity idoso = idoso(cuidador());
+        MedicamentoEntity medicamento = medicamento(idoso, null);
+        em.getEntityManager().createNativeQuery("UPDATE medicamento SET quantidade_estoque = 30 WHERE id = ?1")
+                .setParameter(1, medicamento.getId())
+                .executeUpdate();
+        DoseEntity pendente = dose(tratamento(medicamento, null), AGORA.minusMinutes(10), StatusDose.PENDENTE);
+
+        confirmarDoseUseCase.executar(pendente.getId(), idoso.getId());
+
+        Number estoque = (Number) em.getEntityManager()
+                .createNativeQuery("SELECT quantidade_estoque FROM medicamento WHERE id = ?1")
+                .setParameter(1, medicamento.getId())
+                .getSingleResult();
+        assertThat(statusDaDose(pendente.getId())).isEqualTo("TOMADA");
+        assertThat(estoque.intValue()).isEqualTo(30);
+    }
+
+    @Test
     void confirmarNaoSobrescreveDoseJaTomada() {
         IdosoEntity idoso = idoso(cuidador());
         DoseEntity tomada = dose(tratamento(medicamento(idoso, null), null), AGORA.minusMinutes(10), StatusDose.TOMADA);
@@ -531,7 +561,7 @@ class PersistenciaPostgresTest {
     }
 
     // ---------------------------------------------------------------------------------------------------------
-    // Verificação de doses vencidas: busca e UPDATE atômico PENDENTE -> NAO_TOMADA
+    // Varredura de doses: buscas de aviso e de encerramento e UPDATE atômico PENDENTE -> NAO_TOMADA
     // ---------------------------------------------------------------------------------------------------------
 
     @Test
@@ -559,52 +589,297 @@ class PersistenciaPostgresTest {
     }
 
     @Test
-    void findPendentesVencidasIgnoraNaoVencidasRegistradasRemovidasEAnonimizadas() {
+    void findPendentesParaAvisoPegaSoAsQuePassaramDaToleranciaSemEventoNemEncerramento() {
         // Horários em 2000: nenhum dado de desenvolvimento do banco local interfere na busca
-        LocalDateTime vencidasAte = LocalDateTime.of(2000, 1, 10, 12, 0);
+        LocalDateTime agora = LocalDateTime.of(2000, 1, 10, 12, 0);
+        java.time.Duration tolerancia = java.time.Duration.ofMinutes(30);
+        LocalDateTime encerradasAte = agora.minusMinutes(180);
         CuidadorEntity cuidador = cuidador();
         IdosoEntity idoso = idoso(cuidador);
         MedicamentoEntity medicamento = medicamento(idoso, null);
         TratamentoEntity tratamento = tratamento(medicamento, null);
-        DoseEntity maisAntiga = dose(tratamento, vencidasAte.minusDays(1), StatusDose.PENDENTE);
-        DoseEntity noLimite = dose(tratamento, vencidasAte, StatusDose.PENDENTE);
-        DoseEntity naoVencida = dose(tratamento, vencidasAte.plusMinutes(1), StatusDose.PENDENTE);
-        DoseEntity tomada = dose(tratamento, vencidasAte.minusHours(1), StatusDose.TOMADA);
-        DoseEntity deTratamentoRemovido = dose(tratamento(medicamento, vencidasAte), vencidasAte.minusHours(2),
+        // horário + 30 min <= 12:00 -> horário <= 11:30 (inclusive); e horário > 09:00 (ainda não encerrada)
+        DoseEntity maisAntiga = dose(tratamento, encerradasAte.plusMinutes(1), StatusDose.PENDENTE);
+        DoseEntity noLimiteDoAviso = dose(tratamento, agora.minus(tolerancia), StatusDose.PENDENTE);
+        DoseEntity dentroDaTolerancia = dose(tratamento, agora.minus(tolerancia).plusSeconds(1), StatusDose.PENDENTE);
+        DoseEntity noLimiteDoEncerramento = dose(tratamento, encerradasAte, StatusDose.PENDENTE);
+        DoseEntity jaAvisada = dose(tratamento, agora.minusMinutes(60), StatusDose.PENDENTE);
+        eventoAdapter.criarSeAusente(jaAvisada.getId());
+        DoseEntity tomada = dose(tratamento, agora.minusMinutes(50), StatusDose.TOMADA);
+        DoseEntity deTratamentoRemovido = dose(tratamento(medicamento, agora), agora.minusMinutes(70), StatusDose.PENDENTE);
+        DoseEntity deMedicamentoRemovido = dose(tratamento(medicamento(idoso, agora), null), agora.minusMinutes(80),
                 StatusDose.PENDENTE);
-        DoseEntity deMedicamentoRemovido = dose(tratamento(medicamento(idoso, vencidasAte), null),
-                vencidasAte.minusHours(3), StatusDose.PENDENTE);
         em.getEntityManager()
                 .createNativeQuery("INSERT INTO dose (tratamento_id, horario_programado, status) VALUES (NULL, ?1, 'PENDENTE')")
-                .setParameter(1, vencidasAte.minusHours(4))
+                .setParameter(1, agora.minusMinutes(90))
                 .executeUpdate();
 
-        List<DoseVencida> vencidas = doseAdapter.findPendentesVencidas(vencidasAte, 100);
+        List<DoseParaAviso> paraAviso = doseAdapter.findPendentesParaAviso(agora, tolerancia, encerradasAte, 100);
 
-        assertThat(vencidas).extracting(DoseVencida::doseId)
-                .containsExactly(maisAntiga.getId(), noLimite.getId())
-                .doesNotContain(naoVencida.getId(), tomada.getId(), deTratamentoRemovido.getId(),
-                        deMedicamentoRemovido.getId());
-        DoseVencida primeira = vencidas.get(0);
+        assertThat(paraAviso).extracting(DoseParaAviso::doseId)
+                .containsExactly(maisAntiga.getId(), noLimiteDoAviso.getId())
+                .doesNotContain(dentroDaTolerancia.getId(), noLimiteDoEncerramento.getId(), jaAvisada.getId(),
+                        tomada.getId(), deTratamentoRemovido.getId(), deMedicamentoRemovido.getId());
+        DoseParaAviso primeira = paraAviso.get(0);
         assertThat(primeira.cuidadorId()).isEqualTo(cuidador.getId());
+        assertThat(primeira.idosoId()).isEqualTo(idoso.getId());
         assertThat(primeira.nomeIdoso()).isEqualTo(idoso.getNome());
-        assertThat(primeira.nomeMedicamento()).isEqualTo(medicamento.getNome());
-        assertThat(primeira.dose().getTratamentoId()).isEqualTo(tratamento.getId());
-        assertThat(primeira.dose().getStatus()).isEqualTo(StatusDose.PENDENTE);
-        assertThat(primeira.horarioProgramado()).isEqualTo(vencidasAte.minusDays(1));
+        assertThat(primeira.horarioProgramado()).isEqualTo(encerradasAte.plusMinutes(1));
     }
 
     @Test
-    void findPendentesVencidasRespeitaOLimiteComecandoPelasMaisAntigas() {
-        LocalDateTime vencidasAte = LocalDateTime.of(2000, 1, 10, 12, 0);
+    void findPendentesParaAvisoRespeitaOLimiteComecandoPelasMaisAntigas() {
+        LocalDateTime agora = LocalDateTime.of(2000, 1, 10, 12, 0);
         TratamentoEntity tratamento = tratamento(medicamento(idoso(cuidador()), null), null);
-        DoseEntity primeira = dose(tratamento, vencidasAte.minusHours(3), StatusDose.PENDENTE);
-        DoseEntity segunda = dose(tratamento, vencidasAte.minusHours(2), StatusDose.PENDENTE);
-        dose(tratamento, vencidasAte.minusHours(1), StatusDose.PENDENTE);
+        DoseEntity primeira = dose(tratamento, agora.minusMinutes(90), StatusDose.PENDENTE);
+        DoseEntity segunda = dose(tratamento, agora.minusMinutes(80), StatusDose.PENDENTE);
+        dose(tratamento, agora.minusMinutes(70), StatusDose.PENDENTE);
 
-        List<DoseVencida> vencidas = doseAdapter.findPendentesVencidas(vencidasAte, 2);
+        List<DoseParaAviso> paraAviso = doseAdapter.findPendentesParaAviso(agora, java.time.Duration.ofMinutes(30),
+                agora.minusMinutes(180), 2);
 
-        assertThat(vencidas).extracting(DoseVencida::doseId).containsExactly(primeira.getId(), segunda.getId());
+        assertThat(paraAviso).extracting(DoseParaAviso::doseId).containsExactly(primeira.getId(), segunda.getId());
+    }
+
+    @Test
+    void findPendentesEncerradasIgnoraNaoEncerradasRegistradasRemovidasEAnonimizadas() {
+        LocalDateTime encerradasAte = LocalDateTime.of(2000, 1, 10, 9, 0);
+        IdosoEntity idoso = idoso(cuidador());
+        MedicamentoEntity medicamento = medicamento(idoso, null);
+        TratamentoEntity tratamento = tratamento(medicamento, null);
+        DoseEntity maisAntiga = dose(tratamento, encerradasAte.minusDays(1), StatusDose.PENDENTE);
+        // Limite exato: horário + 180 min = agora encerra; 1 s antes do limite ainda não
+        DoseEntity noLimite = dose(tratamento, encerradasAte, StatusDose.PENDENTE);
+        DoseEntity umSegundoAntesDeEncerrar = dose(tratamento, encerradasAte.plusSeconds(1), StatusDose.PENDENTE);
+        DoseEntity tomada = dose(tratamento, encerradasAte.minusHours(1), StatusDose.TOMADA);
+        DoseEntity deTratamentoRemovido = dose(tratamento(medicamento, encerradasAte), encerradasAte.minusHours(2),
+                StatusDose.PENDENTE);
+        DoseEntity deMedicamentoRemovido = dose(tratamento(medicamento(idoso, encerradasAte), null),
+                encerradasAte.minusHours(3), StatusDose.PENDENTE);
+
+        List<Dose> encerradas = doseAdapter.findPendentesEncerradas(encerradasAte, 100);
+
+        assertThat(encerradas).extracting(Dose::getId)
+                .containsExactly(maisAntiga.getId(), noLimite.getId())
+                .doesNotContain(umSegundoAntesDeEncerrar.getId(), tomada.getId(), deTratamentoRemovido.getId(),
+                        deMedicamentoRemovido.getId());
+        assertThat(encerradas.get(0).getStatus()).isEqualTo(StatusDose.PENDENTE);
+        assertThat(encerradas.get(0).getTratamentoId()).isEqualTo(tratamento.getId());
+    }
+
+    @Test
+    void findPendentesEncerradasRespeitaOLimiteComecandoPelasMaisAntigas() {
+        LocalDateTime encerradasAte = LocalDateTime.of(2000, 1, 10, 12, 0);
+        TratamentoEntity tratamento = tratamento(medicamento(idoso(cuidador()), null), null);
+        DoseEntity primeira = dose(tratamento, encerradasAte.minusHours(3), StatusDose.PENDENTE);
+        DoseEntity segunda = dose(tratamento, encerradasAte.minusHours(2), StatusDose.PENDENTE);
+        dose(tratamento, encerradasAte.minusHours(1), StatusDose.PENDENTE);
+
+        List<Dose> encerradas = doseAdapter.findPendentesEncerradas(encerradasAte, 2);
+
+        assertThat(encerradas).extracting(Dose::getId).containsExactly(primeira.getId(), segunda.getId());
+    }
+
+    // ---------------------------------------------------------------------------------------------------------
+    // Evento de notificação (V12): idempotência, reivindicação e finalização atômicas
+    // ---------------------------------------------------------------------------------------------------------
+
+    @Test
+    void criarEventoSeAusenteEhIdempotentePorDose() {
+        DoseEntity dose = dose(tratamento(medicamento(idoso(cuidador()), null), null), AGORA.minusHours(1),
+                StatusDose.PENDENTE);
+
+        java.util.Optional<Long> criado = eventoAdapter.criarSeAusente(dose.getId());
+        java.util.Optional<Long> repetido = eventoAdapter.criarSeAusente(dose.getId());
+
+        assertThat(criado).isPresent();
+        assertThat(repetido).isEmpty();
+        assertThat(eventosDaDose(dose.getId())).isEqualTo(1);
+        assertThat(colunaDoEvento(criado.get(), "status")).isEqualTo("PENDENTE");
+        assertThat(((Number) colunaDoEvento(criado.get(), "tentativas")).intValue()).isZero();
+        assertThat(colunaDoEvento(criado.get(), "ultima_tentativa")).isNull();
+        // O aviso não muda a dose
+        assertThat(statusDaDose(dose.getId())).isEqualTo("PENDENTE");
+    }
+
+    @Test
+    void reivindicarSoGanhaComAsTentativasEsperadasEEnquantoPendente() {
+        DoseEntity dose = dose(tratamento(medicamento(idoso(cuidador()), null), null), AGORA.minusHours(1),
+                StatusDose.PENDENTE);
+        Long eventoId = eventoAdapter.criarSeAusente(dose.getId()).orElseThrow();
+
+        assertThat(eventoAdapter.reivindicar(eventoId, 0, AGORA)).isTrue();
+        // Segunda reivindicação com a mesma expectativa (outro job concorrente): perde
+        assertThat(eventoAdapter.reivindicar(eventoId, 0, AGORA)).isFalse();
+        assertThat(((Number) colunaDoEvento(eventoId, "tentativas")).intValue()).isEqualTo(1);
+        assertThat(paraLocalDateTime(colunaDoEvento(eventoId, "ultima_tentativa"))).isEqualTo(AGORA);
+
+        eventoAdapter.marcarEnviado(eventoId);
+        assertThat(colunaDoEvento(eventoId, "status")).isEqualTo("ENVIADO");
+        assertThat(eventoAdapter.reivindicar(eventoId, 1, AGORA)).isFalse();
+        // Finalizar de novo não muda um evento que já saiu de PENDENTE
+        eventoAdapter.marcarFalha(eventoId, MotivoFalhaNotificacao.SEM_TOKEN);
+        assertThat(colunaDoEvento(eventoId, "status")).isEqualTo("ENVIADO");
+        assertThat(colunaDoEvento(eventoId, "motivo_falha")).isNull();
+    }
+
+    @Test
+    void marcarFalhaGravaOMotivo() {
+        DoseEntity dose = dose(tratamento(medicamento(idoso(cuidador()), null), null), AGORA.minusHours(1),
+                StatusDose.PENDENTE);
+        Long eventoId = eventoAdapter.criarSeAusente(dose.getId()).orElseThrow();
+
+        eventoAdapter.marcarFalha(eventoId, MotivoFalhaNotificacao.TOKEN_INVALIDO);
+
+        assertThat(colunaDoEvento(eventoId, "status")).isEqualTo("FALHA");
+        assertThat(colunaDoEvento(eventoId, "motivo_falha")).isEqualTo("TOKEN_INVALIDO");
+    }
+
+    @Test
+    void checkDaTabelaDeEventoRejeitaStatusDesconhecido() {
+        DoseEntity dose = dose(tratamento(medicamento(idoso(cuidador()), null), null), AGORA.minusHours(1),
+                StatusDose.PENDENTE);
+
+        assertThatThrownBy(() -> em.getEntityManager()
+                .createNativeQuery("INSERT INTO evento_notificacao (status, tentativas, dose_id) VALUES ('ENVIANDO', 0, ?1)")
+                .setParameter(1, dose.getId())
+                .executeUpdate())
+                .hasMessageContaining("ck_evento_notificacao_status");
+    }
+
+    @Test
+    void checkDaTabelaDeEventoRejeitaTentativasNegativas() {
+        DoseEntity dose = dose(tratamento(medicamento(idoso(cuidador()), null), null), AGORA.minusHours(1),
+                StatusDose.PENDENTE);
+
+        assertThatThrownBy(() -> em.getEntityManager()
+                .createNativeQuery("INSERT INTO evento_notificacao (status, tentativas, dose_id) VALUES ('PENDENTE', -1, ?1)")
+                .setParameter(1, dose.getId())
+                .executeUpdate())
+                .hasMessageContaining("ck_evento_notificacao_tentativas");
+    }
+
+    @Test
+    void exclusaoDeContaComEventosPendenteEnviadoEFalhaApagaOsEventosDoCuidador() {
+        CuidadorEntity cuidador = cuidador();
+        TratamentoEntity tratamento = tratamento(medicamento(idoso(cuidador), null), null);
+        // Evento em dose ainda PENDENTE (aviso feito, dose não encerrada)
+        DoseEntity pendente = dose(tratamento, AGORA.minusHours(1), StatusDose.PENDENTE);
+        Long eventoPendente = eventoAdapter.criarSeAusente(pendente.getId()).orElseThrow();
+        // Evento ENVIADO em dose que depois foi confirmada com atraso (registrada: a dose fica, anonimizada)
+        DoseEntity comAtraso = dose(tratamento, AGORA.minusHours(2), StatusDose.CONFIRMADA_COM_ATRASO);
+        Long eventoEnviado = eventoAdapter.criarSeAusente(comAtraso.getId()).orElseThrow();
+        eventoAdapter.marcarEnviado(eventoEnviado);
+        // Evento FALHA em dose encerrada como NAO_TOMADA
+        DoseEntity naoTomada = dose(tratamento, AGORA.minusHours(5), StatusDose.NAO_TOMADA);
+        Long eventoFalha = eventoAdapter.criarSeAusente(naoTomada.getId()).orElseThrow();
+        eventoAdapter.marcarFalha(eventoFalha, MotivoFalhaNotificacao.SEM_TOKEN);
+
+        CuidadorEntity outro = cuidador();
+        DoseEntity doseDoOutro = dose(tratamento(medicamento(idoso(outro), null), null), AGORA.minusHours(1),
+                StatusDose.PENDENTE);
+        Long eventoDoOutro = eventoAdapter.criarSeAusente(doseDoOutro.getId()).orElseThrow();
+
+        excluirContaUseCase.executar(cuidador.getId());
+
+        assertThat(contar("cuidador", cuidador.getId())).isZero();
+        assertThat(contar("evento_notificacao", eventoPendente, eventoEnviado, eventoFalha)).isZero();
+        assertThat(contar("dose", pendente.getId())).isZero();
+        assertThat(contar("dose", comAtraso.getId(), naoTomada.getId())).isEqualTo(2);
+        assertThat(tratamentoIdDaDose(comAtraso.getId())).isNull();
+        assertThat(contar("evento_notificacao", eventoDoOutro)).isEqualTo(1);
+    }
+
+    // ---------------------------------------------------------------------------------------------------------
+    // Configuração de alerta (V13): tolerância por cuidador
+    // ---------------------------------------------------------------------------------------------------------
+
+    @Test
+    void semConfiguracaoNaoHaToleranciaPropriaESalvarDuasVezesAtualiza() {
+        CuidadorEntity cuidador = cuidador();
+
+        assertThat(configuracaoAdapter.findToleranciaMinutos(cuidador.getId())).isEmpty();
+
+        configuracaoAdapter.salvarToleranciaMinutos(cuidador.getId(), 45);
+        configuracaoAdapter.salvarToleranciaMinutos(cuidador.getId(), 90);
+
+        assertThat(configuracaoAdapter.findToleranciaMinutos(cuidador.getId())).contains(90);
+        assertThat(contarPorCuidador("configuracao_alerta", cuidador.getId())).isEqualTo(1);
+    }
+
+    @Test
+    void checkDaConfiguracaoRecusaToleranciaForaDe5a120() {
+        CuidadorEntity cuidador = cuidador();
+
+        assertThatThrownBy(() -> configuracaoAdapter.salvarToleranciaMinutos(cuidador.getId(), 4))
+                .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    @Test
+    void checkDaConfiguracaoRecusaToleranciaAcimaDe120() {
+        CuidadorEntity cuidador = cuidador();
+
+        assertThatThrownBy(() -> configuracaoAdapter.salvarToleranciaMinutos(cuidador.getId(), 121))
+                .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    @Test
+    void exclusaoDeContaApagaAConfiguracaoDeAlerta() {
+        CuidadorEntity cuidador = cuidador();
+        configuracaoAdapter.salvarToleranciaMinutos(cuidador.getId(), 15);
+        CuidadorEntity outro = cuidador();
+        configuracaoAdapter.salvarToleranciaMinutos(outro.getId(), 20);
+
+        excluirContaUseCase.executar(cuidador.getId());
+
+        assertThat(contarPorCuidador("configuracao_alerta", cuidador.getId())).isZero();
+        assertThat(configuracaoAdapter.findToleranciaMinutos(outro.getId())).contains(20);
+    }
+
+    @Test
+    void avisoUsaAToleranciaDoCuidadorDonoDeCadaIdoso() {
+        LocalDateTime agora = LocalDateTime.of(2000, 1, 10, 12, 0);
+        java.time.Duration padrao = java.time.Duration.ofMinutes(30);
+        CuidadorEntity comDez = cuidador();
+        CuidadorEntity comSessenta = cuidador();
+        CuidadorEntity semConfiguracao = cuidador();
+        configuracaoAdapter.salvarToleranciaMinutos(comDez.getId(), 10);
+        configuracaoAdapter.salvarToleranciaMinutos(comSessenta.getId(), 60);
+        // Todas às 11:45: 11:55 (10 min) já passou; 12:15 (padrão 30) e 12:45 (60) ainda não
+        DoseEntity doDez = dose(tratamento(medicamento(idoso(comDez), null), null), agora.minusMinutes(15), StatusDose.PENDENTE);
+        DoseEntity doSessenta = dose(tratamento(medicamento(idoso(comSessenta), null), null), agora.minusMinutes(15),
+                StatusDose.PENDENTE);
+        TratamentoEntity tratamentoPadrao = tratamento(medicamento(idoso(semConfiguracao), null), null);
+        DoseEntity doPadraoNoPrazo = dose(tratamentoPadrao, agora.minusMinutes(15), StatusDose.PENDENTE);
+        // 11:30 + 30 (padrão) = 12:00: no limite, já é aviso
+        DoseEntity doPadraoNoLimite = dose(tratamentoPadrao, agora.minusMinutes(30), StatusDose.PENDENTE);
+
+        List<Long> paraAviso = doseAdapter.findPendentesParaAviso(agora, padrao, agora.minusMinutes(180), 100).stream()
+                .map(DoseParaAviso::doseId)
+                .toList();
+
+        assertThat(paraAviso).contains(doDez.getId(), doPadraoNoLimite.getId())
+                .doesNotContain(doSessenta.getId(), doPadraoNoPrazo.getId());
+    }
+
+    @Test
+    void dosesDetalhadasTrazemAToleranciaPropriaDoCuidadorOuNula() {
+        CuidadorEntity comConfiguracao = cuidador();
+        configuracaoAdapter.salvarToleranciaMinutos(comConfiguracao.getId(), 60);
+        IdosoEntity idosoComConfiguracao = idoso(comConfiguracao);
+        DoseEntity dose = dose(tratamento(medicamento(idosoComConfiguracao, null), null), AGORA.minusHours(1),
+                StatusDose.PENDENTE);
+        IdosoEntity idosoSemConfiguracao = idoso(cuidador());
+        dose(tratamento(medicamento(idosoSemConfiguracao, null), null), AGORA.minusHours(1), StatusDose.PENDENTE);
+
+        assertThat(doseAdapter.findDetalhadasDoIdosoEntre(idosoComConfiguracao.getId(), HOJE.atStartOfDay(),
+                HOJE.plusDays(1).atStartOfDay())).singleElement()
+                .satisfies(d -> assertThat(d.toleranciaMinutosDoCuidador()).isEqualTo(60));
+        assertThat(doseAdapter.findDetalhadaByIdAndIdosoId(dose.getId(), idosoComConfiguracao.getId()))
+                .hasValueSatisfying(d -> assertThat(d.toleranciaMinutosDoCuidador()).isEqualTo(60));
+        assertThat(doseAdapter.findDetalhadasDoIdosoEntre(idosoSemConfiguracao.getId(), HOJE.atStartOfDay(),
+                HOJE.plusDays(1).atStartOfDay())).singleElement()
+                .satisfies(d -> assertThat(d.toleranciaMinutosDoCuidador()).isNull());
     }
 
     // ---------------------------------------------------------------------------------------------------------
@@ -765,5 +1040,35 @@ class PersistenciaPostgresTest {
                         ? timestamp.toLocalDateTime()
                         : (LocalDateTime) valor)
                 .toList();
+    }
+
+    private long contarPorCuidador(String tabela, Long cuidadorId) {
+        Number total = (Number) em.getEntityManager()
+                .createNativeQuery("SELECT COUNT(*) FROM " + tabela + " WHERE cuidador_id = ?1")
+                .setParameter(1, cuidadorId)
+                .getSingleResult();
+        return total.longValue();
+    }
+
+    private long eventosDaDose(Long doseId) {
+        Number total = (Number) em.getEntityManager()
+                .createNativeQuery("SELECT COUNT(*) FROM evento_notificacao WHERE dose_id = ?1")
+                .setParameter(1, doseId)
+                .getSingleResult();
+        return total.longValue();
+    }
+
+    private Object colunaDoEvento(Long eventoId, String coluna) {
+        return em.getEntityManager()
+                .createNativeQuery("SELECT " + coluna + " FROM evento_notificacao WHERE id = ?1")
+                .setParameter(1, eventoId)
+                .getSingleResult();
+    }
+
+    private static LocalDateTime paraLocalDateTime(Object valor) {
+        if (valor == null) {
+            return null;
+        }
+        return valor instanceof java.sql.Timestamp timestamp ? timestamp.toLocalDateTime() : (LocalDateTime) valor;
     }
 }

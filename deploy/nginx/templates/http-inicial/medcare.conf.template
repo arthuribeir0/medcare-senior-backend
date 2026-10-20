@@ -1,8 +1,8 @@
 # Variante INICIAL, só HTTP: serve o desafio do Let's Encrypt (webroot) para emitir o certificado de ${DOMINIO}.
 # Não faz proxy para a API (nada trafega em texto claro). Depois de emitir, troque NGINX_MODO para https.
 server {
-    listen 80;
-    listen [::]:80;
+    listen 80 default_server;
+    listen [::]:80 default_server;
     server_name ${DOMINIO};
     include /etc/nginx/snippets/seguranca.conf;
 

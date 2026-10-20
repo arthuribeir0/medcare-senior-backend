@@ -8,10 +8,17 @@ spring:
     exclude:
       - org.springframework.boot.security.autoconfigure.UserDetailsServiceAutoConfiguration
   datasource:
-    url: jdbc:postgresql://localhost:5432/${POSTGRES_DB:medcare_db}
+    # Host e porta do banco: localhost:5432 no desenvolvimento; no conteiner de producao, o servico "postgres"
+    # connectTimeout (s): abrir conexao com o banco inacessivel falha rapido em vez de esperar o TCP
+    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB:medcare_db}?connectTimeout=5
     username: ${POSTGRES_USER:medcare_admin}
     password: ${POSTGRES_PASSWORD:medcare_pass}
     driver-class-name: org.postgresql.Driver
+    hikari:
+      # Banco fora do ar: pegar conexao do pool desiste em 5 s e a validacao em 3 s (a saude responde 503 em
+      # segundos, em vez de prender a requisicao). Nao limita o tempo das consultas.
+      connection-timeout: 5000
+      validation-timeout: 3000
   jpa:
     hibernate:
       ddl-auto: validate
@@ -82,6 +89,23 @@ app:
     # Swagger UI e /v3/api-docs. Desligado por padrao (fail closed); para ligar, defina DOCS_ENABLED=true.
     # Quando false, as rotas tambem continuam negadas no SecurityConfig.
     enabled: ${DOCS_ENABLED:false}
+management:
+  # Fail closed: nenhum endpoint do actuator, exceto a saude, so leitura e sem detalhes ({"status":"UP"} ou 503 se o
+  # banco cair). Usada pelo HEALTHCHECK do conteiner; liberada sem token so em GET /actuator/health no SecurityConfig.
+  endpoints:
+    access:
+      default: none
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      access: read-only
+      show-details: never
+      show-components: never
+      # Sem os grupos liveness/readiness (nao usados fora do Kubernetes): a resposta fica so com o status
+      probes:
+        enabled: false
 springdoc:
   api-docs:
     enabled: ${app.docs.enabled}

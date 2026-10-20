@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [main]
 
+# Padrão mínimo; só o job da imagem ganha permissão de escrever pacotes
+permissions:
+  contents: read
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -53,3 +57,53 @@ jobs:
           name: jacoco-report
           path: target/site/jacoco/
           if-no-files-found: ignore
+
+  # Imagem de produção no GitHub Container Registry: só depois dos testes, só em push no main do repositório
+  # original (nunca em pull request nem em fork). Multiarquitetura para VM AMD (amd64) ou Ampere (arm64).
+  imagem:
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && github.repository == 'arthuribeir0/medcare-senior-backend'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Nome e tags da imagem
+        id: imagem
+        run: |
+          nome="ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/medcare-senior-backend"
+          echo "tags=${nome}:${GITHUB_SHA::7},${nome}:latest" >> "$GITHUB_OUTPUT"
+
+      - name: QEMU (build arm64 no runner amd64)
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+
+      - name: Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login no ghcr.io
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build e push (linux/amd64 e linux/arm64)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          pull: true
+          tags: ${{ steps.imagem.outputs.tags }}
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.title=medcare-senior-backend
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

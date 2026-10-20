@@ -71,6 +71,9 @@ services:
     ports:
       - "80:80"
       - "443:443"
+    # conf.d vazio: só a configuração gerada dos templates (sem o default.conf da imagem, que responderia no lugar)
+    tmpfs:
+      - /etc/nginx/conf.d
     volumes:
       # NGINX_MODO=http-inicial para emitir o certificado; depois https (ver docs/implantacao.md)
       - ./nginx/templates/${NGINX_MODO:-https}:/etc/nginx/templates:ro

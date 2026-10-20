@@ -33,6 +33,9 @@ public record DoseResponseDTO(
         @Schema(example = "COMPRIMIDO")
         String tipo,
 
+        @Schema(description = "Cor do medicamento como foi cadastrada (null se não tem)", example = "Branco", nullable = true)
+        String cor,
+
         @Schema(example = "1000")
         Long tratamentoId,
 
@@ -75,7 +78,7 @@ public record DoseResponseDTO(
         DoseDetalhada detalhe = avaliada.detalhe();
         JanelaDose janela = avaliada.janela();
         return new DoseResponseDTO(detalhe.dose().getId(), detalhe.idosoId(), detalhe.idosoNome(), detalhe.medicamentoId(),
-                detalhe.medicamentoNome(), detalhe.dosagem(), detalhe.tipo(), detalhe.dose().getTratamentoId(),
+                detalhe.medicamentoNome(), detalhe.dosagem(), detalhe.tipo(), detalhe.cor(), detalhe.dose().getTratamentoId(),
                 detalhe.dose().getHorarioProgramado(), detalhe.dose().getHoraConfirmacao(), detalhe.dose().getStatus(),
                 avaliada.statusExibicao(), avaliada.toleranciaMinutos(),
                 new JanelaDTO(janela.abreEm(), janela.avisoEm(), janela.encerraEm()), avaliada.confirmabilidade());

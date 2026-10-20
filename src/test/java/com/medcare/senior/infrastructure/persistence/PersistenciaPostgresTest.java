@@ -760,6 +760,36 @@ class PersistenciaPostgresTest {
     }
 
     @Test
+    void uniqueDaTabelaDeEventoImpedeDoisEventosParaAMesmaDose() {
+        DoseEntity dose = dose(tratamento(medicamento(idoso(cuidador()), null), null), AGORA.minusHours(1),
+                StatusDose.PENDENTE);
+        eventoAdapter.criarSeAusente(dose.getId()).orElseThrow();
+
+        // Sem o ON CONFLICT do adapter, o banco recusa o segundo evento da mesma dose
+        assertThatThrownBy(() -> em.getEntityManager()
+                .createNativeQuery("INSERT INTO evento_notificacao (status, tentativas, dose_id) VALUES ('PENDENTE', 0, ?1)")
+                .setParameter(1, dose.getId())
+                .executeUpdate())
+                .hasMessageContaining("uk_evento_notificacao_dose");
+    }
+
+    @Test
+    void apagarADoseApagaOEventoPorOnDeleteCascade() {
+        TratamentoEntity tratamento = tratamento(medicamento(idoso(cuidador()), null), null);
+        DoseEntity dose = dose(tratamento, AGORA.minusHours(1), StatusDose.PENDENTE);
+        Long evento = eventoAdapter.criarSeAusente(dose.getId()).orElseThrow();
+        DoseEntity outra = dose(tratamento, AGORA.minusHours(2), StatusDose.PENDENTE);
+        Long eventoDaOutra = eventoAdapter.criarSeAusente(outra.getId()).orElseThrow();
+
+        em.getEntityManager().createNativeQuery("DELETE FROM dose WHERE id = ?1")
+                .setParameter(1, dose.getId())
+                .executeUpdate();
+
+        assertThat(contar("evento_notificacao", evento)).isZero();
+        assertThat(contar("evento_notificacao", eventoDaOutra)).isEqualTo(1);
+    }
+
+    @Test
     void exclusaoDeContaComEventosPendenteEnviadoEFalhaApagaOsEventosDoCuidador() {
         CuidadorEntity cuidador = cuidador();
         TratamentoEntity tratamento = tratamento(medicamento(idoso(cuidador), null), null);
@@ -821,6 +851,31 @@ class PersistenciaPostgresTest {
 
         assertThatThrownBy(() -> configuracaoAdapter.salvarToleranciaMinutos(cuidador.getId(), 121))
                 .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    @Test
+    void checkDaConfiguracaoAceitaOsLimitesInclusivos5e120() {
+        CuidadorEntity comCinco = cuidador();
+        CuidadorEntity comCentoEVinte = cuidador();
+
+        configuracaoAdapter.salvarToleranciaMinutos(comCinco.getId(), 5);
+        configuracaoAdapter.salvarToleranciaMinutos(comCentoEVinte.getId(), 120);
+
+        assertThat(configuracaoAdapter.findToleranciaMinutos(comCinco.getId())).contains(5);
+        assertThat(configuracaoAdapter.findToleranciaMinutos(comCentoEVinte.getId())).contains(120);
+    }
+
+    @Test
+    void apagarOCuidadorApagaAConfiguracaoPorOnDeleteCascade() {
+        CuidadorEntity cuidador = cuidador();
+        configuracaoAdapter.salvarToleranciaMinutos(cuidador.getId(), 15);
+
+        // Direto no banco, sem o use case: a FK com ON DELETE CASCADE garante a limpeza
+        em.getEntityManager().createNativeQuery("DELETE FROM cuidador WHERE id = ?1")
+                .setParameter(1, cuidador.getId())
+                .executeUpdate();
+
+        assertThat(contarPorCuidador("configuracao_alerta", cuidador.getId())).isZero();
     }
 
     @Test

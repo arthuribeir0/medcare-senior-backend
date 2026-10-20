@@ -95,7 +95,7 @@ public class DoseRepositoryAdapter implements DoseRepositoryPort {
                 .status(linha.status())
                 .build();
         return new DoseDetalhada(dose, linha.idosoId(), linha.idosoNome(), linha.medicamentoId(), linha.medicamentoNome(),
-                linha.dosagem(), linha.tipo(), linha.toleranciaMinutosDoCuidador());
+                linha.dosagem(), linha.tipo(), linha.toleranciaMinutosDoCuidador(), linha.cor());
     }
 
     @Override

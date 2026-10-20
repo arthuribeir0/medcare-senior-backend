@@ -65,7 +65,7 @@ public interface DoseRepository extends JpaRepository<DoseEntity, Long> {
     // Intervalo semiaberto [inicio, fim): um dia é [data 00:00, data+1 00:00).
     @Query("SELECT new com.medcare.senior.infrastructure.persistence.projection.DoseDetalhadaProjection("
             + "d.id, t.id, d.horarioProgramado, d.horaConfirmacao, d.status, i.id, i.nome, m.id, m.nome, m.dosagem, m.tipo, "
-            + "c.toleranciaMinutos) "
+            + "c.toleranciaMinutos, m.cor) "
             + "FROM DoseEntity d JOIN d.tratamento t JOIN t.medicamento m JOIN m.idoso i "
             + "LEFT JOIN ConfiguracaoAlertaEntity c ON c.cuidadorId = i.cuidador.id "
             + "WHERE i.id = :idosoId AND d.horarioProgramado >= :inicio AND d.horarioProgramado < :fim "
@@ -77,7 +77,7 @@ public interface DoseRepository extends JpaRepository<DoseEntity, Long> {
 
     @Query("SELECT new com.medcare.senior.infrastructure.persistence.projection.DoseDetalhadaProjection("
             + "d.id, t.id, d.horarioProgramado, d.horaConfirmacao, d.status, i.id, i.nome, m.id, m.nome, m.dosagem, m.tipo, "
-            + "c.toleranciaMinutos) "
+            + "c.toleranciaMinutos, m.cor) "
             + "FROM DoseEntity d JOIN d.tratamento t JOIN t.medicamento m JOIN m.idoso i "
             + "LEFT JOIN ConfiguracaoAlertaEntity c ON c.cuidadorId = i.cuidador.id "
             + "WHERE d.id = :doseId AND i.id = :idosoId AND t.removidoEm IS NULL AND m.removidoEm IS NULL")
@@ -92,7 +92,7 @@ public interface DoseRepository extends JpaRepository<DoseEntity, Long> {
     // internos: dose anonimizada não tem dono e fica de fora. Intervalo semiaberto [inicio, fim).
     @Query(value = "SELECT new com.medcare.senior.infrastructure.persistence.projection.DoseDetalhadaProjection("
             + "d.id, t.id, d.horarioProgramado, d.horaConfirmacao, d.status, i.id, i.nome, m.id, m.nome, m.dosagem, m.tipo, "
-            + "c.toleranciaMinutos) "
+            + "c.toleranciaMinutos, m.cor) "
             + "FROM DoseEntity d JOIN d.tratamento t JOIN t.medicamento m JOIN m.idoso i "
             + "LEFT JOIN ConfiguracaoAlertaEntity c ON c.cuidadorId = i.cuidador.id "
             + "WHERE i.cuidador.id = :cuidadorId "

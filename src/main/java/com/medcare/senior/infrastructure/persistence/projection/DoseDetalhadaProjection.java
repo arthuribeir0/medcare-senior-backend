@@ -6,7 +6,7 @@ import java.time.LocalDateTime;
 
 /**
  * Linha das consultas de doses do app (construtor JPQL): a dose, o idoso, o medicamento e a tolerância própria do
- * cuidador (nula = padrão) em uma única consulta.
+ * cuidador (nula = padrão) em uma única consulta. A cor é a do medicamento (opcional).
  */
 public record DoseDetalhadaProjection(Long doseId,
                                       Long tratamentoId,
@@ -19,5 +19,6 @@ public record DoseDetalhadaProjection(Long doseId,
                                       String medicamentoNome,
                                       String dosagem,
                                       String tipo,
-                                      Integer toleranciaMinutosDoCuidador) {
+                                      Integer toleranciaMinutosDoCuidador,
+                                      String cor) {
 }

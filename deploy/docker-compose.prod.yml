@@ -1,0 +1,105 @@
+# Produção do MedCare Sênior numa VM (ex.: Oracle Cloud Always Free). Roteiro completo: docs/implantacao.md.
+#
+#   cd deploy
+#   cp .env.prod.example .env.prod   # e preencha (nunca versione o .env.prod)
+#   docker compose -f docker-compose.prod.yml --env-file .env.prod up -d
+#
+# Redes: "banco" é interna (sem saída nem entrada de fora): só o backend enxerga o PostgreSQL, que não publica porta
+# no host. "borda" liga o nginx ao backend e dá ao backend saída para a internet (Firebase Cloud Messaging).
+name: medcare
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?defina POSTGRES_USER no .env.prod}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD no .env.prod}
+      POSTGRES_DB: ${POSTGRES_DB:?defina POSTGRES_DB no .env.prod}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - banco
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    # Sem "ports": o banco não fica acessível pela internet nem pelo host
+
+  backend:
+    # Publicada pela integração contínua no main (linux/amd64 e linux/arm64)
+    image: ghcr.io/arthuribeir0/medcare-senior-backend:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      JWT_SECRET: ${JWT_SECRET:?defina JWT_SECRET no .env.prod}
+      APP_TIMEZONE: ${APP_TIMEZONE:-America/Sao_Paulo}
+      JOBS_ENABLED: ${JOBS_ENABLED:-true}
+      FCM_ENABLED: ${FCM_ENABLED:-false}
+      FCM_DRY_RUN: ${FCM_DRY_RUN:-false}
+      # Caminho DENTRO do contêiner; o arquivo vem do volume somente leitura abaixo
+      FIREBASE_CREDENTIALS_PATH: /run/secrets/firebase-adminsdk.json
+      # Heap: 75% da memória do contêiner (ver docs/capacidade.md para a VM de 1 GB)
+      JAVA_TOOL_OPTIONS: ${JAVA_TOOL_OPTIONS:--XX:MaxRAMPercentage=75 -XX:+ExitOnOutOfMemoryError}
+    volumes:
+      # Pasta com a credencial do Firebase, fora do repositório e só leitura (crie deploy/segredos/ na VM com o arquivo
+      # firebase-adminsdk.json; ver docs/implantacao.md). Pasta inteira: arquivo ausente não vira diretório vazio.
+      - ./segredos:/run/secrets:ro
+    networks:
+      - banco
+      - borda
+    # Sem "ports": só o nginx fala com o backend (porta 8080 na rede "borda")
+    mem_limit: ${BACKEND_MEM_LIMIT:-640m}
+
+  nginx:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    environment:
+      DOMINIO: ${DOMINIO:?defina DOMINIO no .env.prod}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      # NGINX_MODO=http-inicial para emitir o certificado; depois https (ver docs/implantacao.md)
+      - ./nginx/templates/${NGINX_MODO:-https}:/etc/nginx/templates:ro
+      - ./nginx/seguranca.conf:/etc/nginx/snippets/seguranca.conf:ro
+      - ./certbot/www:/var/www/certbot:ro
+      - ./certbot/conf:/etc/letsencrypt:ro
+    networks:
+      - borda
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1/nginx-saude || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # Emissão e renovação do certificado Let's Encrypt pelo desafio webroot (só sob demanda):
+  #   docker compose -f docker-compose.prod.yml --env-file .env.prod --profile certbot run --rm certbot certonly ...
+  certbot:
+    image: certbot/certbot:v3.0.1
+    profiles: ["certbot"]
+    volumes:
+      - ./certbot/www:/var/www/certbot
+      - ./certbot/conf:/etc/letsencrypt
+    networks:
+      - borda
+
+volumes:
+  pgdata:
+
+networks:
+  banco:
+    internal: true
+  borda:

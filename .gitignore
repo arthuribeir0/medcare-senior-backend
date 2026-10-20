@@ -34,6 +34,11 @@ build/
 
 .env
 
+### Produção (só na VM; o exemplo deploy/.env.prod.example é versionado) ###
+deploy/.env.prod
+deploy/segredos/
+deploy/certbot/
+
 ### Credenciais do Firebase / Google Cloud (nunca versionar) ###
 *firebase*.json
 *service-account*.json

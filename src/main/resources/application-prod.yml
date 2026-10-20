@@ -1,0 +1,12 @@
+# Perfil de producao (SPRING_PROFILES_ACTIVE=prod), atras do nginx do deploy/docker-compose.prod.yml.
+server:
+  # O IP do cliente vem do X-Forwarded-For que o nginx grava (so de proxy em rede interna, como o conteiner do nginx).
+  # Sem isto, todo aparelho chegaria com o IP do nginx e dividiria o limite de tentativas do pareamento.
+  forward-headers-strategy: native
+spring:
+  jpa:
+    show-sql: false
+app:
+  docs:
+    # Swagger desligado em producao, mesmo se DOCS_ENABLED vier ligado por engano
+    enabled: false

@@ -1,6 +1,7 @@
 package com.medcare.senior.infrastructure.persistence.repository;
 
 import com.medcare.senior.domain.dose.StatusDose;
+import com.medcare.senior.domain.relatorio.ContagemDeDoses;
 import com.medcare.senior.infrastructure.persistence.entity.DoseEntity;
 import com.medcare.senior.infrastructure.persistence.projection.DoseDetalhadaProjection;
 import com.medcare.senior.infrastructure.persistence.projection.DoseParaAvisoView;
@@ -114,6 +115,29 @@ public interface DoseRepository extends JpaRepository<DoseEntity, Long> {
                                                 @Param("inicio") LocalDateTime inicio,
                                                 @Param("fim") LocalDateTime fim,
                                                 Pageable pagina);
+
+    // Relatório de adesão (UC-012): contagem por medicamento e status no período, feita no banco. Como o histórico,
+    // sem filtro de remoção (RN-008); JOINs internos: dose anonimizada fica de fora. Intervalo semiaberto.
+    @Query("SELECT new com.medcare.senior.domain.relatorio.ContagemDeDoses(m.id, m.nome, m.dosagem, d.status, COUNT(d)) "
+            + "FROM DoseEntity d JOIN d.tratamento t JOIN t.medicamento m JOIN m.idoso i "
+            + "WHERE i.id = :idosoId AND d.horarioProgramado >= :inicio AND d.horarioProgramado < :fim "
+            + "GROUP BY m.id, m.nome, m.dosagem, d.status")
+    List<ContagemDeDoses> contarPorMedicamentoEStatus(@Param("idosoId") Long idosoId,
+                                                      @Param("inicio") LocalDateTime inicio,
+                                                      @Param("fim") LocalDateTime fim);
+
+    // Linhas do relatório de adesão, em lotes (Pageable sem contagem), da mais antiga para a mais nova
+    @Query("SELECT new com.medcare.senior.infrastructure.persistence.projection.DoseDetalhadaProjection("
+            + "d.id, t.id, d.horarioProgramado, d.horaConfirmacao, d.status, i.id, i.nome, m.id, m.nome, m.dosagem, m.tipo, "
+            + "c.toleranciaMinutos, m.cor) "
+            + "FROM DoseEntity d JOIN d.tratamento t JOIN t.medicamento m JOIN m.idoso i "
+            + "LEFT JOIN ConfiguracaoAlertaEntity c ON c.cuidadorId = i.cuidador.id "
+            + "WHERE i.id = :idosoId AND d.horarioProgramado >= :inicio AND d.horarioProgramado < :fim "
+            + "ORDER BY d.horarioProgramado, d.id")
+    List<DoseDetalhadaProjection> findDoIdosoParaRelatorio(@Param("idosoId") Long idosoId,
+                                                           @Param("inicio") LocalDateTime inicio,
+                                                           @Param("fim") LocalDateTime fim,
+                                                           Pageable pagina);
 
     // Transição atômica: só muda se a dose ainda estiver no status esperado (PENDENTE). Se uma confirmação
     // concorrente chegou antes, nenhuma linha muda e o retorno é 0.

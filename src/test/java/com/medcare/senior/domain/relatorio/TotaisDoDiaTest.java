@@ -40,4 +40,13 @@ class TotaisDoDiaTest {
         assertThat(TotaisDoDia.de(List.of(NAO_TOMADA)).aderenciaPercentual()).isZero();
         assertThat(TotaisDoDia.de(List.of(TOMADA, PENDENTE)).aderenciaPercentual()).isEqualTo(100.0);
     }
+
+    @Test
+    void contagensDaoOMesmoResultadoQueAListaDeStatus() {
+        assertThat(TotaisDoDia.deContagens(1, 1, 1, 1))
+                .isEqualTo(TotaisDoDia.de(List.of(TOMADA, CONFIRMADA_COM_ATRASO, NAO_TOMADA, PENDENTE)));
+        assertThat(TotaisDoDia.deContagens(7, 0, 1, 0).aderenciaPercentual()).isEqualTo(87.5);
+        assertThat(TotaisDoDia.deContagens(2, 0, 1, 0).aderenciaPercentual()).isEqualTo(66.7);
+        assertThat(TotaisDoDia.deContagens(0, 0, 0, 3)).isEqualTo(new TotaisDoDia(3, 0, 0, 0, 3, null));
+    }
 }

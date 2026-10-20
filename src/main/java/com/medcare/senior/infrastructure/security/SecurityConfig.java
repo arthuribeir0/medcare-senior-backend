@@ -71,6 +71,7 @@ public class SecurityConfig {
                             .requestMatchers(HttpMethod.GET, "/api/configuracoes/tolerancia").hasRole(Role.CUIDADOR.name())
                             .requestMatchers(HttpMethod.PUT, "/api/configuracoes/tolerancia").hasRole(Role.CUIDADOR.name())
                             .requestMatchers(HttpMethod.GET, "/api/relatorios/diario").hasRole(Role.CUIDADOR.name())
+                            .requestMatchers(HttpMethod.GET, "/api/relatorios/pdf").hasRole(Role.CUIDADOR.name())
                             .requestMatchers(HttpMethod.GET, "/api/historico").hasRole(Role.CUIDADOR.name())
                             // Mensagens (UC-010): os dois papéis; de quem é a conversa fica no AcessoAConversaService
                             .requestMatchers(HttpMethod.POST, "/api/mensagens").hasAnyRole(Role.CUIDADOR.name(), Role.IDOSO.name())

@@ -2,6 +2,7 @@ package com.medcare.senior.application.usecase;
 
 import com.medcare.senior.domain.dose.DoseRepositoryPort;
 import com.medcare.senior.domain.exception.SessaoInvalidaException;
+import com.medcare.senior.domain.mensagem.MensagemRepositoryPort;
 import com.medcare.senior.domain.notificacao.EventoNotificacaoRepositoryPort;
 import com.medcare.senior.domain.medicamento.MedicamentoRepositoryPort;
 import com.medcare.senior.domain.tratamento.TratamentoRepositoryPort;
@@ -46,6 +47,9 @@ class ExcluirContaUseCaseTest {
     @Mock
     private EventoNotificacaoRepositoryPort eventoNotificacaoRepository;
 
+    @Mock
+    private MensagemRepositoryPort mensagemRepository;
+
     @InjectMocks
     private ExcluirContaUseCase useCase;
 
@@ -56,7 +60,7 @@ class ExcluirContaUseCaseTest {
         useCase.executar(CUIDADOR_ID);
 
         InOrder ordem = inOrder(codigoVinculoRepository, eventoNotificacaoRepository, doseRepository,
-                tratamentoRepository, medicamentoRepository, idosoRepository, cuidadorRepository);
+                tratamentoRepository, medicamentoRepository, mensagemRepository, idosoRepository, cuidadorRepository);
         ordem.verify(cuidadorRepository).existsById(CUIDADOR_ID);
         ordem.verify(codigoVinculoRepository).deleteAllByCuidadorId(CUIDADOR_ID);
         // Eventos de notificação antes das doses (são achados pela dose -> tratamento -> ... -> cuidador)
@@ -65,6 +69,8 @@ class ExcluirContaUseCaseTest {
         ordem.verify(doseRepository).deletePendentesByCuidadorId(CUIDADOR_ID);
         ordem.verify(tratamentoRepository).deleteAllByCuidadorId(CUIDADOR_ID);
         ordem.verify(medicamentoRepository).deleteAllByCuidadorId(CUIDADOR_ID);
+        // Mensagens antes dos idosos (FK mensagem.idoso_id)
+        ordem.verify(mensagemRepository).deleteAllByCuidadorId(CUIDADOR_ID);
         ordem.verify(idosoRepository).deleteAllByCuidadorId(CUIDADOR_ID);
         ordem.verify(cuidadorRepository).deleteById(CUIDADOR_ID);
         ordem.verifyNoMoreInteractions();
@@ -79,6 +85,6 @@ class ExcluirContaUseCaseTest {
                 .hasMessage("Sessão inválida. Entre na sua conta de novo.");
 
         verifyNoInteractions(codigoVinculoRepository, eventoNotificacaoRepository, doseRepository,
-                tratamentoRepository, medicamentoRepository, idosoRepository);
+                tratamentoRepository, medicamentoRepository, mensagemRepository, idosoRepository);
     }
 }

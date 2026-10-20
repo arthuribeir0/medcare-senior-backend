@@ -35,11 +35,20 @@ Exposta em `DELETE /api/cuidadores/me` (somente o próprio cuidador, papel CUIDA
 | Medicamentos dos idosos, **inclusive os removidos logicamente** | Apagados |
 | Tratamentos dos medicamentos, **inclusive os removidos logicamente** | Apagados |
 | Códigos de vínculo | Apagados |
+| Mensagens das conversas com os idosos do cuidador | Apagadas |
 | Doses PENDENTES (passadas e futuras) | Apagadas |
 | Doses registradas (TOMADA, NAO_TOMADA, CONFIRMADA_COM_ATRASO) | **Anonimizadas**: mantidas com `tratamento_id = NULL` |
 
-Ordem de remoção (respeita as chaves estrangeiras): códigos de vínculo → doses pendentes → tratamentos →
-medicamentos → idosos → cuidador.
+Ordem de remoção (respeita as chaves estrangeiras): códigos de vínculo → eventos de notificação → doses pendentes →
+tratamentos → medicamentos → mensagens → idosos → cuidador. A chave estrangeira `mensagem.idoso_id` também tem
+`ON DELETE CASCADE`, como garantia.
+
+## Mensagens
+
+O conteúdo das mensagens entre cuidador e idoso (`mensagem.conteudo`) é dado pessoal: nunca é escrito em log e só é
+devolvido aos dois lados da conversa (o cuidador dono do idoso e o próprio idoso). Na exclusão da conta, as mensagens
+de todos os idosos do cuidador são apagadas fisicamente (coberto por
+`MensagemPostgresTest.exclusaoDeContaApagaAsMensagensDosIdososDoCuidadorSemQuebrarPorFk`).
 
 ### Por que as doses registradas são anonimizadas, e não apagadas
 

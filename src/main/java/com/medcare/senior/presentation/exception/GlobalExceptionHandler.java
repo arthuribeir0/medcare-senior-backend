@@ -11,6 +11,7 @@ import com.medcare.senior.domain.exception.RecursoNaoEncontradoException;
 import com.medcare.senior.domain.exception.SenhaFracaException;
 import com.medcare.senior.domain.configuracao.ToleranciaInvalidaException;
 import com.medcare.senior.domain.exception.ParametroInvalidoException;
+import com.medcare.senior.domain.exception.PeriodoSemRegistrosException;
 import com.medcare.senior.domain.exception.SessaoInvalidaException;
 import com.medcare.senior.domain.exception.TokenDispositivoInvalidoException;
 import com.medcare.senior.domain.medicamento.DadosObrigatoriosMedicamentoException;
@@ -98,6 +99,12 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(RecursoNaoEncontradoException.class)
     public ResponseEntity<ErroResponse> handleRecursoNaoEncontrado(RecursoNaoEncontradoException ex) {
         return construirResposta(HttpStatus.NOT_FOUND, CodigoErro.RECURSO_NAO_ENCONTRADO, ex.getMessage(), List.of());
+    }
+
+    @ExceptionHandler(PeriodoSemRegistrosException.class)
+    public ResponseEntity<ErroResponse> handlePeriodoSemRegistros(PeriodoSemRegistrosException ex) {
+        return construirResposta(HttpStatus.UNPROCESSABLE_CONTENT, CodigoErro.PERIODO_SEM_REGISTROS, ex.getMessage(),
+                List.of());
     }
 
     @ExceptionHandler(AcessoNegadoException.class)

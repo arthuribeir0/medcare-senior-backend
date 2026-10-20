@@ -39,6 +39,9 @@
 		<!-- Netty: só o firebase-admin usa (o webmvc roda no Tomcat). O BOM do Spring Boot rebaixaria para a 4.2.15;
 		     fica na versão que o firebase-admin declara, a mesma para todos os módulos io.netty (mesma linha 4.2) -->
 		<netty.version>4.2.18.Final</netty.version>
+		<!-- PDF do histórico (UC-012). LGPL 2.1 / MPL 2.0. A 2.0.x é a última linha compilada para Java 17 (a 2.1+ exige
+		     Java 21); sem advisory conhecida na OSV. Tem o próprio extrator de texto, usado nos testes. -->
+		<openpdf.version>2.0.5</openpdf.version>
 		<sonar-maven-plugin.version>5.8.0.7211</sonar-maven-plugin.version>
 		<!-- RNF-08: cobertura mínima de linhas das camadas domain e application -->
 		<jacoco.cobertura-minima>0.60</jacoco.cobertura-minima>
@@ -111,6 +114,11 @@
 			<groupId>com.google.firebase</groupId>
 			<artifactId>firebase-admin</artifactId>
 			<version>${firebase-admin.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>com.github.librepdf</groupId>
+			<artifactId>openpdf</artifactId>
+			<version>${openpdf.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>org.flywaydb</groupId>

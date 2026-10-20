@@ -19,16 +19,21 @@ public record TotaisDoDia(int total,
                           Double aderenciaPercentual) {
 
     public static TotaisDoDia de(Collection<StatusDose> status) {
-        int tomadas = contar(status, StatusDose.TOMADA);
-        int comAtraso = contar(status, StatusDose.CONFIRMADA_COM_ATRASO);
-        int naoTomadas = contar(status, StatusDose.NAO_TOMADA);
-        int pendentes = contar(status, StatusDose.PENDENTE);
-        int encerradas = status.size() - pendentes;
+        return deContagens(contar(status, StatusDose.TOMADA), contar(status, StatusDose.CONFIRMADA_COM_ATRASO),
+                contar(status, StatusDose.NAO_TOMADA), contar(status, StatusDose.PENDENTE));
+    }
+
+    /**
+     * Mesma fórmula a partir das contagens por status (ex.: o relatório de um período, contado no banco).
+     */
+    public static TotaisDoDia deContagens(int tomadas, int comAtraso, int naoTomadas, int pendentes) {
+        int total = tomadas + comAtraso + naoTomadas + pendentes;
+        int encerradas = total - pendentes;
         Double aderencia = encerradas == 0 ? null : BigDecimal.valueOf(tomadas + comAtraso)
                 .multiply(BigDecimal.valueOf(100))
                 .divide(BigDecimal.valueOf(encerradas), 1, RoundingMode.HALF_UP)
                 .doubleValue();
-        return new TotaisDoDia(status.size(), tomadas, comAtraso, naoTomadas, pendentes, aderencia);
+        return new TotaisDoDia(total, tomadas, comAtraso, naoTomadas, pendentes, aderencia);
     }
 
     private static int contar(Collection<StatusDose> status, StatusDose alvo) {

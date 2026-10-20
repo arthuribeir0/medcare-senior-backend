@@ -7,6 +7,7 @@ import com.medcare.senior.domain.dose.DoseRepositoryPort;
 import com.medcare.senior.domain.dose.StatusDose;
 import com.medcare.senior.domain.historico.FiltroHistorico;
 import com.medcare.senior.domain.historico.Pagina;
+import com.medcare.senior.domain.relatorio.ContagemDeDoses;
 import com.medcare.senior.infrastructure.persistence.mapper.DoseMapper;
 import com.medcare.senior.infrastructure.persistence.projection.DoseDetalhadaProjection;
 import com.medcare.senior.infrastructure.persistence.repository.DoseRepository;
@@ -22,6 +23,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Consumer;
 
 @Component
 @RequiredArgsConstructor
@@ -79,6 +81,26 @@ public class DoseRepositoryAdapter implements DoseRepositoryPort {
                 filtro.medicamentoId(), filtro.status(), inicio, fim, PageRequest.of(filtro.pagina(), filtro.tamanho()));
         return new Pagina<>(pagina.getContent().stream().map(DoseRepositoryAdapter::toDetalhada).toList(),
                 filtro.pagina(), filtro.tamanho(), pagina.getTotalElements());
+    }
+
+    @Override
+    public List<ContagemDeDoses> contarPorMedicamentoEStatus(Long idosoId, LocalDateTime inicio, LocalDateTime fim) {
+        return doseRepository.contarPorMedicamentoEStatus(idosoId, inicio, fim);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public void percorrerDoIdoso(Long idosoId, LocalDateTime inicio, LocalDateTime fim, int tamanhoDoLote,
+                                 Consumer<List<DoseDetalhada>> lote) {
+        // Uma transação só leitura para todo o percurso: os lotes enxergam o mesmo estado do banco
+        int pagina = 0;
+        List<DoseDetalhadaProjection> linhas;
+        do {
+            linhas = doseRepository.findDoIdosoParaRelatorio(idosoId, inicio, fim, PageRequest.of(pagina++, tamanhoDoLote));
+            if (!linhas.isEmpty()) {
+                lote.accept(linhas.stream().map(DoseRepositoryAdapter::toDetalhada).toList());
+            }
+        } while (linhas.size() == tamanhoDoLote);
     }
 
     @Override

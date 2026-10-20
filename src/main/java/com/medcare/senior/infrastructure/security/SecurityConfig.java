@@ -34,7 +34,8 @@ public class SecurityConfig {
      *   [ ] Adicione aqui uma regra explícita .requestMatchers(...).hasRole(...) ou .permitAll().
      *       Não confie na regra padrão, que agora bloqueia por padrão.
      *   [ ] Declare a regra ANTES de anyRequest(): as regras são avaliadas em ordem e a primeira que casar vence.
-     *   [ ] Use hasRole(CUIDADOR) / hasRole(IDOSO) — nunca apenas authenticated(), que aceita qualquer papel.
+     *   [ ] Use hasRole(CUIDADOR) / hasRole(IDOSO) — nunca apenas authenticated(), que aceita qualquer papel. Rota
+     *       dos dois papéis: hasAnyRole com os dois nomes, e o use case decide o acesso de cada papel.
      *   [ ] permitAll() só para pontos de entrada públicos (cadastro, login, pareamento). Endpoint público que
      *       aceita tentativas (códigos, senhas) deve ter rate limiting.
      *   [ ] No controller, use @AuthenticationPrincipal AuthenticatedUser e cuidadorId()/idosoId(),
@@ -68,7 +69,12 @@ public class SecurityConfig {
                             .requestMatchers(HttpMethod.GET, "/api/configuracoes/tolerancia").hasRole(Role.CUIDADOR.name())
                             .requestMatchers(HttpMethod.PUT, "/api/configuracoes/tolerancia").hasRole(Role.CUIDADOR.name())
                             .requestMatchers(HttpMethod.GET, "/api/relatorios/diario").hasRole(Role.CUIDADOR.name())
-                            .requestMatchers(HttpMethod.GET, "/api/historico").hasRole(Role.CUIDADOR.name());
+                            .requestMatchers(HttpMethod.GET, "/api/historico").hasRole(Role.CUIDADOR.name())
+                            // Mensagens (UC-010): os dois papéis; de quem é a conversa fica no AcessoAConversaService
+                            .requestMatchers(HttpMethod.POST, "/api/mensagens").hasAnyRole(Role.CUIDADOR.name(), Role.IDOSO.name())
+                            .requestMatchers(HttpMethod.GET, "/api/mensagens", "/api/mensagens/conversas", "/api/mensagens/nao-lidas")
+                            .hasAnyRole(Role.CUIDADOR.name(), Role.IDOSO.name())
+                            .requestMatchers(HttpMethod.PUT, "/api/mensagens/lidas").hasAnyRole(Role.CUIDADOR.name(), Role.IDOSO.name());
 
                     // Documentação OpenAPI/Swagger: liberada SOMENTE com app.docs.enabled=true (DOCS_ENABLED).
                     // Desligada, essas rotas caem no denyAll() abaixo, como qualquer outra rota sem regra.

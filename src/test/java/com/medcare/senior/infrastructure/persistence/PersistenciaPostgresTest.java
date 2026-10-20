@@ -24,6 +24,7 @@ import com.medcare.senior.infrastructure.persistence.adapter.DoseRepositoryAdapt
 import com.medcare.senior.infrastructure.persistence.adapter.EventoNotificacaoRepositoryAdapter;
 import com.medcare.senior.infrastructure.persistence.adapter.IdosoRepositoryAdapter;
 import com.medcare.senior.infrastructure.persistence.adapter.MedicamentoRepositoryAdapter;
+import com.medcare.senior.infrastructure.persistence.adapter.MensagemRepositoryAdapter;
 import com.medcare.senior.infrastructure.persistence.adapter.TratamentoRepositoryAdapter;
 import com.medcare.senior.infrastructure.persistence.entity.CodigoVinculoEntity;
 import com.medcare.senior.infrastructure.persistence.entity.CuidadorEntity;
@@ -71,6 +72,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
         CuidadorRepositoryAdapter.class, IdosoRepositoryAdapter.class, MedicamentoRepositoryAdapter.class,
         TratamentoRepositoryAdapter.class, DoseRepositoryAdapter.class, CodigoVinculoRepositoryAdapter.class,
         EventoNotificacaoRepositoryAdapter.class, ConfiguracaoAlertaRepositoryAdapter.class,
+        MensagemRepositoryAdapter.class,
         CuidadorMapper.class, IdosoMapper.class, MedicamentoMapper.class, TratamentoMapper.class, DoseMapper.class,
         CodigoVinculoMapper.class,
         ExcluirContaUseCase.class, RemoverMedicamentoUseCase.class, EditarTratamentoUseCase.class,

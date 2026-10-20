@@ -2,6 +2,7 @@ package com.medcare.senior.application.usecase;
 
 import com.medcare.senior.domain.dose.DoseRepositoryPort;
 import com.medcare.senior.domain.exception.SessaoInvalidaException;
+import com.medcare.senior.domain.mensagem.MensagemRepositoryPort;
 import com.medcare.senior.domain.notificacao.EventoNotificacaoRepositoryPort;
 import com.medcare.senior.domain.medicamento.MedicamentoRepositoryPort;
 import com.medcare.senior.domain.tratamento.TratamentoRepositoryPort;
@@ -19,13 +20,15 @@ import org.springframework.transaction.annotation.Transactional;
  *  - Dados pessoais são REMOVIDOS fisicamente: o cuidador e todos os idosos, medicamentos, tratamentos e
  *    códigos de vínculo ligados a ele, INCLUSIVE medicamentos e tratamentos já removidos logicamente.
  *  - Eventos de notificação (avisos de dose) de TODAS as doses do cuidador são apagados.
+ *  - Mensagens das conversas com todos os idosos do cuidador são apagadas.
  *  - Doses PENDENTES (nunca registradas) são apagadas.
  *  - Doses já registradas (TOMADA, NAO_TOMADA, CONFIRMADA_COM_ATRASO) NÃO são apagadas: são ANONIMIZADAS.
  *    Quando os tratamentos são apagados, a FK dose.tratamento_id (ON DELETE SET NULL) zera o vínculo, e a dose
  *    passa a não identificar ninguém (só horário programado, hora de confirmação e status).
  *  - Tudo acontece em uma única transação: ou a conta inteira some, ou nada muda.
  *  - Ordem (respeita as chaves estrangeiras):
- *    códigos de vínculo -> eventos de notificação -> doses pendentes -> tratamentos -> medicamentos -> idosos -> cuidador.
+ *    códigos de vínculo -> eventos de notificação -> doses pendentes -> tratamentos -> medicamentos -> mensagens ->
+ *    idosos -> cuidador.
  * =========================================================================================================
  */
 @Service
@@ -39,6 +42,7 @@ public class ExcluirContaUseCase {
     private final DoseRepositoryPort doseRepository;
     private final CodigoVinculoRepositoryPort codigoVinculoRepository;
     private final EventoNotificacaoRepositoryPort eventoNotificacaoRepository;
+    private final MensagemRepositoryPort mensagemRepository;
 
     /**
      * @param cuidadorId ID do cuidador autenticado, extraído do JWT
@@ -57,6 +61,8 @@ public class ExcluirContaUseCase {
         // As doses registradas restantes são anonimizadas pelo banco (ON DELETE SET NULL) neste passo
         tratamentoRepository.deleteAllByCuidadorId(cuidadorId);
         medicamentoRepository.deleteAllByCuidadorId(cuidadorId);
+        // A FK mensagem.idoso_id também apagaria em cascata; a remoção explícita deixa a política visível aqui
+        mensagemRepository.deleteAllByCuidadorId(cuidadorId);
         idosoRepository.deleteAllByCuidadorId(cuidadorId);
         cuidadorRepository.deleteById(cuidadorId);
     }

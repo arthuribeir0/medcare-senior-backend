@@ -61,10 +61,9 @@ public class CuidadorController {
     @GetMapping("/me")
     @Operation(summary = "Dados do cuidador autenticado", description = "Somente CUIDADOR.")
     @ApiResponse(responseCode = "200", description = "Dados do cuidador")
-    @ApiResponse(responseCode = "401", description = "Token ausente ou inválido", content = @Content)
+    @ApiResponse(responseCode = "401", description = "Token ausente ou inválido, ou de conta já excluída (SESSAO_INVALIDA)",
+            content = @Content)
     @ApiResponse(responseCode = "403", description = "Token sem o papel CUIDADOR", content = @Content)
-    @ApiResponse(responseCode = "404", description = "Conta já excluída",
-            content = @Content(schema = @Schema(implementation = ErroResponse.class)))
     public ResponseEntity<CuidadorResponseDTO> buscarMe(@Parameter(hidden = true) @AuthenticationPrincipal AuthenticatedUser usuario) {
         return ResponseEntity.ok(CuidadorResponseDTO.from(buscarCuidadorUseCase.executar(usuario.cuidadorId())));
     }
@@ -74,10 +73,9 @@ public class CuidadorController {
             description = "Remove de forma irreversível o cuidador e todos os seus idosos, medicamentos, tratamentos "
                     + "e códigos de vínculo. Somente CUIDADOR. Ver docs/lgpd.md.")
     @ApiResponse(responseCode = "204", description = "Conta excluída")
-    @ApiResponse(responseCode = "401", description = "Token ausente ou inválido", content = @Content)
+    @ApiResponse(responseCode = "401", description = "Token ausente ou inválido, ou de conta já excluída (SESSAO_INVALIDA)",
+            content = @Content)
     @ApiResponse(responseCode = "403", description = "Token sem o papel CUIDADOR", content = @Content)
-    @ApiResponse(responseCode = "404", description = "Conta já excluída",
-            content = @Content(schema = @Schema(implementation = ErroResponse.class)))
     public ResponseEntity<Void> excluirConta(@Parameter(hidden = true) @AuthenticationPrincipal AuthenticatedUser usuario) {
         excluirContaUseCase.executar(usuario.cuidadorId());
         return ResponseEntity.noContent().build();
@@ -91,10 +89,9 @@ public class CuidadorController {
     @ApiResponse(responseCode = "204", description = "Token registrado")
     @ApiResponse(responseCode = "400", description = "Token ausente, vazio ou maior que 512 caracteres",
             content = @Content(schema = @Schema(implementation = ErroResponse.class)))
-    @ApiResponse(responseCode = "401", description = "Token de acesso ausente ou inválido", content = @Content)
+    @ApiResponse(responseCode = "401",
+            description = "Token de acesso ausente ou inválido, ou de conta já excluída (SESSAO_INVALIDA)", content = @Content)
     @ApiResponse(responseCode = "403", description = "Token de acesso sem o papel CUIDADOR", content = @Content)
-    @ApiResponse(responseCode = "404", description = "Conta já excluída",
-            content = @Content(schema = @Schema(implementation = ErroResponse.class)))
     public ResponseEntity<Void> registrarTokenDispositivo(
             @Parameter(hidden = true) @AuthenticationPrincipal AuthenticatedUser usuario,
             @Valid @RequestBody TokenDispositivoRequestDTO request) {
@@ -107,7 +104,8 @@ public class CuidadorController {
             description = "Usado no logout: o aparelho deixa de receber avisos push desta conta. Idempotente: responde "
                     + "204 mesmo se não houver token gravado. Somente CUIDADOR.")
     @ApiResponse(responseCode = "204", description = "Token apagado (ou já não havia token)")
-    @ApiResponse(responseCode = "401", description = "Token de acesso ausente ou inválido", content = @Content)
+    @ApiResponse(responseCode = "401",
+            description = "Token de acesso ausente ou inválido, ou de conta já excluída (SESSAO_INVALIDA)", content = @Content)
     @ApiResponse(responseCode = "403", description = "Token de acesso sem o papel CUIDADOR", content = @Content)
     public ResponseEntity<Void> removerTokenDispositivo(
             @Parameter(hidden = true) @AuthenticationPrincipal AuthenticatedUser usuario) {

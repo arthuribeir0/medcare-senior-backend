@@ -1,7 +1,8 @@
 package com.medcare.senior.application.usecase;
 
 import com.medcare.senior.domain.dose.DoseRepositoryPort;
-import com.medcare.senior.domain.exception.RecursoNaoEncontradoException;
+import com.medcare.senior.domain.exception.SessaoInvalidaException;
+import com.medcare.senior.domain.notificacao.EventoNotificacaoRepositoryPort;
 import com.medcare.senior.domain.medicamento.MedicamentoRepositoryPort;
 import com.medcare.senior.domain.tratamento.TratamentoRepositoryPort;
 import com.medcare.senior.domain.usuario.CodigoVinculoRepositoryPort;
@@ -42,6 +43,9 @@ class ExcluirContaUseCaseTest {
     @Mock
     private CodigoVinculoRepositoryPort codigoVinculoRepository;
 
+    @Mock
+    private EventoNotificacaoRepositoryPort eventoNotificacaoRepository;
+
     @InjectMocks
     private ExcluirContaUseCase useCase;
 
@@ -51,10 +55,12 @@ class ExcluirContaUseCaseTest {
 
         useCase.executar(CUIDADOR_ID);
 
-        InOrder ordem = inOrder(codigoVinculoRepository, doseRepository, tratamentoRepository, medicamentoRepository,
-                idosoRepository, cuidadorRepository);
+        InOrder ordem = inOrder(codigoVinculoRepository, eventoNotificacaoRepository, doseRepository,
+                tratamentoRepository, medicamentoRepository, idosoRepository, cuidadorRepository);
         ordem.verify(cuidadorRepository).existsById(CUIDADOR_ID);
         ordem.verify(codigoVinculoRepository).deleteAllByCuidadorId(CUIDADOR_ID);
+        // Eventos de notificação antes das doses (são achados pela dose -> tratamento -> ... -> cuidador)
+        ordem.verify(eventoNotificacaoRepository).deleteByCuidadorId(CUIDADOR_ID);
         // Só as pendentes; as registradas ficam e são anonimizadas ao apagar os tratamentos
         ordem.verify(doseRepository).deletePendentesByCuidadorId(CUIDADOR_ID);
         ordem.verify(tratamentoRepository).deleteAllByCuidadorId(CUIDADOR_ID);
@@ -65,14 +71,14 @@ class ExcluirContaUseCaseTest {
     }
 
     @Test
-    void deveResponderNaoEncontradoQuandoContaJaFoiExcluida() {
+    void deveResponderSessaoInvalidaQuandoContaJaFoiExcluida() {
         when(cuidadorRepository.existsById(CUIDADOR_ID)).thenReturn(false);
 
         assertThatThrownBy(() -> useCase.executar(CUIDADOR_ID))
-                .isInstanceOf(RecursoNaoEncontradoException.class)
-                .hasMessage("Cuidador não encontrado");
+                .isInstanceOf(SessaoInvalidaException.class)
+                .hasMessage("Sessão inválida. Entre na sua conta de novo.");
 
-        verifyNoInteractions(codigoVinculoRepository, doseRepository, tratamentoRepository, medicamentoRepository,
-                idosoRepository);
+        verifyNoInteractions(codigoVinculoRepository, eventoNotificacaoRepository, doseRepository,
+                tratamentoRepository, medicamentoRepository, idosoRepository);
     }
 }

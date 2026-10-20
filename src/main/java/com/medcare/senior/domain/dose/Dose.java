@@ -6,6 +6,7 @@ import lombok.Builder;
 import lombok.Getter;
 
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 
 /**
  * Uma dose programada de um tratamento (RN-008).
@@ -79,11 +80,13 @@ public class Dose {
         if (status != StatusDose.PENDENTE) {
             throw new TransicaoDeDoseInvalidaException(id, status, statusConfirmado);
         }
+        // Microssegundos: a precisão do TIMESTAMP do PostgreSQL. Sem truncar, a resposta da confirmação mostraria
+        // nanossegundos que a próxima leitura do banco não tem mais.
         return Dose.builder()
                 .id(id)
                 .tratamentoId(tratamentoId)
                 .horarioProgramado(horarioProgramado)
-                .horaConfirmacao(agora)
+                .horaConfirmacao(agora.truncatedTo(ChronoUnit.MICROS))
                 .status(statusConfirmado)
                 .build();
     }

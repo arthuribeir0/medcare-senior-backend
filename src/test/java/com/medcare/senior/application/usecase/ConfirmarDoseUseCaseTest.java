@@ -92,6 +92,22 @@ class ConfirmarDoseUseCaseTest {
     }
 
     @Test
+    void usaAToleranciaDoCuidadorParaDecidirSeFoiComAtraso() {
+        // 40 min depois: com a padrão (30) seria com atraso; o cuidador configurou 60, então é TOMADA
+        when(idosoRepository.findById(IDOSO_ID)).thenReturn(Optional.of(Idoso.builder().id(IDOSO_ID).build()));
+        Dose dose = Dose.builder().id(DOSE_ID).tratamentoId(1000L).horarioProgramado(HORARIO).status(StatusDose.PENDENTE).build();
+        when(doseRepository.findDetalhadaByIdAndIdosoId(DOSE_ID, IDOSO_ID)).thenReturn(Optional.of(
+                new DoseDetalhada(dose, IDOSO_ID, "José", 100L, "Losartana", "50mg", "COMPRIMIDO", 60)));
+        when(doseRepository.registrarSePendente(any())).thenReturn(1);
+
+        DoseAvaliada resultado = useCaseEm(HORARIO.plusMinutes(40)).executar(DOSE_ID, IDOSO_ID);
+
+        assertThat(doseGravada().getStatus()).isEqualTo(StatusDose.TOMADA);
+        assertThat(resultado.toleranciaMinutos()).isEqualTo(60);
+        assertThat(resultado.detalhe().toleranciaMinutosDoCuidador()).isEqualTo(60);
+    }
+
+    @Test
     void exatamenteNoAvisoAindaEhTomada() {
         idosoExisteComDose(StatusDose.PENDENTE);
         when(doseRepository.registrarSePendente(any())).thenReturn(1);

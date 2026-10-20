@@ -1,6 +1,6 @@
 package com.medcare.senior.application.usecase;
 
-import com.medcare.senior.domain.exception.RecursoNaoEncontradoException;
+import com.medcare.senior.domain.exception.SessaoInvalidaException;
 import com.medcare.senior.domain.exception.TokenDispositivoInvalidoException;
 import com.medcare.senior.domain.usuario.CuidadorRepositoryPort;
 import org.junit.jupiter.api.Test;
@@ -75,12 +75,12 @@ class RegistrarTokenDispositivoUseCaseTest {
     }
 
     @Test
-    void contaInexistenteResponde404ENaoMexeEmOutrosCuidadores() {
+    void contaInexistenteRespondeSessaoInvalidaENaoMexeEmOutrosCuidadores() {
         when(cuidadorRepository.atualizarFcmToken(CUIDADOR_ID, "token-fcm")).thenReturn(false);
 
         assertThatThrownBy(() -> useCase.executar(CUIDADOR_ID, "token-fcm"))
-                .isInstanceOf(RecursoNaoEncontradoException.class)
-                .hasMessage("Cuidador não encontrado");
+                .isInstanceOf(SessaoInvalidaException.class)
+                .hasMessage("Sessão inválida. Entre na sua conta de novo.");
 
         verify(cuidadorRepository, never()).removerFcmTokenDosOutrosCuidadores(any(), anyLong());
     }

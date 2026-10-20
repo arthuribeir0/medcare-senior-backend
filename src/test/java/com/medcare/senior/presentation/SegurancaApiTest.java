@@ -18,6 +18,7 @@ import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
+import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -187,6 +188,39 @@ class SegurancaApiTest {
     }
 
     // ---- confirmação de dose --------------------------------------------------------------------------------------
+
+    @Test
+    void tokenDeCuidadorDeContaExcluidaResponde401SessaoInvalidaEmTodasAsRotas() throws Exception {
+        Long cuidadorExcluido = cuidador("Conta excluída", null);
+        jdbc.update("DELETE FROM cuidador WHERE id = ?", cuidadorExcluido);
+
+        List<MockHttpServletRequestBuilder> rotas = List.of(
+                get("/api/cuidadores/me"),
+                delete("/api/cuidadores/me"),
+                put("/api/cuidadores/me/fcm-token").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"token\": \"fcm-aparelho\"}"),
+                delete("/api/cuidadores/me/fcm-token"),
+                get("/api/idosos"),
+                post("/api/idosos").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"nome\": \"Maria\", \"dataNascimento\": \"1945-03-12\"}"),
+                // Recurso de outro cuidador: a sessão inválida vem antes do 404
+                get("/api/idosos/" + idosoA),
+                get("/api/idosos/" + idosoA + "/doses"),
+                post("/api/idosos/" + idosoA + "/gerar-codigo"),
+                get("/api/medicamentos"),
+                get("/api/medicamentos/" + medicamentoA));
+        for (MockHttpServletRequestBuilder rota : rotas) {
+            mvc.perform(comoCuidador(rota, cuidadorExcluido))
+                    .andExpect(status().isUnauthorized())
+                    .andExpect(jsonPath("$.codigo").value("SESSAO_INVALIDA"))
+                    .andExpect(jsonPath("$.mensagem").value("Sessão inválida. Entre na sua conta de novo."));
+        }
+
+        // Cuidador que existe continua recebendo 404 para o que não é dele
+        mvc.perform(comoCuidador(get("/api/idosos/" + idosoA), cuidadorB))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.codigo").value("RECURSO_NAO_ENCONTRADO"));
+    }
 
     @Test
     void confirmarDoseNoPrazoDevolveTomadaEDuasVezesResponde409() throws Exception {

@@ -13,6 +13,7 @@ import com.medcare.senior.domain.usuario.IdosoRepositoryPort;
 import org.springframework.stereotype.Service;
 
 import java.time.Clock;
+import java.time.Duration;
 import java.time.LocalDateTime;
 
 /**
@@ -66,13 +67,17 @@ public class ConfirmarDoseUseCase {
             throw new DoseNaoConfirmavelException(confirmabilidade);
         }
 
-        Dose confirmada = dose.confirmar(politicaDeJanela.statusDaConfirmacao(dose.getHorarioProgramado(), agora), agora);
+        // Tolerância do cuidador dono do idoso (ou a padrão), lida junto com a dose
+        Duration tolerancia = politicaDeJanela.toleranciaEfetiva(detalhe.toleranciaMinutosDoCuidador());
+        Dose confirmada = dose.confirmar(politicaDeJanela.statusDaConfirmacao(dose.getHorarioProgramado(), agora, tolerancia),
+                agora);
         if (doseRepository.registrarSePendente(confirmada) == 0) {
             // Perdeu a corrida: a dose foi registrada entre a leitura e o UPDATE
             throw new DoseNaoConfirmavelException(Confirmabilidade.JA_REGISTRADA);
         }
 
         return politicaDeJanela.avaliar(new DoseDetalhada(confirmada, detalhe.idosoId(), detalhe.idosoNome(),
-                detalhe.medicamentoId(), detalhe.medicamentoNome(), detalhe.dosagem(), detalhe.tipo()), agora);
+                detalhe.medicamentoId(), detalhe.medicamentoNome(), detalhe.dosagem(), detalhe.tipo(),
+                detalhe.toleranciaMinutosDoCuidador()), agora, tolerancia);
     }
 }

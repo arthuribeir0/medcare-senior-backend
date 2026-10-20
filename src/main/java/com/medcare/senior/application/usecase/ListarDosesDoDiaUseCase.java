@@ -67,7 +67,9 @@ public class ListarDosesDoDiaUseCase {
         LocalDate dia = data != null ? data : agora.toLocalDate();
         return doseRepository.findDetalhadasDoIdosoEntre(idosoId, dia.atStartOfDay(), dia.plusDays(1).atStartOfDay())
                 .stream()
-                .map(dose -> politicaDeJanela.avaliar(dose, agora))
+                // Tolerância do cuidador dono do idoso (ou a padrão), lida na mesma consulta
+                .map(dose -> politicaDeJanela.avaliar(dose, agora,
+                        politicaDeJanela.toleranciaEfetiva(dose.toleranciaMinutosDoCuidador())))
                 .toList();
     }
 }

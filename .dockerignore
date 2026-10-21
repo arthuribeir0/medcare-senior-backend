@@ -1,0 +1,23 @@
+# Só o necessário para compilar: pom, wrapper do Maven e src/. Nada de segredos, builds locais ou do IDE.
+.git
+.github
+.idea
+.vscode
+target
+docs
+deploy
+*.iml
+README.md
+docker-compose.yml
+
+# Segredos e credenciais (nunca na imagem)
+.env
+.env.*
+**/*firebase*.json
+**/*service-account*.json
+**/*serviceAccount*.json
+**/*-adminsdk-*.json
+*.jks
+*.keystore
+*.pem
+*.p12

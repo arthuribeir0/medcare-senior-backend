@@ -2,12 +2,14 @@ package com.medcare.senior.domain.dose;
 
 import com.medcare.senior.domain.historico.FiltroHistorico;
 import com.medcare.senior.domain.historico.Pagina;
+import com.medcare.senior.domain.relatorio.ContagemDeDoses;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Consumer;
 
 /**
  * Doses registradas são imutáveis (RN-008): a única atualização possível é a transição a partir de PENDENTE
@@ -54,6 +56,19 @@ public interface DoseRepositoryPort {
      * preservado, RN-008); doses anonimizadas não têm dono e ficam de fora.
      */
     Pagina<DoseDetalhada> findHistorico(Long cuidadorId, FiltroHistorico filtro);
+
+    /**
+     * Doses do idoso no intervalo [inicio, fim), agrupadas por medicamento e status gravado (relatório de adesão).
+     * Como o histórico, inclui medicamentos e tratamentos removidos (RN-008); a dose anonimizada não tem dono.
+     */
+    List<ContagemDeDoses> contarPorMedicamentoEStatus(Long idosoId, LocalDateTime inicio, LocalDateTime fim);
+
+    /**
+     * Entrega as doses do idoso no intervalo [inicio, fim), da mais antiga para a mais nova, em lotes de até
+     * {@code tamanhoDoLote} (nunca todas na memória). Mesmos filtros de {@link #contarPorMedicamentoEStatus}.
+     */
+    void percorrerDoIdoso(Long idosoId, LocalDateTime inicio, LocalDateTime fim, int tamanhoDoLote,
+                          Consumer<List<DoseDetalhada>> lote);
 
     /**
      * A dose, SOMENTE se pertencer ao idoso (dose -> tratamento -> medicamento -> idoso) e o tratamento e o

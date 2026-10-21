@@ -4,7 +4,7 @@
 # Sem segredos na imagem: banco, JWT e Firebase entram por variáveis de ambiente e arquivo montado no contêiner.
 # Multiarquitetura (linux/amd64 e linux/arm64): as imagens-base eclipse-temurin publicam as duas.
 
-FROM eclipse-temurin:17-jdk AS build
+FROM --platform=$BUILDPLATFORM eclipse-temurin:17-jdk AS build
 WORKDIR /build
 # Dependências primeiro: a camada fica em cache enquanto o pom não muda
 COPY mvnw pom.xml ./

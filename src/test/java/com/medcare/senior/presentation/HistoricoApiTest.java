@@ -232,6 +232,17 @@ class HistoricoApiTest {
     }
 
     @Test
+    void medicamentoDeOutroCuidadorNoFiltroNaoTrazNada() throws Exception {
+        Long remedioDoOutro = jdbc.queryForObject("SELECT medicamento_id FROM tratamento WHERE id = ?", Long.class,
+                tratamentoDoOutro);
+
+        mvc.perform(historico().param("medicamentoId", remedioDoOutro.toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElementos").value(0))
+                .andExpect(jsonPath("$.conteudo", hasSize(0)));
+    }
+
+    @Test
     void papeisEContaExcluida() throws Exception {
         mvc.perform(get(ROTA).header(HttpHeaders.AUTHORIZATION, "Bearer " + tokens.generateToken(idosoA, Role.IDOSO)))
                 .andExpect(status().isForbidden());

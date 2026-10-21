@@ -1,0 +1,21 @@
+# Variante INICIAL, só HTTP: serve o desafio do Let's Encrypt (webroot) para emitir o certificado de ${DOMINIO}.
+# Não faz proxy para a API (nada trafega em texto claro). Depois de emitir, troque NGINX_MODO para https.
+server {
+    listen 80 default_server;
+    listen [::]:80 default_server;
+    server_name ${DOMINIO};
+    include /etc/nginx/snippets/seguranca.conf;
+
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
+
+    location = /nginx-saude {
+        access_log off;
+        return 200 "ok\n";
+    }
+
+    location / {
+        return 503 "Servidor em configuracao\n";
+    }
+}

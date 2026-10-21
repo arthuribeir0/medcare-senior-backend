@@ -23,8 +23,8 @@ import java.time.LocalDate;
 public record FiltroHistorico(Long idosoId, Long medicamentoId, LocalDate de, LocalDate ate, StatusDose status,
                               int pagina, int tamanho) {
 
-    public static final int TAMANHO_PADRAO = 20;
-    public static final int TAMANHO_MAXIMO = 100;
+    public static final int TAMANHO_PADRAO = Paginacao.TAMANHO_PADRAO;
+    public static final int TAMANHO_MAXIMO = Paginacao.TAMANHO_MAXIMO;
 
     /**
      * Aplica os padrões (RN-011: sem fim = hoje; tamanho 20; página 0) e valida.
@@ -38,14 +38,7 @@ public record FiltroHistorico(Long idosoId, Long medicamentoId, LocalDate de, Lo
         if (de != null && de.isAfter(fim)) {
             throw new ParametroInvalidoException("de", "A data de início não pode ser posterior à data de fim");
         }
-        int numeroDaPagina = pagina != null ? pagina : 0;
-        if (numeroDaPagina < 0) {
-            throw new ParametroInvalidoException("page", "A página começa em 0");
-        }
-        int tamanhoDaPagina = tamanho != null ? tamanho : TAMANHO_PADRAO;
-        if (tamanhoDaPagina < 1 || tamanhoDaPagina > TAMANHO_MAXIMO) {
-            throw new ParametroInvalidoException("size", "O tamanho da página deve ficar entre 1 e " + TAMANHO_MAXIMO);
-        }
-        return new FiltroHistorico(idosoId, medicamentoId, de, fim, status, numeroDaPagina, tamanhoDaPagina);
+        Paginacao paginacao = Paginacao.de(pagina, tamanho);
+        return new FiltroHistorico(idosoId, medicamentoId, de, fim, status, paginacao.pagina(), paginacao.tamanho());
     }
 }

@@ -76,8 +76,6 @@ public class ConfirmarDoseUseCase {
             throw new DoseNaoConfirmavelException(Confirmabilidade.JA_REGISTRADA);
         }
 
-        return politicaDeJanela.avaliar(new DoseDetalhada(confirmada, detalhe.idosoId(), detalhe.idosoNome(),
-                detalhe.medicamentoId(), detalhe.medicamentoNome(), detalhe.dosagem(), detalhe.tipo(),
-                detalhe.toleranciaMinutosDoCuidador()), agora, tolerancia);
+        return politicaDeJanela.avaliar(detalhe.comDose(confirmada), agora, tolerancia);
     }
 }

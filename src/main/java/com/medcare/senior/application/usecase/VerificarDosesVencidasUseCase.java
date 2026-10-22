@@ -135,7 +135,7 @@ public class VerificarDosesVencidasUseCase {
     /**
      * @param encerradas doses que passaram a NAO_TOMADA nesta execução
      * @param avisos     eventos de notificação criados e com a primeira tentativa feita nesta execução
-     * @param enviados   avisos aceitos pelo provedor (ou registrados em log, com o FCM desligado)
+     * @param enviados   avisos aceitos pelo provedor (com o FCM desligado, nenhum: o evento fica FALHA PUSH_DESLIGADO)
      * @param falhas     erros inesperados em alguma dose (as demais seguiram)
      */
     public record Resultado(int encerradas, int avisos, int enviados, int falhas) {

@@ -80,6 +80,8 @@ public class PushNotificadorDeDoseNaoTomadaAdapter implements NotificadorDeDoseN
                     + "retentativa", notificacao.cuidadorId(), notificacao.doseId());
             case SEM_TOKEN -> log.info("Cuidador {} sem token de dispositivo; aviso da dose {} não enviado",
                     notificacao.cuidadorId(), notificacao.doseId());
+            case PUSH_DESLIGADO -> log.warn("Push desligado; aviso da dose {} ao cuidador {} não enviado",
+                    notificacao.doseId(), notificacao.cuidadorId());
         }
         return resultado;
     }

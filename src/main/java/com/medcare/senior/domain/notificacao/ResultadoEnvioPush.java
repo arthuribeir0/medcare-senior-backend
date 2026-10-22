@@ -6,8 +6,7 @@ package com.medcare.senior.domain.notificacao;
 public enum ResultadoEnvioPush {
 
     /**
-     * Aceito pelo provedor (ou validado, em dry-run). Com o FCM desligado, o aviso registrado em log também conta
-     * como enviado: o log é o canal de entrega nesse modo.
+     * Aceito pelo provedor (ou validado, em dry-run).
      */
     ENVIADO,
 
@@ -26,5 +25,11 @@ public enum ResultadoEnvioPush {
     /**
      * O cuidador não tem token de aparelho registrado (ou a conta não existe mais): não há para onde enviar.
      */
-    SEM_TOKEN
+    SEM_TOKEN,
+
+    /**
+     * O push está desligado nesta instalação (app.fcm.enabled=false): o aviso só foi para o log e NÃO chegou ao
+     * cuidador. Não adianta tentar de novo enquanto a configuração não mudar.
+     */
+    PUSH_DESLIGADO
 }

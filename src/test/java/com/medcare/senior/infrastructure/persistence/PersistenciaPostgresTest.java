@@ -371,7 +371,7 @@ class PersistenciaPostgresTest {
 
     @Test
     void confirmarNaoMexeNoEstoqueDoMedicamento() {
-        // BE-29: o DRS só prevê o estoque como campo opcional do cadastro (UC-004, RN-005); não há baixa automática
+        // o DRS só prevê o estoque como campo opcional do cadastro (UC-004, RN-005); não há baixa automática
         IdosoEntity idoso = idoso(cuidador());
         MedicamentoEntity medicamento = medicamento(idoso, null);
         em.getEntityManager().createNativeQuery("UPDATE medicamento SET quantidade_estoque = 30 WHERE id = ?1")

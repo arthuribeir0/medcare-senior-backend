@@ -9,6 +9,7 @@ import com.medcare.senior.domain.tratamento.Tratamento;
 import com.medcare.senior.domain.tratamento.TratamentoRepositoryPort;
 import com.medcare.senior.domain.usuario.Idoso;
 import com.medcare.senior.domain.usuario.IdosoRepositoryPort;
+import com.medcare.senior.domain.relatorio.CacheDeRelatorioDiarioPort;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -43,6 +44,9 @@ class RemoverMedicamentoUseCaseTest {
     private static final LocalDate HOJE = AGORA.toLocalDate();
 
     @Mock
+    private CacheDeRelatorioDiarioPort cacheDeRelatorio;
+
+    @Mock
     private MedicamentoRepositoryPort medicamentoRepository;
 
     @Mock
@@ -60,7 +64,7 @@ class RemoverMedicamentoUseCaseTest {
     void setUp() {
         Clock clock = Clock.fixed(AGORA.atZone(FUSO).toInstant(), FUSO);
         useCase = new RemoverMedicamentoUseCase(medicamentoRepository, idosoRepository, tratamentoRepository,
-                doseRepository, clock);
+                doseRepository, cacheDeRelatorio, clock);
     }
 
     private void medicamentoDoCuidador() {
@@ -84,6 +88,7 @@ class RemoverMedicamentoUseCaseTest {
         ordem.verify(doseRepository).deletePendentesFuturasByMedicamentoId(MEDICAMENTO_ID, AGORA);
         ordem.verify(tratamentoRepository).marcarComoRemovidosPorMedicamento(MEDICAMENTO_ID, AGORA);
         ordem.verify(medicamentoRepository).marcarComoRemovido(MEDICAMENTO_ID, AGORA);
+        verify(cacheDeRelatorio).descartarDoCuidador(CUIDADOR_ID);
     }
 
     private void verificarNadaRemovido() {

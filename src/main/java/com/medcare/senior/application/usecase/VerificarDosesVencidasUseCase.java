@@ -8,6 +8,7 @@ import com.medcare.senior.domain.dose.PoliticaDeJanela;
 import com.medcare.senior.domain.notificacao.DoseNaoTomadaNotificacao;
 import com.medcare.senior.domain.notificacao.EventoNotificacaoRepositoryPort;
 import com.medcare.senior.domain.notificacao.ResultadoEnvioPush;
+import com.medcare.senior.domain.relatorio.CacheDeRelatorioDiarioPort;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -45,6 +46,7 @@ public class VerificarDosesVencidasUseCase {
     private final EnvioDeAvisoService envioDeAviso;
     private final PoliticaDeJanela politicaDeJanela;
     private final Parametros parametros;
+    private final CacheDeRelatorioDiarioPort cacheDeRelatorio;
     private final Clock clock;
 
     public VerificarDosesVencidasUseCase(DoseRepositoryPort doseRepository,
@@ -52,12 +54,14 @@ public class VerificarDosesVencidasUseCase {
                                          EnvioDeAvisoService envioDeAviso,
                                          PoliticaDeJanela politicaDeJanela,
                                          Parametros parametros,
+                                         CacheDeRelatorioDiarioPort cacheDeRelatorio,
                                          Clock clock) {
         this.doseRepository = doseRepository;
         this.eventos = eventos;
         this.envioDeAviso = envioDeAviso;
         this.politicaDeJanela = politicaDeJanela;
         this.parametros = parametros;
+        this.cacheDeRelatorio = cacheDeRelatorio;
         this.clock = clock;
     }
 
@@ -81,6 +85,8 @@ public class VerificarDosesVencidasUseCase {
             List<DoseEncerrada> encerradas = doseRepository.encerrarVencidas(agora, politicaDeJanela.toleranciaPadrao(),
                     politicaDeJanela.margemPosAviso(), parametros.loteMaximo());
             contagem.encerradas = encerradas.size();
+            // Os relatórios diários desses idosos mostravam as doses como pendentes
+            encerradas.stream().map(DoseEncerrada::idosoId).distinct().forEach(cacheDeRelatorio::descartarDoIdoso);
         } catch (RuntimeException e) {
             contagem.falhas++;
             log.error("Falha ao encerrar as doses vencidas; seguindo para os avisos", e);

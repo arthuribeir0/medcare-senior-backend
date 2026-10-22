@@ -9,6 +9,7 @@ import com.medcare.senior.domain.tratamento.HorariosObrigatoriosException;
 import com.medcare.senior.domain.tratamento.PeriodoTratamentoInvalidoException;
 import com.medcare.senior.domain.tratamento.Tratamento;
 import com.medcare.senior.domain.tratamento.TratamentoRepositoryPort;
+import com.medcare.senior.domain.relatorio.CacheDeRelatorioDiarioPort;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -47,6 +48,9 @@ class EditarTratamentoUseCaseTest {
     private static final List<DayOfWeek> NOVOS_DIAS = List.of(DayOfWeek.TUESDAY, DayOfWeek.SATURDAY);
 
     @Mock
+    private CacheDeRelatorioDiarioPort cacheDeRelatorio;
+
+    @Mock
     private TratamentoRepositoryPort tratamentoRepository;
 
     @Mock
@@ -59,7 +63,7 @@ class EditarTratamentoUseCaseTest {
 
     @BeforeEach
     void setUp() {
-        useCase = new EditarTratamentoUseCase(tratamentoRepository, doseRepository, geradorDeDoses,
+        useCase = new EditarTratamentoUseCase(tratamentoRepository, doseRepository, geradorDeDoses, cacheDeRelatorio,
                 Clock.fixed(AGORA.atZone(FUSO).toInstant(), FUSO));
     }
 
@@ -94,6 +98,7 @@ class EditarTratamentoUseCaseTest {
         // Apaga só PENDENTES com horário depois de agora: registradas e passadas ficam intactas
         ordem.verify(doseRepository).deletePendentesFuturasByTratamentoId(TRATAMENTO_ID, AGORA);
         ordem.verify(geradorDeDoses).gerar(resultado);
+        verify(cacheDeRelatorio).descartarDoCuidador(CUIDADOR_ID);
 
         Tratamento salvo = captor.getValue();
         assertThat(salvo.getId()).isEqualTo(TRATAMENTO_ID);

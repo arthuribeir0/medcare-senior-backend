@@ -88,6 +88,10 @@ app:
       intervalo-base-minutos: ${ALERTAS_RETENTATIVA_INTERVALO_BASE_MINUTOS:5}
       # Maximo de eventos reprocessados por execucao
       lote-maximo: ${ALERTAS_RETENTATIVA_LOTE_MAXIMO:200}
+  cache:
+    # Relatorio diario em memoria por cuidador, idoso e dia, por N segundos. Confirmacao e encerramento de dose e as
+    # alteracoes do cuidador (tolerancia, medicamento, tratamento) descartam a entrada na hora. 0 = sem cache.
+    relatorio-diario-segundos: ${CACHE_RELATORIO_DIARIO_SEGUNDOS:30}
   fcm:
     # Push via Firebase Cloud Messaging. Desligado por padrao (e nos testes e no CI): os avisos so vao para o log.
     enabled: ${FCM_ENABLED:false}

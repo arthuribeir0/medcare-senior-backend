@@ -8,6 +8,7 @@ import com.medcare.senior.infrastructure.persistence.adapter.DoseRepositoryAdapt
 import com.medcare.senior.infrastructure.persistence.adapter.IdosoRepositoryAdapter;
 import com.medcare.senior.infrastructure.persistence.mapper.DoseMapper;
 import com.medcare.senior.infrastructure.persistence.mapper.IdosoMapper;
+import com.medcare.senior.infrastructure.cache.CacheDeRelatorioDiarioCaffeine;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
@@ -45,7 +46,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 @DataJpaTest(properties = "spring.jpa.show-sql=false")
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
-@Import({DoseRepositoryAdapter.class, IdosoRepositoryAdapter.class, DoseMapper.class, IdosoMapper.class,
+@Import({CacheDeRelatorioDiarioCaffeine.class, DoseRepositoryAdapter.class, IdosoRepositoryAdapter.class, DoseMapper.class, IdosoMapper.class,
         ConfirmarDoseUseCase.class, ConfirmacaoConcorrentePostgresTest.Configuracao.class})
 class ConfirmacaoConcorrentePostgresTest {
 

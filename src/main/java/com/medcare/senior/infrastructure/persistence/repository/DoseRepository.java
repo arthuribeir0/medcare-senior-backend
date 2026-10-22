@@ -1,5 +1,6 @@
 package com.medcare.senior.infrastructure.persistence.repository;
 
+import com.medcare.senior.domain.dose.ConfirmadoPor;
 import com.medcare.senior.domain.dose.StatusDose;
 import com.medcare.senior.domain.relatorio.ContagemDeDoses;
 import com.medcare.senior.infrastructure.persistence.entity.DoseEntity;
@@ -85,7 +86,7 @@ public interface DoseRepository extends JpaRepository<DoseEntity, Long> {
     // LEFT JOIN na configuração de alerta do cuidador dono do idoso: tolerância própria ou nula (vale a padrão).
     // Intervalo semiaberto [inicio, fim): um dia é [data 00:00, data+1 00:00).
     @Query("SELECT new com.medcare.senior.infrastructure.persistence.projection.DoseDetalhadaProjection("
-            + "d.id, t.id, d.horarioProgramado, d.horaConfirmacao, d.status, i.id, i.nome, m.id, m.nome, m.dosagem, m.tipo, "
+            + "d.id, t.id, d.horarioProgramado, d.horaConfirmacao, d.status, d.confirmadoPor, i.id, i.nome, m.id, m.nome, m.dosagem, m.tipo, "
             + "c.toleranciaMinutos, m.cor) "
             + "FROM DoseEntity d JOIN d.tratamento t JOIN t.medicamento m JOIN m.idoso i "
             + "LEFT JOIN ConfiguracaoAlertaEntity c ON c.cuidadorId = i.cuidador.id "
@@ -97,13 +98,23 @@ public interface DoseRepository extends JpaRepository<DoseEntity, Long> {
                                                              @Param("fim") LocalDateTime fim);
 
     @Query("SELECT new com.medcare.senior.infrastructure.persistence.projection.DoseDetalhadaProjection("
-            + "d.id, t.id, d.horarioProgramado, d.horaConfirmacao, d.status, i.id, i.nome, m.id, m.nome, m.dosagem, m.tipo, "
+            + "d.id, t.id, d.horarioProgramado, d.horaConfirmacao, d.status, d.confirmadoPor, i.id, i.nome, m.id, m.nome, m.dosagem, m.tipo, "
             + "c.toleranciaMinutos, m.cor) "
             + "FROM DoseEntity d JOIN d.tratamento t JOIN t.medicamento m JOIN m.idoso i "
             + "LEFT JOIN ConfiguracaoAlertaEntity c ON c.cuidadorId = i.cuidador.id "
             + "WHERE d.id = :doseId AND i.id = :idosoId AND t.removidoEm IS NULL AND m.removidoEm IS NULL")
     Optional<DoseDetalhadaProjection> findDetalhadaByIdAndIdosoId(@Param("doseId") Long doseId,
                                                                   @Param("idosoId") Long idosoId);
+
+    // Mesma dose, vista pelo cuidador: só se o idoso dela for deste cuidador (dose de outro cuidador volta vazia)
+    @Query("SELECT new com.medcare.senior.infrastructure.persistence.projection.DoseDetalhadaProjection("
+            + "d.id, t.id, d.horarioProgramado, d.horaConfirmacao, d.status, d.confirmadoPor, i.id, i.nome, m.id, m.nome, "
+            + "m.dosagem, m.tipo, c.toleranciaMinutos, m.cor) "
+            + "FROM DoseEntity d JOIN d.tratamento t JOIN t.medicamento m JOIN m.idoso i "
+            + "LEFT JOIN ConfiguracaoAlertaEntity c ON c.cuidadorId = i.cuidador.id "
+            + "WHERE d.id = :doseId AND i.cuidador.id = :cuidadorId AND t.removidoEm IS NULL AND m.removidoEm IS NULL")
+    Optional<DoseDetalhadaProjection> findDetalhadaByIdAndCuidadorId(@Param("doseId") Long doseId,
+                                                                     @Param("cuidadorId") Long cuidadorId);
 
     @Query("SELECT d.status FROM DoseEntity d WHERE d.id = :id")
     Optional<StatusDose> findStatusById(@Param("id") Long id);
@@ -112,7 +123,7 @@ public interface DoseRepository extends JpaRepository<DoseEntity, Long> {
     // a mais antiga. Sem filtro de remoção: o histórico de item removido logicamente é preservado (RN-008). JOINs
     // internos: dose anonimizada não tem dono e fica de fora. Intervalo semiaberto [inicio, fim).
     @Query(value = "SELECT new com.medcare.senior.infrastructure.persistence.projection.DoseDetalhadaProjection("
-            + "d.id, t.id, d.horarioProgramado, d.horaConfirmacao, d.status, i.id, i.nome, m.id, m.nome, m.dosagem, m.tipo, "
+            + "d.id, t.id, d.horarioProgramado, d.horaConfirmacao, d.status, d.confirmadoPor, i.id, i.nome, m.id, m.nome, m.dosagem, m.tipo, "
             + "c.toleranciaMinutos, m.cor) "
             + "FROM DoseEntity d JOIN d.tratamento t JOIN t.medicamento m JOIN m.idoso i "
             + "LEFT JOIN ConfiguracaoAlertaEntity c ON c.cuidadorId = i.cuidador.id "
@@ -148,7 +159,7 @@ public interface DoseRepository extends JpaRepository<DoseEntity, Long> {
 
     // Linhas do relatório de adesão, em lotes (Pageable sem contagem), da mais antiga para a mais nova
     @Query("SELECT new com.medcare.senior.infrastructure.persistence.projection.DoseDetalhadaProjection("
-            + "d.id, t.id, d.horarioProgramado, d.horaConfirmacao, d.status, i.id, i.nome, m.id, m.nome, m.dosagem, m.tipo, "
+            + "d.id, t.id, d.horarioProgramado, d.horaConfirmacao, d.status, d.confirmadoPor, i.id, i.nome, m.id, m.nome, m.dosagem, m.tipo, "
             + "c.toleranciaMinutos, m.cor) "
             + "FROM DoseEntity d JOIN d.tratamento t JOIN t.medicamento m JOIN m.idoso i "
             + "LEFT JOIN ConfiguracaoAlertaEntity c ON c.cuidadorId = i.cuidador.id "
@@ -162,12 +173,13 @@ public interface DoseRepository extends JpaRepository<DoseEntity, Long> {
     // Transição atômica: só muda se a dose ainda estiver no status esperado (PENDENTE). Se uma confirmação
     // concorrente chegou antes, nenhuma linha muda e o retorno é 0.
     @Modifying(flushAutomatically = true, clearAutomatically = true)
-    @Query("UPDATE DoseEntity d SET d.status = :novoStatus, d.horaConfirmacao = :horaConfirmacao "
-            + "WHERE d.id = :id AND d.status = :statusEsperado")
+    @Query("UPDATE DoseEntity d SET d.status = :novoStatus, d.horaConfirmacao = :horaConfirmacao, "
+            + "d.confirmadoPor = :confirmadoPor WHERE d.id = :id AND d.status = :statusEsperado")
     int atualizarStatusSeAtual(@Param("id") Long id,
                                @Param("statusEsperado") StatusDose statusEsperado,
                                @Param("novoStatus") StatusDose novoStatus,
-                               @Param("horaConfirmacao") LocalDateTime horaConfirmacao);
+                               @Param("horaConfirmacao") LocalDateTime horaConfirmacao,
+                               @Param("confirmadoPor") ConfirmadoPor confirmadoPor);
 
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("DELETE FROM DoseEntity d WHERE d.tratamento.id = :tratamentoId "

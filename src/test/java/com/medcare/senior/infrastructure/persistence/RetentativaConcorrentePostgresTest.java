@@ -309,7 +309,7 @@ class RetentativaConcorrentePostgresTest {
 
     @Test
     void doseConfirmadaAntesDoReenvioCancelaOAviso() {
-        jdbc.update("UPDATE dose SET status = 'CONFIRMADA_COM_ATRASO', hora_confirmacao = ? WHERE id = ?",
+        jdbc.update("UPDATE dose SET status = 'CONFIRMADA_COM_ATRASO', hora_confirmacao = ?, confirmado_por = 'IDOSO' WHERE id = ?",
                 T0.plusMinutes(2), doseId);
         relogio.em(T0.plusMinutes(5));
 

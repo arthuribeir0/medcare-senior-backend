@@ -1,6 +1,7 @@
 package com.medcare.senior.presentation.dto;
 
 import com.medcare.senior.domain.dose.Confirmabilidade;
+import com.medcare.senior.domain.dose.ConfirmadoPor;
 import com.medcare.senior.domain.dose.Dose;
 import com.medcare.senior.domain.dose.DoseAvaliada;
 import com.medcare.senior.domain.dose.DoseDetalhada;
@@ -55,7 +56,7 @@ class DoseResponseDTOTest {
     void comDoseTrocaSoADoseEMantemCorETolerancia() {
         Dose pendente = Dose.builder().id(1L).tratamentoId(1000L).horarioProgramado(HORARIO).status(StatusDose.PENDENTE).build();
         DoseDetalhada detalhe = new DoseDetalhada(pendente, 10L, "José", 100L, "Losartana", "50mg", "COMPRIMIDO", 60, "Rosa");
-        Dose confirmada = pendente.confirmar(StatusDose.CONFIRMADA_NO_HORARIO, HORARIO.plusMinutes(5));
+        Dose confirmada = pendente.confirmar(StatusDose.CONFIRMADA_NO_HORARIO, HORARIO.plusMinutes(5), ConfirmadoPor.IDOSO);
 
         DoseDetalhada nova = detalhe.comDose(confirmada);
 

@@ -21,6 +21,7 @@ public class DoseMapper {
                 .horarioProgramado(entity.getHorarioProgramado())
                 .horaConfirmacao(entity.getHoraConfirmacao())
                 .status(entity.getStatus())
+                .confirmadoPor(entity.getConfirmadoPor())
                 .build();
     }
 
@@ -33,6 +34,7 @@ public class DoseMapper {
                 .horarioProgramado(dose.getHorarioProgramado())
                 .horaConfirmacao(dose.getHoraConfirmacao())
                 .status(dose.getStatus())
+                .confirmadoPor(dose.getConfirmadoPor())
                 .build();
     }
 }

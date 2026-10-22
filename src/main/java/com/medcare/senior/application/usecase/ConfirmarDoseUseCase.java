@@ -1,6 +1,7 @@
 package com.medcare.senior.application.usecase;
 
 import com.medcare.senior.domain.dose.Confirmabilidade;
+import com.medcare.senior.domain.dose.ConfirmadoPor;
 import com.medcare.senior.domain.dose.Dose;
 import com.medcare.senior.domain.dose.DoseAvaliada;
 import com.medcare.senior.domain.dose.DoseDetalhada;
@@ -17,12 +18,15 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 
 /**
- * Confirmação de dose pelo idoso. A janela e o status (CONFIRMADA_NO_HORARIO até o fim da tolerância, depois CONFIRMADA_COM_ATRASO)
- * vêm da {@link PoliticaDeJanela} com o Clock da aplicação.
+ * Confirmação de dose pelo idoso (a própria dose) ou pelo cuidador (dose de um idoso dele). As mesmas regras valem
+ * para os dois: a janela e o status (CONFIRMADA_NO_HORARIO até o fim da tolerância, depois CONFIRMADA_COM_ATRASO, até
+ * horário + tolerância + margem pós-aviso) vêm da {@link PoliticaDeJanela} com o Clock da aplicação, e a dose grava
+ * quem confirmou.
  *
  * <p>NÃO é @Transactional de propósito: a gravação é um único UPDATE atômico condicionado a status = 'PENDENTE'
  * ({@link DoseRepositoryPort#registrarSePendente}). Se outra transação registrou a dose entre a leitura e o UPDATE
- * (outra confirmação, ou o job marcando NAO_TOMADA), nenhuma linha muda e a resposta é "já registrada" (RN-008).
+ * (outra confirmação, do idoso ou do cuidador, ou o job marcando NAO_TOMADA), nenhuma linha muda e a resposta é "já
+ * registrada" (RN-008).
  */
 @Service
 public class ConfirmarDoseUseCase {
@@ -43,6 +47,8 @@ public class ConfirmarDoseUseCase {
     }
 
     /**
+     * Confirmação pelo próprio idoso.
+     *
      * @param doseId  dose a confirmar
      * @param idosoId ID do idoso autenticado, extraído do JWT
      * @return a dose confirmada, avaliada no mesmo instante da confirmação
@@ -54,12 +60,30 @@ public class ConfirmarDoseUseCase {
         if (idosoRepository.findById(idosoId).isEmpty()) {
             throw new SessaoInvalidaException();
         }
-
         // Dose de outro idoso responde igual a dose inexistente, para não revelar quais IDs existem
         DoseDetalhada detalhe = doseRepository.findDetalhadaByIdAndIdosoId(doseId, idosoId)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Dose não encontrada"));
-        Dose dose = detalhe.dose();
+        return confirmar(detalhe, ConfirmadoPor.IDOSO);
+    }
 
+    /**
+     * Confirmação pelo cuidador, na tela da dose de um idoso dele. A conta do cuidador já foi conferida antes do
+     * controller (token de conta excluída responde 401).
+     *
+     * @param doseId     dose a confirmar
+     * @param cuidadorId ID do cuidador autenticado, extraído do JWT
+     * @throws RecursoNaoEncontradoException se a dose não existir, for de idoso de outro cuidador ou de item removido
+     * @throws DoseNaoConfirmavelException   se a dose já estiver registrada, ou fora da janela de confirmação
+     */
+    public DoseAvaliada executarComoCuidador(Long doseId, Long cuidadorId) {
+        // Dose de idoso de outro cuidador responde igual a dose inexistente (mesmo 404, mesma mensagem)
+        DoseDetalhada detalhe = doseRepository.findDetalhadaByIdAndCuidadorId(doseId, cuidadorId)
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Dose não encontrada"));
+        return confirmar(detalhe, ConfirmadoPor.CUIDADOR);
+    }
+
+    private DoseAvaliada confirmar(DoseDetalhada detalhe, ConfirmadoPor quem) {
+        Dose dose = detalhe.dose();
         LocalDateTime agora = LocalDateTime.now(clock);
         // Tolerância do cuidador dono do idoso (ou a padrão), lida junto com a dose: define o encerramento e se a
         // confirmação é no horário ou com atraso
@@ -71,7 +95,7 @@ public class ConfirmarDoseUseCase {
         }
 
         Dose confirmada = dose.confirmar(politicaDeJanela.statusDaConfirmacao(dose.getHorarioProgramado(), agora, tolerancia),
-                agora);
+                agora, quem);
         if (doseRepository.registrarSePendente(confirmada) == 0) {
             // Perdeu a corrida: a dose foi registrada entre a leitura e o UPDATE
             throw new DoseNaoConfirmavelException(Confirmabilidade.JA_REGISTRADA);

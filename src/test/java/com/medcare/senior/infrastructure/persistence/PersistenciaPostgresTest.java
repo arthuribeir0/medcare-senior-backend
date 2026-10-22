@@ -9,6 +9,7 @@ import com.medcare.senior.application.usecase.RegistrarTokenDispositivoUseCase;
 import com.medcare.senior.application.usecase.RemoverTokenDispositivoUseCase;
 import com.medcare.senior.application.usecase.RemoverMedicamentoUseCase;
 import com.medcare.senior.domain.configuracao.Tolerancia;
+import com.medcare.senior.domain.dose.ConfirmadoPor;
 import com.medcare.senior.domain.dose.Dose;
 import com.medcare.senior.domain.dose.DoseDetalhada;
 import com.medcare.senior.domain.dose.DoseNaoConfirmavelException;
@@ -329,7 +330,7 @@ class PersistenciaPostgresTest {
         DoseEntity deOutroIdoso = dose(tratamento(medicamento(idoso(cuidador()), null), null), dia.atTime(11, 0),
                 StatusDose.PENDENTE);
         em.getEntityManager()
-                .createNativeQuery("INSERT INTO dose (tratamento_id, horario_programado, status) VALUES (NULL, ?1, 'CONFIRMADA_NO_HORARIO')")
+                .createNativeQuery("INSERT INTO dose (tratamento_id, horario_programado, status, confirmado_por) VALUES (NULL, ?1, 'CONFIRMADA_NO_HORARIO', 'IDOSO')")
                 .setParameter(1, dia.atTime(12, 0))
                 .executeUpdate();
 
@@ -399,7 +400,7 @@ class PersistenciaPostgresTest {
         assertThat(horaConfirmacaoDaDose(noHorario.getId())).isEqualTo(confirmadaEm);
 
         // Mesmo com leitura "velha" (vista como PENDENTE), o UPDATE condicional não altera a dose já registrada
-        assertThat(doseAdapter.registrarSePendente(domainPendente(noHorario).confirmar(StatusDose.CONFIRMADA_COM_ATRASO, AGORA)))
+        assertThat(doseAdapter.registrarSePendente(domainPendente(noHorario).confirmar(StatusDose.CONFIRMADA_COM_ATRASO, AGORA, ConfirmadoPor.IDOSO)))
                 .isZero();
         assertThat(statusDaDose(noHorario.getId())).isEqualTo("CONFIRMADA_NO_HORARIO");
     }
@@ -539,7 +540,7 @@ class PersistenciaPostgresTest {
     @Test
     void dosesAnonimizadasNoMesmoHorarioNaoConflitam() {
         LocalDateTime horario = AGORA.minusDays(1);
-        String insert = "INSERT INTO dose (tratamento_id, horario_programado, status) VALUES (NULL, ?1, 'CONFIRMADA_NO_HORARIO')";
+        String insert = "INSERT INTO dose (tratamento_id, horario_programado, status, confirmado_por) VALUES (NULL, ?1, 'CONFIRMADA_NO_HORARIO', 'IDOSO')";
 
         em.getEntityManager().createNativeQuery(insert).setParameter(1, horario).executeUpdate();
         em.getEntityManager().createNativeQuery(insert).setParameter(1, horario).executeUpdate();
@@ -567,6 +568,40 @@ class PersistenciaPostgresTest {
     // ---------------------------------------------------------------------------------------------------------
     // Varredura de doses: buscas de aviso e de encerramento e UPDATE atômico PENDENTE -> NAO_TOMADA
     // ---------------------------------------------------------------------------------------------------------
+
+    @Test
+    void doseVistaPeloCuidadorSoSeOIdosoForDele() {
+        CuidadorEntity dono = cuidador();
+        IdosoEntity idoso = idoso(dono);
+        DoseEntity dose = dose(tratamento(medicamento(idoso, null), null), AGORA.minusHours(1), StatusDose.PENDENTE);
+        CuidadorEntity outro = cuidador();
+
+        assertThat(doseAdapter.findDetalhadaByIdAndCuidadorId(dose.getId(), dono.getId()))
+                .hasValueSatisfying(detalhe -> {
+                    assertThat(detalhe.idosoId()).isEqualTo(idoso.getId());
+                    assertThat(detalhe.dose().getConfirmadoPor()).isNull();
+                });
+        assertThat(doseAdapter.findDetalhadaByIdAndCuidadorId(dose.getId(), outro.getId())).isEmpty();
+        assertThat(doseAdapter.findDetalhadaByIdAndCuidadorId(Long.MAX_VALUE, dono.getId())).isEmpty();
+        // Remédio removido: a dose some também para o dono
+        DoseEntity deRemovido = dose(tratamento(medicamento(idoso, AGORA), null), AGORA.minusHours(1), StatusDose.PENDENTE);
+        assertThat(doseAdapter.findDetalhadaByIdAndCuidadorId(deRemovido.getId(), dono.getId())).isEmpty();
+    }
+
+    @Test
+    void registrarSePendenteGravaQuemConfirmouELeituraDevolve() {
+        IdosoEntity idoso = idoso(cuidador());
+        DoseEntity pendente = dose(tratamento(medicamento(idoso, null), null), AGORA.minusMinutes(10), StatusDose.PENDENTE);
+
+        int alteradas = doseAdapter.registrarSePendente(domainPendente(pendente)
+                .confirmar(StatusDose.CONFIRMADA_NO_HORARIO, AGORA, ConfirmadoPor.CUIDADOR));
+
+        assertThat(alteradas).isEqualTo(1);
+        assertThat(em.getEntityManager().createNativeQuery("SELECT confirmado_por FROM dose WHERE id = ?1")
+                .setParameter(1, pendente.getId()).getSingleResult()).isEqualTo("CUIDADOR");
+        assertThat(doseAdapter.findDetalhadaByIdAndIdosoId(pendente.getId(), idoso.getId()))
+                .hasValueSatisfying(detalhe -> assertThat(detalhe.dose().getConfirmadoPor()).isEqualTo(ConfirmadoPor.CUIDADOR));
+    }
 
     @Test
     void registrarSePendenteMarcaDosePendenteComoNaoTomada() {
@@ -1043,6 +1078,8 @@ class PersistenciaPostgresTest {
                 .horarioProgramado(horario)
                 .horaConfirmacao(status.isRegistrada() ? horario.plusMinutes(5) : null)
                 .status(status)
+                .confirmadoPor(status == StatusDose.CONFIRMADA_NO_HORARIO || status == StatusDose.CONFIRMADA_COM_ATRASO
+                        ? ConfirmadoPor.IDOSO : null)
                 .build());
     }
 

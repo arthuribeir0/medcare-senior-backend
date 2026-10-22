@@ -47,6 +47,7 @@ class ConfirmacaoApiTest {
     private Clock clock;
 
     private LocalDateTime agora;
+    private Long cuidadorId;
     private Long idosoId;
     private Long medicamentoId;
     private Long tratamentoId;
@@ -54,7 +55,7 @@ class ConfirmacaoApiTest {
     @BeforeEach
     void criarDados() {
         agora = LocalDateTime.now(clock).truncatedTo(ChronoUnit.MINUTES);
-        Long cuidadorId = jdbc.queryForObject("INSERT INTO cuidador (nome, email, senha_hash, data_cadastro, "
+        cuidadorId = jdbc.queryForObject("INSERT INTO cuidador (nome, email, senha_hash, data_cadastro, "
                 + "consentimento_lgpd, data_consentimento) VALUES ('Cuidador confirmação', ?, 'hash', ?, true, ?) "
                 + "RETURNING id", Long.class, "confirmacao-" + UUID.randomUUID() + "@teste.com", agora, agora);
         idosoId = jdbc.queryForObject("INSERT INTO idoso (nome, data_nascimento, cuidador_id) VALUES ('Maria', ?, ?) "
@@ -74,6 +75,21 @@ class ConfirmacaoApiTest {
     private ResultActions confirmar(Long doseId) throws Exception {
         return mvc.perform(put("/api/doses/" + doseId + "/confirmar")
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + tokens.generateToken(idosoId, Role.IDOSO)));
+    }
+
+    private ResultActions confirmarComoCuidador(Long doseId, Long cuidador) throws Exception {
+        return mvc.perform(put("/api/doses/" + doseId + "/confirmar")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + tokens.generateToken(cuidador, Role.CUIDADOR)));
+    }
+
+    private Long outroCuidador() {
+        return jdbc.queryForObject("INSERT INTO cuidador (nome, email, senha_hash, data_cadastro, consentimento_lgpd, "
+                + "data_consentimento) VALUES ('Outro cuidador', ?, 'hash', ?, true, ?) RETURNING id", Long.class,
+                "outro-" + UUID.randomUUID() + "@teste.com", agora, agora);
+    }
+
+    private String confirmadoPor(Long doseId) {
+        return jdbc.queryForObject("SELECT confirmado_por FROM dose WHERE id = ?", String.class, doseId);
     }
 
     private String statusGravado(Long doseId) {
@@ -109,8 +125,10 @@ class ConfirmacaoApiTest {
                 .andExpect(jsonPath("$.status").value("CONFIRMADA_COM_ATRASO"))
                 .andExpect(jsonPath("$.statusExibicao").value("CONFIRMADA_COM_ATRASO"))
                 .andExpect(jsonPath("$.confirmabilidade").value("JA_REGISTRADA"))
+                .andExpect(jsonPath("$.confirmadoPor").value("IDOSO"))
                 .andExpect(jsonPath("$.horaConfirmacao").exists());
         assertThat(statusGravado(dose)).isEqualTo("CONFIRMADA_COM_ATRASO");
+        assertThat(confirmadoPor(dose)).isEqualTo("IDOSO");
         // Já registrada: a segunda tentativa não muda nada
         confirmar(dose)
                 .andExpect(status().isConflict())
@@ -131,14 +149,64 @@ class ConfirmacaoApiTest {
         assertThat(statusGravado(dose)).isEqualTo("PENDENTE");
     }
 
-    @Test
-    void cuidadorNaoConfirmaDose() throws Exception {
-        Long dose = dosePendente(agora);
-        Long cuidadorId = jdbc.queryForObject("SELECT cuidador_id FROM idoso WHERE id = ?", Long.class, idosoId);
+    // ---- confirmação pelo cuidador --------------------------------------------------------------------------------
 
-        mvc.perform(put("/api/doses/" + dose + "/confirmar")
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + tokens.generateToken(cuidadorId, Role.CUIDADOR)))
-                .andExpect(status().isForbidden());
-        assertThat(statusGravado(dose)).isEqualTo("PENDENTE");
+    @Test
+    void cuidadorConfirmaDoseDoIdosoDeleEGravaQuemConfirmou() throws Exception {
+        Long dose = dosePendente(agora);
+
+        confirmarComoCuidador(dose, cuidadorId)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(dose))
+                .andExpect(jsonPath("$.status").value("CONFIRMADA_NO_HORARIO"))
+                .andExpect(jsonPath("$.confirmadoPor").value("CUIDADOR"))
+                .andExpect(jsonPath("$.horaConfirmacao").exists())
+                .andExpect(jsonPath("$.limiteConfirmacao").value(agora.plusMinutes(60) + ":00"));
+        assertThat(statusGravado(dose)).isEqualTo("CONFIRMADA_NO_HORARIO");
+        assertThat(confirmadoPor(dose)).isEqualTo("CUIDADOR");
+
+        // Já confirmada pelo cuidador: o idoso (e o próprio cuidador) recebem 409, nada muda
+        confirmar(dose)
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.codigo").value("DOSE_JA_REGISTRADA"));
+        confirmarComoCuidador(dose, cuidadorId)
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.codigo").value("DOSE_JA_REGISTRADA"));
+        assertThat(confirmadoPor(dose)).isEqualTo("CUIDADOR");
     }
+
+    @Test
+    void cuidadorSegueAMesmaJanela() throws Exception {
+        confirmarComoCuidador(dosePendente(agora.plusMinutes(61)), cuidadorId)
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.codigo").value("DOSE_MUITO_CEDO"));
+        confirmarComoCuidador(dosePendente(agora.minusMinutes(61)), cuidadorId)
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.codigo").value("DOSE_ENCERRADA"));
+        Long comAtraso = dosePendente(agora.minusMinutes(45));
+        confirmarComoCuidador(comAtraso, cuidadorId)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("CONFIRMADA_COM_ATRASO"));
+    }
+
+    @Test
+    void cuidadorDeOutroIdosoRecebeOMesmo404DeDoseInexistente() throws Exception {
+        Long dose = dosePendente(agora);
+        Long outro = outroCuidador();
+
+        String alheia = confirmarComoCuidador(dose, outro)
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.codigo").value("RECURSO_NAO_ENCONTRADO"))
+                .andReturn().getResponse().getContentAsString();
+        String inexistente = confirmarComoCuidador(Long.MAX_VALUE, outro)
+                .andExpect(status().isNotFound())
+                .andReturn().getResponse().getContentAsString();
+
+        // Mesma resposta (a menos do instante): não revela que a dose existe
+        assertThat(alheia.replaceAll("\"timestamp\":\"[^\"]*\"", ""))
+                .isEqualTo(inexistente.replaceAll("\"timestamp\":\"[^\"]*\"", ""));
+        assertThat(statusGravado(dose)).isEqualTo("PENDENTE");
+        assertThat(confirmadoPor(dose)).isNull();
+    }
+
 }

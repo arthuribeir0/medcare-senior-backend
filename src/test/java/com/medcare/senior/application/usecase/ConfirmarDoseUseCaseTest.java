@@ -1,6 +1,7 @@
 package com.medcare.senior.application.usecase;
 
 import com.medcare.senior.domain.dose.Confirmabilidade;
+import com.medcare.senior.domain.dose.ConfirmadoPor;
 import com.medcare.senior.domain.dose.Dose;
 import com.medcare.senior.domain.dose.DoseAvaliada;
 import com.medcare.senior.domain.dose.DoseDetalhada;
@@ -41,6 +42,7 @@ import static org.mockito.Mockito.when;
 class ConfirmarDoseUseCaseTest {
 
     private static final Long IDOSO_ID = 10L;
+    private static final Long CUIDADOR_ID = 1L;
     private static final Long DOSE_ID = 5000L;
     private static final ZoneId FUSO = ZoneId.of("America/Sao_Paulo");
     private static final LocalDateTime HORARIO = LocalDateTime.of(2026, 10, 8, 8, 0);
@@ -86,7 +88,9 @@ class ConfirmarDoseUseCaseTest {
         assertThat(gravada.getId()).isEqualTo(DOSE_ID);
         assertThat(gravada.getStatus()).isEqualTo(StatusDose.CONFIRMADA_NO_HORARIO);
         assertThat(gravada.getHoraConfirmacao()).isEqualTo(agora);
+        assertThat(gravada.getConfirmadoPor()).isEqualTo(ConfirmadoPor.IDOSO);
         assertThat(resultado.detalhe().dose().getStatus()).isEqualTo(StatusDose.CONFIRMADA_NO_HORARIO);
+        assertThat(resultado.detalhe().dose().getConfirmadoPor()).isEqualTo(ConfirmadoPor.IDOSO);
         assertThat(resultado.statusExibicao()).isEqualTo(StatusExibicao.CONFIRMADA_NO_HORARIO);
         assertThat(resultado.confirmabilidade()).isEqualTo(Confirmabilidade.JA_REGISTRADA);
         assertThat(resultado.detalhe().medicamentoNome()).isEqualTo("Losartana");
@@ -215,6 +219,78 @@ class ConfirmarDoseUseCaseTest {
         when(doseRepository.registrarSePendente(any())).thenReturn(0);
 
         assertThatThrownBy(() -> useCaseEm(HORARIO).executar(DOSE_ID, IDOSO_ID))
+                .isInstanceOfSatisfying(DoseNaoConfirmavelException.class,
+                        e -> assertThat(e.getMotivo()).isEqualTo(Confirmabilidade.JA_REGISTRADA));
+    }
+
+    // ---- confirmação pelo cuidador --------------------------------------------------------------------------------
+
+    private void cuidadorTemADose(StatusDose status) {
+        when(doseRepository.findDetalhadaByIdAndCuidadorId(DOSE_ID, CUIDADOR_ID)).thenReturn(Optional.of(detalhe(status)));
+    }
+
+    @Test
+    void cuidadorConfirmaDoseDeIdosoDeleComAsMesmasRegrasEGravaQuemConfirmou() {
+        LocalDateTime agora = HORARIO.plusMinutes(10);
+        cuidadorTemADose(StatusDose.PENDENTE);
+        when(doseRepository.registrarSePendente(any())).thenReturn(1);
+
+        DoseAvaliada resultado = useCaseEm(agora).executarComoCuidador(DOSE_ID, CUIDADOR_ID);
+
+        Dose gravada = doseGravada();
+        assertThat(gravada.getStatus()).isEqualTo(StatusDose.CONFIRMADA_NO_HORARIO);
+        assertThat(gravada.getConfirmadoPor()).isEqualTo(ConfirmadoPor.CUIDADOR);
+        assertThat(gravada.getHoraConfirmacao()).isEqualTo(agora);
+        assertThat(resultado.detalhe().dose().getConfirmadoPor()).isEqualTo(ConfirmadoPor.CUIDADOR);
+        assertThat(resultado.confirmabilidade()).isEqualTo(Confirmabilidade.JA_REGISTRADA);
+        // O cuidador não passa pelo cadastro do idoso: a dose já vem filtrada pelo dono
+        verifyNoInteractions(idosoRepository);
+    }
+
+    @Test
+    void cuidadorDepoisDoAvisoConfirmaComAtraso() {
+        cuidadorTemADose(StatusDose.PENDENTE);
+        when(doseRepository.registrarSePendente(any())).thenReturn(1);
+
+        useCaseEm(HORARIO.plusMinutes(45)).executarComoCuidador(DOSE_ID, CUIDADOR_ID);
+
+        assertThat(doseGravada().getStatus()).isEqualTo(StatusDose.CONFIRMADA_COM_ATRASO);
+    }
+
+    @Test
+    void cuidadorNaoConfirmaDoseDeIdosoDeOutroCuidadorEOErroEhIgualADoseInexistente() {
+        when(doseRepository.findDetalhadaByIdAndCuidadorId(DOSE_ID, CUIDADOR_ID)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> useCaseEm(HORARIO).executarComoCuidador(DOSE_ID, CUIDADOR_ID))
+                .isInstanceOf(RecursoNaoEncontradoException.class)
+                .hasMessage("Dose não encontrada");
+        verify(doseRepository, never()).registrarSePendente(any());
+    }
+
+    @Test
+    void cuidadorForaDaJanelaOuComDoseJaRegistradaRecebeOMesmoMotivoDoIdoso() {
+        cuidadorTemADose(StatusDose.PENDENTE);
+        assertThatThrownBy(() -> useCaseEm(HORARIO.minusMinutes(61)).executarComoCuidador(DOSE_ID, CUIDADOR_ID))
+                .isInstanceOfSatisfying(DoseNaoConfirmavelException.class,
+                        e -> assertThat(e.getMotivo()).isEqualTo(Confirmabilidade.MUITO_CEDO));
+        assertThatThrownBy(() -> useCaseEm(HORARIO.plusMinutes(60).plusSeconds(1)).executarComoCuidador(DOSE_ID, CUIDADOR_ID))
+                .isInstanceOfSatisfying(DoseNaoConfirmavelException.class,
+                        e -> assertThat(e.getMotivo()).isEqualTo(Confirmabilidade.ENCERRADA));
+
+        cuidadorTemADose(StatusDose.CONFIRMADA_NO_HORARIO);
+        assertThatThrownBy(() -> useCaseEm(HORARIO).executarComoCuidador(DOSE_ID, CUIDADOR_ID))
+                .isInstanceOfSatisfying(DoseNaoConfirmavelException.class,
+                        e -> assertThat(e.getMotivo()).isEqualTo(Confirmabilidade.JA_REGISTRADA));
+        verify(doseRepository, never()).registrarSePendente(any());
+    }
+
+    @Test
+    void cuidadorQuePerdeACorridaRecebeJaRegistrada() {
+        // O idoso (ou o job) gravou a dose entre a leitura e o UPDATE do cuidador
+        cuidadorTemADose(StatusDose.PENDENTE);
+        when(doseRepository.registrarSePendente(any())).thenReturn(0);
+
+        assertThatThrownBy(() -> useCaseEm(HORARIO).executarComoCuidador(DOSE_ID, CUIDADOR_ID))
                 .isInstanceOfSatisfying(DoseNaoConfirmavelException.class,
                         e -> assertThat(e.getMotivo()).isEqualTo(Confirmabilidade.JA_REGISTRADA));
     }

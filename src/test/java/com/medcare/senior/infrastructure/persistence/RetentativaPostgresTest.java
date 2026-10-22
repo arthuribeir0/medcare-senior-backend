@@ -66,8 +66,10 @@ class RetentativaPostgresTest {
     }
 
     private long dose(LocalDateTime horario, StatusDose status) {
-        return jdbc.queryForObject("INSERT INTO dose (tratamento_id, horario_programado, status) VALUES (?, ?, ?) "
-                + "RETURNING id", Long.class, tratamentoId, horario, status.name());
+        boolean confirmada = status == StatusDose.CONFIRMADA_NO_HORARIO || status == StatusDose.CONFIRMADA_COM_ATRASO;
+        return jdbc.queryForObject("INSERT INTO dose (tratamento_id, horario_programado, status, confirmado_por) "
+                + "VALUES (?, ?, ?, ?) RETURNING id", Long.class, tratamentoId, horario, status.name(),
+                confirmada ? "IDOSO" : null);
     }
 
     /** Evento PENDENTE com {@code tentativas} feitas, a última {@code minutosAtras} minutos antes de AGORA. */

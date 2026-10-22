@@ -82,9 +82,16 @@ public interface DoseRepositoryPort {
     Optional<DoseDetalhada> findDetalhadaByIdAndIdosoId(Long doseId, Long idosoId);
 
     /**
-     * Grava a versão registrada da dose (status e hora de confirmação) SOMENTE se no banco ela ainda estiver
+     * A dose, SOMENTE se o idoso dela for do cuidador (dose -> tratamento -> medicamento -> idoso -> cuidador) e o
+     * tratamento e o medicamento não estiverem removidos. Dose de idoso de outro cuidador, anonimizada ou de item
+     * removido volta vazia.
+     */
+    Optional<DoseDetalhada> findDetalhadaByIdAndCuidadorId(Long doseId, Long cuidadorId);
+
+    /**
+     * Grava a versão registrada da dose (status, hora de confirmação e quem confirmou) SOMENTE se no banco ela ainda estiver
      * PENDENTE, em um único UPDATE atômico ({@code ... WHERE id = ? AND status = 'PENDENTE'}). Se outra transação
-     * registrou a dose antes (ex.: confirmação do idoso), nada muda.
+     * registrou a dose antes (ex.: confirmação do idoso ou do cuidador), nada muda.
      *
      * @param doseRegistrada dose já em um status registrado, criada por uma transição de {@link Dose}
      * @return quantas linhas mudaram: 1 se a transição aconteceu, 0 se a dose não existe ou não estava PENDENTE

@@ -53,7 +53,7 @@ class DoseResponseDTOTest {
     void comDoseTrocaSoADoseEMantemCorETolerancia() {
         Dose pendente = Dose.builder().id(1L).tratamentoId(1000L).horarioProgramado(HORARIO).status(StatusDose.PENDENTE).build();
         DoseDetalhada detalhe = new DoseDetalhada(pendente, 10L, "José", 100L, "Losartana", "50mg", "COMPRIMIDO", 60, "Rosa");
-        Dose confirmada = pendente.confirmar(StatusDose.TOMADA, HORARIO.plusMinutes(5));
+        Dose confirmada = pendente.confirmar(StatusDose.CONFIRMADA_NO_HORARIO, HORARIO.plusMinutes(5));
 
         DoseDetalhada nova = detalhe.comDose(confirmada);
 

@@ -109,11 +109,11 @@ public record PoliticaDeJanela(Duration antecedencia, Duration toleranciaPadrao,
     }
 
     /**
-     * Status a gravar numa confirmação feita em {@code agora} (supõe confirmabilidade OK): TOMADA até o fim da
+     * Status a gravar numa confirmação feita em {@code agora} (supõe confirmabilidade OK): CONFIRMADA_NO_HORARIO até o fim da
      * tolerância, inclusive; depois, CONFIRMADA_COM_ATRASO.
      */
     public StatusDose statusDaConfirmacao(LocalDateTime horarioProgramado, LocalDateTime agora, Duration tolerancia) {
-        return agora.isAfter(avisoEm(horarioProgramado, tolerancia)) ? StatusDose.CONFIRMADA_COM_ATRASO : StatusDose.TOMADA;
+        return agora.isAfter(avisoEm(horarioProgramado, tolerancia)) ? StatusDose.CONFIRMADA_COM_ATRASO : StatusDose.CONFIRMADA_NO_HORARIO;
     }
 
     /**

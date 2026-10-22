@@ -133,7 +133,7 @@ class ConfirmacaoConcorrentePostgresTest {
 
             assertThat(sucessos).isEqualTo(1);
             assertThat(jdbc.queryForObject("SELECT status FROM dose WHERE id = ?", String.class, doseId))
-                    .isEqualTo(StatusDose.TOMADA.name());
+                    .isEqualTo(StatusDose.CONFIRMADA_NO_HORARIO.name());
         } finally {
             executor.shutdownNow();
         }

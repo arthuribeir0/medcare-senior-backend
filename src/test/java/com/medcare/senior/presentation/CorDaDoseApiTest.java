@@ -99,7 +99,7 @@ class CorDaDoseApiTest {
     void confirmacaoDevolveADoseComACor() throws Exception {
         mvc.perform(como(put("/api/doses/" + doseAzul + "/confirmar"), idosoId, Role.IDOSO))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("TOMADA"))
+                .andExpect(jsonPath("$.status").value("CONFIRMADA_NO_HORARIO"))
                 .andExpect(jsonPath("$.cor").value("Azul-claro"));
     }
 

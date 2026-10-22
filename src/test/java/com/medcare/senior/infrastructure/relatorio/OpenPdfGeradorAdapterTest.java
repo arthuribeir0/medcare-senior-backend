@@ -43,10 +43,10 @@ class OpenPdfGeradorAdapterTest {
     void trazNomePeriodoGeracaoTaxaTotaisPorMedicamentoEAsLinhasComAcentos() throws Exception {
         LocalDateTime dia1 = LocalDateTime.of(2026, 10, 1, 8, 0);
         List<DoseDetalhada> doses = List.of(
-                dose(1, dia1, StatusDose.TOMADA, dia1.plusMinutes(5), "Losartana"),
+                dose(1, dia1, StatusDose.CONFIRMADA_NO_HORARIO, dia1.plusMinutes(5), "Losartana"),
                 dose(2, dia1.plusHours(12), StatusDose.CONFIRMADA_COM_ATRASO, dia1.plusHours(13), "Losartana"),
                 dose(3, dia1.plusDays(1), StatusDose.NAO_TOMADA, null, "Metformina"),
-                dose(4, dia1.plusDays(2).withHour(23).withMinute(30), StatusDose.TOMADA, dia1.plusDays(3).withHour(0).withMinute(10), "Losartana"),
+                dose(4, dia1.plusDays(2).withHour(23).withMinute(30), StatusDose.CONFIRMADA_NO_HORARIO, dia1.plusDays(3).withHour(0).withMinute(10), "Losartana"),
                 dose(5, dia1.plusDays(9), StatusDose.PENDENTE, null, "Metformina"));
 
         byte[] pdf = adapter.gerar(relatorio(new TotaisDoDia(10, 6, 1, 1, 2, 87.5)), lote -> lote.accept(doses));
@@ -58,11 +58,11 @@ class OpenPdfGeradorAdapterTest {
                 "10 6 1 1 2",
                 "Adesão por medicamento", "Losartana 50mg 8 6 1 1 0 87,5%", "Metformina 500mg 2 0 0 0 2 sem doses encerradas",
                 "Registro das doses",
-                "01/10/2026 08:00 Losartana 50mg Tomada 08:05",
-                "01/10/2026 20:00 Losartana 50mg Com atraso 21:00",
-                "02/10/2026 08:00 Metformina 50mg Não tomada —",
+                "01/10/2026 08:00 Losartana 50mg Confirmada no horário 08:05",
+                "01/10/2026 20:00 Losartana 50mg Confirmada com atraso 21:00",
+                "02/10/2026 08:00 Metformina 50mg Não noHorario —",
                 // Confirmação no dia seguinte leva a data
-                "03/10/2026 23:30 Losartana 50mg Tomada 04/10/2026 00:10",
+                "03/10/2026 23:30 Losartana 50mg Confirmada no horário 04/10/2026 00:10",
                 "10/10/2026 08:00 Metformina 50mg Pendente",
                 "Página 1")) {
             assertThat(texto).contains(semEspacos(esperado));
@@ -77,7 +77,7 @@ class OpenPdfGeradorAdapterTest {
                 List<DoseDetalhada> doses = new ArrayList<>();
                 for (int i = 0; i < 400; i++) {
                     int n = lote * 400 + i;
-                    doses.add(dose(n, inicio.plusHours(n), StatusDose.TOMADA, inicio.plusHours(n).plusMinutes(1), "Losartana"));
+                    doses.add(dose(n, inicio.plusHours(n), StatusDose.CONFIRMADA_NO_HORARIO, inicio.plusHours(n).plusMinutes(1), "Losartana"));
                 }
                 entrega.accept(doses);
             }
@@ -87,8 +87,8 @@ class OpenPdfGeradorAdapterTest {
         assertThat(paginas).isGreaterThan(10);
         String texto = semEspacos(texto(pdf));
         // Primeira e última dose, e o cabeçalho da tabela repetido nas páginas seguintes
-        assertThat(texto).contains(semEspacos("01/10/2026 06:00 Losartana 50mg Tomada 06:01"))
-                .contains(semEspacos("19/11/2026 21:00 Losartana 50mg Tomada 21:01"))
+        assertThat(texto).contains(semEspacos("01/10/2026 06:00 Losartana 50mg Confirmada no horário 06:01"))
+                .contains(semEspacos("19/11/2026 21:00 Losartana 50mg Confirmada no horário 21:01"))
                 .contains(semEspacos("Página " + paginas));
         assertThat(texto.indexOf("01/10/202606:00")).isLessThan(texto.indexOf("19/11/202621:00"));
         assertThat(texto.split("Horaprogramada", -1).length - 1).isGreaterThan(paginas - 2);
@@ -96,7 +96,7 @@ class OpenPdfGeradorAdapterTest {
 
     @Test
     void textosDeStatusConfirmacaoETaxa() {
-        assertThat(OpenPdfGeradorAdapter.status(StatusDose.NAO_TOMADA)).isEqualTo("Não tomada");
+        assertThat(OpenPdfGeradorAdapter.status(StatusDose.NAO_TOMADA)).isEqualTo("Não noHorario");
         assertThat(OpenPdfGeradorAdapter.taxa(66.7)).isEqualTo("66,7%");
         assertThat(OpenPdfGeradorAdapter.taxa(100.0)).isEqualTo("100,0%");
         assertThat(OpenPdfGeradorAdapter.taxa(null)).isEqualTo("sem doses encerradas");

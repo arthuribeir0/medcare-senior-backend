@@ -223,12 +223,12 @@ class SegurancaApiTest {
     }
 
     @Test
-    void confirmarDoseNoPrazoDevolveTomadaEDuasVezesResponde409() throws Exception {
+    void confirmarDoseNoPrazoDevolveConfirmadaNoHorarioEDuasVezesResponde409() throws Exception {
         mvc.perform(comoIdoso(put("/api/doses/" + doseA + "/confirmar"), idosoA))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(doseA))
-                .andExpect(jsonPath("$.status").value("TOMADA"))
-                .andExpect(jsonPath("$.statusExibicao").value("TOMADA"))
+                .andExpect(jsonPath("$.status").value("CONFIRMADA_NO_HORARIO"))
+                .andExpect(jsonPath("$.statusExibicao").value("CONFIRMADA_NO_HORARIO"))
                 .andExpect(jsonPath("$.horaConfirmacao", notNullValue()))
                 .andExpect(jsonPath("$.confirmabilidade").value("JA_REGISTRADA"));
 

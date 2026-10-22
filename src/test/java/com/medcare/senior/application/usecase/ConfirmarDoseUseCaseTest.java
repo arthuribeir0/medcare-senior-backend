@@ -74,7 +74,7 @@ class ConfirmarDoseUseCaseTest {
     }
 
     @Test
-    void noPrazoGravaTomadaComAHoraDoServidor() {
+    void noPrazoGravaConfirmadaNoHorarioComAHoraDoServidor() {
         LocalDateTime agora = HORARIO.plusMinutes(5);
         idosoExisteComDose(StatusDose.PENDENTE);
         when(doseRepository.registrarSePendente(any())).thenReturn(1);
@@ -83,17 +83,17 @@ class ConfirmarDoseUseCaseTest {
 
         Dose gravada = doseGravada();
         assertThat(gravada.getId()).isEqualTo(DOSE_ID);
-        assertThat(gravada.getStatus()).isEqualTo(StatusDose.TOMADA);
+        assertThat(gravada.getStatus()).isEqualTo(StatusDose.CONFIRMADA_NO_HORARIO);
         assertThat(gravada.getHoraConfirmacao()).isEqualTo(agora);
-        assertThat(resultado.detalhe().dose().getStatus()).isEqualTo(StatusDose.TOMADA);
-        assertThat(resultado.statusExibicao()).isEqualTo(StatusExibicao.TOMADA);
+        assertThat(resultado.detalhe().dose().getStatus()).isEqualTo(StatusDose.CONFIRMADA_NO_HORARIO);
+        assertThat(resultado.statusExibicao()).isEqualTo(StatusExibicao.CONFIRMADA_NO_HORARIO);
         assertThat(resultado.confirmabilidade()).isEqualTo(Confirmabilidade.JA_REGISTRADA);
         assertThat(resultado.detalhe().medicamentoNome()).isEqualTo("Losartana");
     }
 
     @Test
     void usaAToleranciaDoCuidadorParaDecidirSeFoiComAtraso() {
-        // 40 min depois: com a padrão (30) seria com atraso; o cuidador configurou 60, então é TOMADA
+        // 40 min depois: com a padrão (30) seria com atraso; o cuidador configurou 60, então é CONFIRMADA_NO_HORARIO
         when(idosoRepository.findById(IDOSO_ID)).thenReturn(Optional.of(Idoso.builder().id(IDOSO_ID).build()));
         Dose dose = Dose.builder().id(DOSE_ID).tratamentoId(1000L).horarioProgramado(HORARIO).status(StatusDose.PENDENTE).build();
         when(doseRepository.findDetalhadaByIdAndIdosoId(DOSE_ID, IDOSO_ID)).thenReturn(Optional.of(
@@ -102,19 +102,19 @@ class ConfirmarDoseUseCaseTest {
 
         DoseAvaliada resultado = useCaseEm(HORARIO.plusMinutes(40)).executar(DOSE_ID, IDOSO_ID);
 
-        assertThat(doseGravada().getStatus()).isEqualTo(StatusDose.TOMADA);
+        assertThat(doseGravada().getStatus()).isEqualTo(StatusDose.CONFIRMADA_NO_HORARIO);
         assertThat(resultado.toleranciaMinutos()).isEqualTo(60);
         assertThat(resultado.detalhe().toleranciaMinutosDoCuidador()).isEqualTo(60);
     }
 
     @Test
-    void exatamenteNoAvisoAindaEhTomada() {
+    void exatamenteNoAvisoAindaEhNoHorario() {
         idosoExisteComDose(StatusDose.PENDENTE);
         when(doseRepository.registrarSePendente(any())).thenReturn(1);
 
         useCaseEm(HORARIO.plusMinutes(30)).executar(DOSE_ID, IDOSO_ID);
 
-        assertThat(doseGravada().getStatus()).isEqualTo(StatusDose.TOMADA);
+        assertThat(doseGravada().getStatus()).isEqualTo(StatusDose.CONFIRMADA_NO_HORARIO);
     }
 
     @Test
@@ -151,7 +151,7 @@ class ConfirmarDoseUseCaseTest {
 
     @Test
     void doseJaRegistradaNaoMuda() {
-        idosoExisteComDose(StatusDose.TOMADA);
+        idosoExisteComDose(StatusDose.CONFIRMADA_NO_HORARIO);
 
         assertThatThrownBy(() -> useCaseEm(HORARIO).executar(DOSE_ID, IDOSO_ID))
                 .isInstanceOfSatisfying(DoseNaoConfirmavelException.class,

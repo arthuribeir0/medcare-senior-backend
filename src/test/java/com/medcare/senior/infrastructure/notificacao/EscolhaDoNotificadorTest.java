@@ -12,7 +12,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 
 /**
- * Qual implementação do aviso de dose não tomada é usada, conforme app.fcm.enabled. Sempre exatamente uma.
+ * Qual implementação do aviso de dose não confirmada é usada, conforme app.fcm.enabled. Sempre exatamente uma.
  */
 class EscolhaDoNotificadorTest {
 

@@ -22,7 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
  *  - Eventos de notificação (avisos de dose) de TODAS as doses do cuidador são apagados.
  *  - Mensagens das conversas com todos os idosos do cuidador são apagadas.
  *  - Doses PENDENTES (nunca registradas) são apagadas.
- *  - Doses já registradas (TOMADA, NAO_TOMADA, CONFIRMADA_COM_ATRASO) NÃO são apagadas: são ANONIMIZADAS.
+ *  - Doses já registradas (CONFIRMADA_NO_HORARIO, NAO_TOMADA, CONFIRMADA_COM_ATRASO) NÃO são apagadas: são ANONIMIZADAS.
  *    Quando os tratamentos são apagados, a FK dose.tratamento_id (ON DELETE SET NULL) zera o vínculo, e a dose
  *    passa a não identificar ninguém (só horário programado, hora de confirmação e status).
  *  - Tudo acontece em uma única transação: ou a conta inteira some, ou nada muda.

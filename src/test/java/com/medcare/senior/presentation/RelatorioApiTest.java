@@ -87,8 +87,8 @@ class RelatorioApiTest {
     @Test
     void misturaDeStatusComTotaisEAderencia() throws Exception {
         LocalDate dia = hoje.minusDays(1);
-        dose(dia, 7, "TOMADA");
-        dose(dia, 9, "TOMADA");
+        dose(dia, 7, "CONFIRMADA_NO_HORARIO");
+        dose(dia, 9, "CONFIRMADA_NO_HORARIO");
         dose(dia, 12, "CONFIRMADA_COM_ATRASO");
         dose(dia, 18, "NAO_TOMADA");
         // Dose de outro dia não entra
@@ -101,7 +101,7 @@ class RelatorioApiTest {
                 .andExpect(jsonPath("$.idoso.nome").value("José Souza"))
                 .andExpect(jsonPath("$.data").value(dia.toString()))
                 .andExpect(jsonPath("$.totais.total").value(4))
-                .andExpect(jsonPath("$.totais.tomadas").value(2))
+                .andExpect(jsonPath("$.totais.confirmadasNoHorario").value(2))
                 .andExpect(jsonPath("$.totais.confirmadasComAtraso").value(1))
                 .andExpect(jsonPath("$.totais.naoTomadas").value(1))
                 .andExpect(jsonPath("$.totais.pendentes").value(0))

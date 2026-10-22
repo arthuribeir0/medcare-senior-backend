@@ -22,16 +22,16 @@ public record RelatorioDiarioResponseDTO(
 
     public record TotaisDTO(
             int total,
-            int tomadas,
+            int confirmadasNoHorario,
             int confirmadasComAtraso,
             int naoTomadas,
             int pendentes,
-            @Schema(description = "(tomadas + confirmadas com atraso) / (total - pendentes) * 100, 1 casa; nulo sem "
+            @Schema(description = "(confirmadas no horário + confirmadas com atraso) / (total - pendentes) * 100, 1 casa; nulo sem "
                     + "dose encerrada no dia", example = "75.0", nullable = true)
             Double aderenciaPercentual
     ) {
         static TotaisDTO from(TotaisDoDia totais) {
-            return new TotaisDTO(totais.total(), totais.tomadas(), totais.confirmadasComAtraso(), totais.naoTomadas(),
+            return new TotaisDTO(totais.total(), totais.confirmadasNoHorario(), totais.confirmadasComAtraso(), totais.naoTomadas(),
                     totais.pendentes(), totais.aderenciaPercentual());
         }
     }

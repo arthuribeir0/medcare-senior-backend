@@ -37,7 +37,7 @@ Exposta em `DELETE /api/cuidadores/me` (somente o próprio cuidador, papel CUIDA
 | Códigos de vínculo | Apagados |
 | Mensagens das conversas com os idosos do cuidador | Apagadas |
 | Doses PENDENTES (passadas e futuras) | Apagadas |
-| Doses registradas (TOMADA, NAO_TOMADA, CONFIRMADA_COM_ATRASO) | **Anonimizadas**: mantidas com `tratamento_id = NULL` |
+| Doses registradas (CONFIRMADA_NO_HORARIO, NAO_TOMADA, CONFIRMADA_COM_ATRASO) | **Anonimizadas**: mantidas com `tratamento_id = NULL` |
 
 Ordem de remoção (respeita as chaves estrangeiras): códigos de vínculo → eventos de notificação → doses pendentes →
 tratamentos → medicamentos → mensagens → idosos → cuidador. A chave estrangeira `mensagem.idoso_id` também tem

@@ -17,7 +17,7 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 
 /**
- * Confirmação de dose pelo idoso. A janela e o status (TOMADA até o fim da tolerância, depois CONFIRMADA_COM_ATRASO)
+ * Confirmação de dose pelo idoso. A janela e o status (CONFIRMADA_NO_HORARIO até o fim da tolerância, depois CONFIRMADA_COM_ATRASO)
  * vêm da {@link PoliticaDeJanela} com o Clock da aplicação.
  *
  * <p>NÃO é @Transactional de propósito: a gravação é um único UPDATE atômico condicionado a status = 'PENDENTE'

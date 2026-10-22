@@ -6,6 +6,7 @@ import com.medcare.senior.domain.medicamento.Medicamento;
 import com.medcare.senior.domain.medicamento.MedicamentoRepositoryPort;
 import com.medcare.senior.domain.usuario.Idoso;
 import com.medcare.senior.domain.usuario.IdosoRepositoryPort;
+import com.medcare.senior.domain.relatorio.CacheDeRelatorioDiarioPort;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -30,6 +31,9 @@ class EditarMedicamentoUseCaseTest {
     private static final Long CUIDADOR_ID = 1L;
     private static final Long IDOSO_ID = 10L;
     private static final Long MEDICAMENTO_ID = 100L;
+
+    @Mock
+    private CacheDeRelatorioDiarioPort cacheDeRelatorio;
 
     @Mock
     private MedicamentoRepositoryPort medicamentoRepository;
@@ -67,6 +71,7 @@ class EditarMedicamentoUseCaseTest {
 
         assertThat(resultado.getId()).isEqualTo(MEDICAMENTO_ID);
         assertThat(resultado.getDosagem()).isEqualTo("100mg");
+        verify(cacheDeRelatorio).descartarDoCuidador(CUIDADOR_ID);
     }
 
     @ParameterizedTest

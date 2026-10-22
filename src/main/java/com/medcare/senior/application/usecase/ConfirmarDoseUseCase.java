@@ -11,6 +11,7 @@ import com.medcare.senior.domain.dose.PoliticaDeJanela;
 import com.medcare.senior.domain.exception.RecursoNaoEncontradoException;
 import com.medcare.senior.domain.exception.SessaoInvalidaException;
 import com.medcare.senior.domain.usuario.IdosoRepositoryPort;
+import com.medcare.senior.domain.relatorio.CacheDeRelatorioDiarioPort;
 import org.springframework.stereotype.Service;
 
 import java.time.Clock;
@@ -34,15 +35,18 @@ public class ConfirmarDoseUseCase {
     private final DoseRepositoryPort doseRepository;
     private final IdosoRepositoryPort idosoRepository;
     private final PoliticaDeJanela politicaDeJanela;
+    private final CacheDeRelatorioDiarioPort cacheDeRelatorio;
     private final Clock clock;
 
     public ConfirmarDoseUseCase(DoseRepositoryPort doseRepository,
                                 IdosoRepositoryPort idosoRepository,
                                 PoliticaDeJanela politicaDeJanela,
+                                CacheDeRelatorioDiarioPort cacheDeRelatorio,
                                 Clock clock) {
         this.doseRepository = doseRepository;
         this.idosoRepository = idosoRepository;
         this.politicaDeJanela = politicaDeJanela;
+        this.cacheDeRelatorio = cacheDeRelatorio;
         this.clock = clock;
     }
 
@@ -100,6 +104,8 @@ public class ConfirmarDoseUseCase {
             // Perdeu a corrida: a dose foi registrada entre a leitura e o UPDATE
             throw new DoseNaoConfirmavelException(Confirmabilidade.JA_REGISTRADA);
         }
+        // Já gravada (o UPDATE tem a própria transação): o relatório diário do idoso não pode mostrar a dose pendente
+        cacheDeRelatorio.descartarDoIdoso(detalhe.idosoId());
 
         return politicaDeJanela.avaliar(detalhe.comDose(confirmada), agora, tolerancia);
     }

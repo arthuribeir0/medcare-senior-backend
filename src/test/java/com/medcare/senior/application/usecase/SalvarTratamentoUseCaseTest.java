@@ -12,6 +12,7 @@ import com.medcare.senior.domain.tratamento.Tratamento;
 import com.medcare.senior.domain.tratamento.TratamentoRepositoryPort;
 import com.medcare.senior.domain.usuario.Idoso;
 import com.medcare.senior.domain.usuario.IdosoRepositoryPort;
+import com.medcare.senior.domain.relatorio.CacheDeRelatorioDiarioPort;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -44,6 +45,9 @@ class SalvarTratamentoUseCaseTest {
     private static final LocalDate INICIO = LocalDate.of(2026, 10, 1);
     private static final List<LocalTime> HORARIOS = List.of(LocalTime.of(8, 0), LocalTime.of(20, 0));
     private static final List<DayOfWeek> DIAS = List.of(DayOfWeek.MONDAY, DayOfWeek.THURSDAY);
+
+    @Mock
+    private CacheDeRelatorioDiarioPort cacheDeRelatorio;
 
     @Mock
     private TratamentoRepositoryPort tratamentoRepository;
@@ -90,6 +94,7 @@ class SalvarTratamentoUseCaseTest {
 
         // As doses da janela inicial são geradas para o tratamento já salvo (com id)
         verify(geradorDeDoses).gerar(resultado);
+        verify(cacheDeRelatorio).descartarDoCuidador(CUIDADOR_ID);
     }
 
     @Test

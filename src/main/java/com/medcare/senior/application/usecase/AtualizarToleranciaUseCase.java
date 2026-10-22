@@ -3,6 +3,7 @@ package com.medcare.senior.application.usecase;
 import com.medcare.senior.domain.configuracao.ConfiguracaoAlertaRepositoryPort;
 import com.medcare.senior.domain.configuracao.Tolerancia;
 import com.medcare.senior.domain.configuracao.ToleranciaInvalidaException;
+import com.medcare.senior.domain.relatorio.CacheDeRelatorioDiarioPort;
 import org.springframework.stereotype.Service;
 
 /**
@@ -14,9 +15,12 @@ import org.springframework.stereotype.Service;
 public class AtualizarToleranciaUseCase {
 
     private final ConfiguracaoAlertaRepositoryPort configuracoes;
+    private final CacheDeRelatorioDiarioPort cacheDeRelatorio;
 
-    public AtualizarToleranciaUseCase(ConfiguracaoAlertaRepositoryPort configuracoes) {
+    public AtualizarToleranciaUseCase(ConfiguracaoAlertaRepositoryPort configuracoes,
+                                      CacheDeRelatorioDiarioPort cacheDeRelatorio) {
         this.configuracoes = configuracoes;
+        this.cacheDeRelatorio = cacheDeRelatorio;
     }
 
     /**
@@ -27,6 +31,8 @@ public class AtualizarToleranciaUseCase {
      */
     public int executar(Long cuidadorId, int toleranciaMinutos) {
         configuracoes.salvarToleranciaMinutos(cuidadorId, Tolerancia.validar(toleranciaMinutos));
+        // A tolerância muda o aviso e o limite de confirmação de todas as doses dos idosos do cuidador
+        cacheDeRelatorio.descartarDoCuidador(cuidadorId);
         return toleranciaMinutos;
     }
 }

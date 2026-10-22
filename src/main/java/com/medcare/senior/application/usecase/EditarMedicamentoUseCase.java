@@ -4,6 +4,7 @@ import com.medcare.senior.domain.exception.RecursoNaoEncontradoException;
 import com.medcare.senior.domain.medicamento.Medicamento;
 import com.medcare.senior.domain.medicamento.MedicamentoRepositoryPort;
 import com.medcare.senior.domain.usuario.IdosoRepositoryPort;
+import com.medcare.senior.domain.relatorio.CacheDeRelatorioDiarioPort;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -13,6 +14,7 @@ public class EditarMedicamentoUseCase {
 
     private final MedicamentoRepositoryPort medicamentoRepository;
     private final IdosoRepositoryPort idosoRepository;
+    private final CacheDeRelatorioDiarioPort cacheDeRelatorio;
 
     /**
      * Substitui todos os dados do medicamento (semântica de PUT).
@@ -34,7 +36,10 @@ public class EditarMedicamentoUseCase {
         dados.validarCamposObrigatorios();
 
         dados.setId(atual.getId());
-        return medicamentoRepository.save(dados);
+        Medicamento salvo = medicamentoRepository.save(dados);
+        // Nome, dosagem e cor aparecem nas doses do relatório diário
+        cacheDeRelatorio.descartarDoCuidador(cuidadorId);
+        return salvo;
     }
 
     private boolean pertenceAoCuidador(Long idosoId, Long cuidadorId) {

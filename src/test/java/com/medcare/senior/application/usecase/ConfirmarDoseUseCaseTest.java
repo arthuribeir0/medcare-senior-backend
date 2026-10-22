@@ -14,6 +14,7 @@ import com.medcare.senior.domain.exception.RecursoNaoEncontradoException;
 import com.medcare.senior.domain.exception.SessaoInvalidaException;
 import com.medcare.senior.domain.usuario.Idoso;
 import com.medcare.senior.domain.usuario.IdosoRepositoryPort;
+import com.medcare.senior.domain.relatorio.CacheDeRelatorioDiarioPort;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -50,13 +51,16 @@ class ConfirmarDoseUseCaseTest {
             Duration.ofMinutes(60), Duration.ofMinutes(30), Duration.ofMinutes(30));
 
     @Mock
+    private CacheDeRelatorioDiarioPort cacheDeRelatorio;
+
+    @Mock
     private DoseRepositoryPort doseRepository;
 
     @Mock
     private IdosoRepositoryPort idosoRepository;
 
     private ConfirmarDoseUseCase useCaseEm(LocalDateTime agora) {
-        return new ConfirmarDoseUseCase(doseRepository, idosoRepository, POLITICA,
+        return new ConfirmarDoseUseCase(doseRepository, idosoRepository, POLITICA, cacheDeRelatorio,
                 Clock.fixed(agora.atZone(FUSO).toInstant(), FUSO));
     }
 
@@ -94,6 +98,8 @@ class ConfirmarDoseUseCaseTest {
         assertThat(resultado.statusExibicao()).isEqualTo(StatusExibicao.CONFIRMADA_NO_HORARIO);
         assertThat(resultado.confirmabilidade()).isEqualTo(Confirmabilidade.JA_REGISTRADA);
         assertThat(resultado.detalhe().medicamentoNome()).isEqualTo("Losartana");
+        // Gravada: o relatório diário do idoso em cache é descartado
+        verify(cacheDeRelatorio).descartarDoIdoso(IDOSO_ID);
     }
 
     @Test
@@ -243,6 +249,7 @@ class ConfirmarDoseUseCaseTest {
         assertThat(gravada.getHoraConfirmacao()).isEqualTo(agora);
         assertThat(resultado.detalhe().dose().getConfirmadoPor()).isEqualTo(ConfirmadoPor.CUIDADOR);
         assertThat(resultado.confirmabilidade()).isEqualTo(Confirmabilidade.JA_REGISTRADA);
+        verify(cacheDeRelatorio).descartarDoIdoso(IDOSO_ID);
         // O cuidador não passa pelo cadastro do idoso: a dose já vem filtrada pelo dono
         verifyNoInteractions(idosoRepository);
     }
@@ -293,5 +300,7 @@ class ConfirmarDoseUseCaseTest {
         assertThatThrownBy(() -> useCaseEm(HORARIO).executarComoCuidador(DOSE_ID, CUIDADOR_ID))
                 .isInstanceOfSatisfying(DoseNaoConfirmavelException.class,
                         e -> assertThat(e.getMotivo()).isEqualTo(Confirmabilidade.JA_REGISTRADA));
+        // Nada mudou por esta chamada: o cache fica como está
+        verifyNoInteractions(cacheDeRelatorio);
     }
 }

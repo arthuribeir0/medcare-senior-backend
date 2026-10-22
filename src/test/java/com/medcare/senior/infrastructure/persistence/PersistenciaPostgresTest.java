@@ -41,6 +41,7 @@ import com.medcare.senior.infrastructure.persistence.mapper.DoseMapper;
 import com.medcare.senior.infrastructure.persistence.mapper.IdosoMapper;
 import com.medcare.senior.infrastructure.persistence.mapper.MedicamentoMapper;
 import com.medcare.senior.infrastructure.persistence.mapper.TratamentoMapper;
+import com.medcare.senior.infrastructure.cache.CacheDeRelatorioDiarioCaffeine;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
@@ -71,7 +72,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  */
 @DataJpaTest(properties = "spring.jpa.show-sql=false")
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
-@Import({
+@Import({CacheDeRelatorioDiarioCaffeine.class, 
         CuidadorRepositoryAdapter.class, IdosoRepositoryAdapter.class, MedicamentoRepositoryAdapter.class,
         TratamentoRepositoryAdapter.class, DoseRepositoryAdapter.class, CodigoVinculoRepositoryAdapter.class,
         EventoNotificacaoRepositoryAdapter.class, ConfiguracaoAlertaRepositoryAdapter.class,

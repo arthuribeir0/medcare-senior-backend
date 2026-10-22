@@ -9,6 +9,7 @@ import com.medcare.senior.infrastructure.persistence.adapter.DoseRepositoryAdapt
 import com.medcare.senior.infrastructure.persistence.adapter.EventoNotificacaoRepositoryAdapter;
 import com.medcare.senior.infrastructure.persistence.mapper.DoseMapper;
 import org.junit.jupiter.api.AfterEach;
+import com.medcare.senior.infrastructure.cache.CacheDeRelatorioDiarioCaffeine;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
@@ -37,7 +38,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 @DataJpaTest(properties = {"spring.jpa.show-sql=false", "app.fcm.enabled=false"})
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
-@Import({DoseRepositoryAdapter.class, EventoNotificacaoRepositoryAdapter.class, DoseMapper.class,
+@Import({CacheDeRelatorioDiarioCaffeine.class, DoseRepositoryAdapter.class, EventoNotificacaoRepositoryAdapter.class, DoseMapper.class,
         LogNotificadorDeDoseNaoTomadaAdapter.class, EnvioDeAvisoService.class, VerificarDosesVencidasUseCase.class,
         ReenviarAvisosPendentesUseCase.class, PushDesligadoPostgresTest.Configuracao.class})
 class PushDesligadoPostgresTest {

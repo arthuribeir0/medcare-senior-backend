@@ -6,6 +6,7 @@ import com.medcare.senior.domain.medicamento.MedicamentoRepositoryPort;
 import com.medcare.senior.domain.tratamento.Tratamento;
 import com.medcare.senior.domain.tratamento.TratamentoRepositoryPort;
 import com.medcare.senior.domain.usuario.IdosoRepositoryPort;
+import com.medcare.senior.domain.relatorio.CacheDeRelatorioDiarioPort;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,6 +24,7 @@ public class SalvarTratamentoUseCase {
     private final MedicamentoRepositoryPort medicamentoRepository;
     private final IdosoRepositoryPort idosoRepository;
     private final GeradorDeDosesService geradorDeDoses;
+    private final CacheDeRelatorioDiarioPort cacheDeRelatorio;
 
     /**
      * Cria um tratamento para o medicamento e gera as doses da janela inicial, na mesma transação.
@@ -53,6 +55,7 @@ public class SalvarTratamentoUseCase {
 
         Tratamento salvo = tratamentoRepository.save(tratamento);
         geradorDeDoses.gerar(salvo);
+        cacheDeRelatorio.descartarDoCuidador(cuidadorId);
         return salvo;
     }
 }

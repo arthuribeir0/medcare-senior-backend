@@ -23,6 +23,7 @@ import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -171,5 +172,27 @@ class RelatorioApiTest {
         mvc.perform(como(get(ROTA).param("idosoId", idosoId.toString()), excluido, Role.CUIDADOR))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.codigo").value("SESSAO_INVALIDA"));
+    }
+
+    @Test
+    void confirmacaoDescartaORelatorioEmCacheNaHora() throws Exception {
+        // Dose de agora (dentro da janela), ainda pendente: o primeiro relatório vai para o cache
+        Long doseId = jdbc.queryForObject("INSERT INTO dose (tratamento_id, horario_programado, status) "
+                + "VALUES (?, ?, 'PENDENTE') RETURNING id", Long.class, tratamentoId, LocalDateTime.now(clock).truncatedTo(ChronoUnit.MINUTES));
+        mvc.perform(como(get(ROTA).param("idosoId", idosoId.toString()), cuidadorId, Role.CUIDADOR))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totais.pendentes").value(1))
+                .andExpect(jsonPath("$.doses[0].confirmadoPor").doesNotExist());
+
+        mvc.perform(como(put("/api/doses/" + doseId + "/confirmar"), cuidadorId, Role.CUIDADOR))
+                .andExpect(status().isOk());
+
+        // Bem antes dos 30 s do cache: o relatório já mostra a confirmação
+        mvc.perform(como(get(ROTA).param("idosoId", idosoId.toString()), cuidadorId, Role.CUIDADOR))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totais.pendentes").value(0))
+                .andExpect(jsonPath("$.totais.confirmadasNoHorario").value(1))
+                .andExpect(jsonPath("$.doses[0].status").value("CONFIRMADA_NO_HORARIO"))
+                .andExpect(jsonPath("$.doses[0].confirmadoPor").value("CUIDADOR"));
     }
 }

@@ -8,6 +8,7 @@ import com.medcare.senior.domain.dose.PoliticaDeJanela;
 import com.medcare.senior.domain.notificacao.DoseNaoTomadaNotificacao;
 import com.medcare.senior.domain.notificacao.EventoNotificacaoRepositoryPort;
 import com.medcare.senior.domain.notificacao.ResultadoEnvioPush;
+import com.medcare.senior.domain.relatorio.CacheDeRelatorioDiarioPort;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -44,6 +45,9 @@ class VerificarDosesVencidasUseCaseTest {
     private static final Long IDOSO_ID = 2L;
 
     @Mock
+    private CacheDeRelatorioDiarioPort cacheDeRelatorio;
+
+    @Mock
     private DoseRepositoryPort doseRepository;
 
     @Mock
@@ -62,7 +66,7 @@ class VerificarDosesVencidasUseCaseTest {
     private VerificarDosesVencidasUseCase criar(int lote) {
         return new VerificarDosesVencidasUseCase(doseRepository, eventos, envioDeAviso,
                 new PoliticaDeJanela(Duration.ofMinutes(60), TOLERANCIA, MARGEM),
-                new VerificarDosesVencidasUseCase.Parametros(lote),
+                new VerificarDosesVencidasUseCase.Parametros(lote), cacheDeRelatorio,
                 Clock.fixed(AGORA.atZone(FUSO).toInstant(), FUSO));
     }
 
@@ -102,12 +106,16 @@ class VerificarDosesVencidasUseCaseTest {
         // Também cobre a dose que chegou ao encerramento sem ter sido avisada (aplicação parada): encerra sem push.
         // Dose confirmada antes do UPDATE não volta na lista (perdeu a corrida para a confirmação) e não conta.
         when(doseRepository.encerrarVencidas(AGORA, TOLERANCIA, MARGEM, LOTE))
-                .thenReturn(List.of(new DoseEncerrada(10L, IDOSO_ID), new DoseEncerrada(11L, 3L)));
+                .thenReturn(List.of(new DoseEncerrada(10L, IDOSO_ID), new DoseEncerrada(11L, 3L),
+                        new DoseEncerrada(12L, IDOSO_ID)));
         semAvisos();
 
         VerificarDosesVencidasUseCase.Resultado resultado = useCase.executar();
 
-        assertThat(resultado).isEqualTo(new VerificarDosesVencidasUseCase.Resultado(2, 0, 0, 0));
+        assertThat(resultado).isEqualTo(new VerificarDosesVencidasUseCase.Resultado(3, 0, 0, 0));
+        // Os relatórios diários dos dois idosos em cache são descartados
+        verify(cacheDeRelatorio).descartarDoIdoso(IDOSO_ID);
+        verify(cacheDeRelatorio).descartarDoIdoso(3L);
         // Nenhuma leitura seguida de gravação: o encerramento é um comando só no repositório
         verify(doseRepository, never()).registrarSePendente(any());
         verifyNoInteractions(eventos, envioDeAviso);

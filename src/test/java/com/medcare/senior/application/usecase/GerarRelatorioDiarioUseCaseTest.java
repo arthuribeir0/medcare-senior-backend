@@ -11,6 +11,7 @@ import com.medcare.senior.domain.relatorio.RelatorioDiario;
 import com.medcare.senior.domain.relatorio.TotaisDoDia;
 import com.medcare.senior.domain.usuario.Idoso;
 import com.medcare.senior.domain.usuario.IdosoRepositoryPort;
+import com.medcare.senior.domain.relatorio.CacheDeRelatorioDiarioPort;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -26,9 +27,13 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.any;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.times;
 
 @ExtendWith(MockitoExtension.class)
 class GerarRelatorioDiarioUseCaseTest {
@@ -52,7 +57,7 @@ class GerarRelatorioDiarioUseCaseTest {
     void setUp() {
         PoliticaDeJanela politica = new PoliticaDeJanela(Duration.ofMinutes(60), Duration.ofMinutes(30), Duration.ofMinutes(30));
         useCase = new GerarRelatorioDiarioUseCase(idosoRepository, doseRepository, politica,
-                Clock.fixed(AGORA.atZone(FUSO).toInstant(), FUSO));
+                new CacheDeRelatorioDiarioPortEmMemoria(), Clock.fixed(AGORA.atZone(FUSO).toInstant(), FUSO));
     }
 
     private void idosoDoCuidador() {
@@ -106,5 +111,59 @@ class GerarRelatorioDiarioUseCaseTest {
         assertThatThrownBy(() -> useCase.executar(IDOSO_ID, CUIDADOR_ID, null))
                 .isInstanceOf(RecursoNaoEncontradoException.class);
         verifyNoInteractions(doseRepository);
+    }
+
+    // ---- cache ----------------------------------------------------------------------------------------------------
+
+    @Test
+    void segundaChamadaDoMesmoDiaVemDoCacheMasODonoEhConferidoSempre() {
+        idosoDoCuidador();
+        when(doseRepository.findDetalhadasDoIdosoEntre(IDOSO_ID, HOJE.atStartOfDay(), HOJE.plusDays(1).atStartOfDay()))
+                .thenReturn(List.of(detalhe(1L, HOJE.atTime(8, 0), StatusDose.CONFIRMADA_NO_HORARIO)));
+
+        RelatorioDiario primeira = useCase.executar(IDOSO_ID, CUIDADOR_ID, null);
+        RelatorioDiario segunda = useCase.executar(IDOSO_ID, CUIDADOR_ID, HOJE);
+
+        assertThat(segunda).isSameAs(primeira);
+        verify(doseRepository, times(1)).findDetalhadasDoIdosoEntre(any(), any(), any());
+        verify(idosoRepository, times(2)).findByIdAndCuidadorId(IDOSO_ID, CUIDADOR_ID);
+    }
+
+    @Test
+    void outroDiaNaoUsaOCacheEIdosoDeOutroCuidadorContinua404() {
+        idosoDoCuidador();
+        when(doseRepository.findDetalhadasDoIdosoEntre(eq(IDOSO_ID), any(), any())).thenReturn(List.of());
+
+        useCase.executar(IDOSO_ID, CUIDADOR_ID, HOJE);
+        useCase.executar(IDOSO_ID, CUIDADOR_ID, HOJE.minusDays(1));
+
+        verify(doseRepository, times(2)).findDetalhadasDoIdosoEntre(eq(IDOSO_ID), any(), any());
+        when(idosoRepository.findByIdAndCuidadorId(IDOSO_ID, 99L)).thenReturn(Optional.empty());
+        assertThatThrownBy(() -> useCase.executar(IDOSO_ID, 99L, HOJE)).isInstanceOf(RecursoNaoEncontradoException.class);
+    }
+
+    /** Cache em mapa, sem expiração (a expiração é testada no adaptador do Caffeine). */
+    static final class CacheDeRelatorioDiarioPortEmMemoria implements CacheDeRelatorioDiarioPort {
+        private final java.util.Map<Chave, RelatorioDiario> mapa = new java.util.HashMap<>();
+
+        @Override
+        public Optional<RelatorioDiario> buscar(Chave chave) {
+            return Optional.ofNullable(mapa.get(chave));
+        }
+
+        @Override
+        public void guardar(Chave chave, RelatorioDiario relatorio) {
+            mapa.put(chave, relatorio);
+        }
+
+        @Override
+        public void descartarDoIdoso(Long idosoId) {
+            mapa.keySet().removeIf(chave -> chave.idosoId().equals(idosoId));
+        }
+
+        @Override
+        public void descartarDoCuidador(Long cuidadorId) {
+            mapa.keySet().removeIf(chave -> chave.cuidadorId().equals(cuidadorId));
+        }
     }
 }

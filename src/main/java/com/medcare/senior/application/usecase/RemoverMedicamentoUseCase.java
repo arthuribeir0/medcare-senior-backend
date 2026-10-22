@@ -6,6 +6,7 @@ import com.medcare.senior.domain.medicamento.MedicamentoComTratamentoAtivoExcept
 import com.medcare.senior.domain.medicamento.MedicamentoRepositoryPort;
 import com.medcare.senior.domain.tratamento.TratamentoRepositoryPort;
 import com.medcare.senior.domain.usuario.IdosoRepositoryPort;
+import com.medcare.senior.domain.relatorio.CacheDeRelatorioDiarioPort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -44,17 +45,20 @@ public class RemoverMedicamentoUseCase {
     private final IdosoRepositoryPort idosoRepository;
     private final TratamentoRepositoryPort tratamentoRepository;
     private final DoseRepositoryPort doseRepository;
+    private final CacheDeRelatorioDiarioPort cacheDeRelatorio;
     private final Clock clock;
 
     public RemoverMedicamentoUseCase(MedicamentoRepositoryPort medicamentoRepository,
                                      IdosoRepositoryPort idosoRepository,
                                      TratamentoRepositoryPort tratamentoRepository,
                                      DoseRepositoryPort doseRepository,
+                                     CacheDeRelatorioDiarioPort cacheDeRelatorio,
                                      Clock clock) {
         this.medicamentoRepository = medicamentoRepository;
         this.idosoRepository = idosoRepository;
         this.tratamentoRepository = tratamentoRepository;
         this.doseRepository = doseRepository;
+        this.cacheDeRelatorio = cacheDeRelatorio;
         this.clock = clock;
     }
 
@@ -88,5 +92,6 @@ public class RemoverMedicamentoUseCase {
         doseRepository.deletePendentesFuturasByMedicamentoId(id, agora);
         tratamentoRepository.marcarComoRemovidosPorMedicamento(id, agora);
         medicamentoRepository.marcarComoRemovido(id, agora);
+        cacheDeRelatorio.descartarDoCuidador(cuidadorId);
     }
 }

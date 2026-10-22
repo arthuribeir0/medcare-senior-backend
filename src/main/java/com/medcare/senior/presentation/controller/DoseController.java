@@ -31,7 +31,7 @@ public class DoseController {
 
     @PutMapping("/{id}/confirmar")
     @Operation(summary = "Confirma que o idoso tomou a dose",
-            description = "Dentro da janela [abreEm, encerraEm]: TOMADA até avisoEm (inclusive) e CONFIRMADA_COM_ATRASO "
+            description = "Dentro da janela [abreEm, encerraEm]: CONFIRMADA_NO_HORARIO até avisoEm (inclusive) e CONFIRMADA_COM_ATRASO "
                     + "depois. A hora da confirmação é a do servidor. Dose já registrada nunca muda (RN-008).")
     @ApiResponse(responseCode = "200", description = "Dose confirmada")
     @ApiResponse(responseCode = "401", description = "Token ausente ou inválido; ou idoso do token não existe mais "

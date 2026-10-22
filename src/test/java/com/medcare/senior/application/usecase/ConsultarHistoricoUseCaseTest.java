@@ -67,13 +67,13 @@ class ConsultarHistoricoUseCaseTest {
         FiltroHistorico esperado = new FiltroHistorico(null, null, null, HOJE, null, 0, 20);
         when(doseRepository.findHistorico(CUIDADOR_ID, esperado)).thenReturn(new Pagina<>(List.of(
                 detalhe(2L, HOJE.minusDays(1).atTime(8, 0), StatusDose.PENDENTE),
-                detalhe(1L, HOJE.minusDays(2).atTime(8, 0), StatusDose.TOMADA)), 0, 20, 2));
+                detalhe(1L, HOJE.minusDays(2).atTime(8, 0), StatusDose.CONFIRMADA_NO_HORARIO)), 0, 20, 2));
 
         Pagina<DoseAvaliada> pagina = useCase.executar(CUIDADOR_ID, null, null, null, null, null, null, null);
 
         assertThat(pagina.totalElementos()).isEqualTo(2);
         assertThat(pagina.conteudo()).extracting(DoseAvaliada::statusExibicao)
-                .containsExactly(StatusExibicao.NAO_TOMADA, StatusExibicao.TOMADA);
+                .containsExactly(StatusExibicao.NAO_TOMADA, StatusExibicao.CONFIRMADA_NO_HORARIO);
         verifyNoInteractions(idosoRepository);
     }
 

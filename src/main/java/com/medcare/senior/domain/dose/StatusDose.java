@@ -8,7 +8,7 @@ public enum StatusDose {
      */
     PENDENTE,
 
-    TOMADA,
+    CONFIRMADA_NO_HORARIO,
     NAO_TOMADA,
     CONFIRMADA_COM_ATRASO;
 

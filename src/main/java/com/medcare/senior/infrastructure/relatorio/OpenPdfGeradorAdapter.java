@@ -75,10 +75,10 @@ public class OpenPdfGeradorAdapter implements GeradorDePdfPort {
     private static void resumo(Document documento, TotaisDoDia totais) {
         documento.add(new Paragraph("Resumo do período", SUBTITULO));
         documento.add(linha("Taxa de adesão: ", taxa(totais.aderenciaPercentual())));
-        documento.add(new Paragraph("Adesão = (tomadas + confirmadas com atraso) ÷ (total - pendentes)", RODAPE));
+        documento.add(new Paragraph("Adesão = (confirmadas no horário + confirmadas com atraso) ÷ (total - pendentes)", RODAPE));
         PdfPTable tabela = tabela(new float[]{1, 1, 1, 1, 1});
-        cabecalhoDaTabela(tabela, "Total de doses", "Tomadas", "Com atraso", "Não tomadas", "Pendentes");
-        celulas(tabela, String.valueOf(totais.total()), String.valueOf(totais.tomadas()),
+        cabecalhoDaTabela(tabela, "Total de doses", "No horário", "Com atraso", "Não confirmadas", "Pendentes");
+        celulas(tabela, String.valueOf(totais.total()), String.valueOf(totais.confirmadasNoHorario()),
                 String.valueOf(totais.confirmadasComAtraso()), String.valueOf(totais.naoTomadas()),
                 String.valueOf(totais.pendentes()));
         documento.add(tabela);
@@ -87,11 +87,11 @@ public class OpenPdfGeradorAdapter implements GeradorDePdfPort {
     private static void porMedicamento(Document documento, RelatorioDeAdesao relatorio) {
         documento.add(new Paragraph("Adesão por medicamento", SUBTITULO));
         PdfPTable tabela = tabela(new float[]{2.4f, 1.3f, 1.1f, 1.3f, 1.3f, 1.4f, 1.3f, 1.6f});
-        cabecalhoDaTabela(tabela, "Medicamento", "Dosagem", "Doses", "Tomadas", "Com atraso", "Não tomadas",
+        cabecalhoDaTabela(tabela, "Medicamento", "Dosagem", "Doses", "No horário", "Com atraso", "Não confirmadas",
                 "Pendentes", "Adesão");
         for (RelatorioDeAdesao.AdesaoDoMedicamento item : relatorio.porMedicamento()) {
             TotaisDoDia t = item.totais();
-            celulas(tabela, item.nome(), item.dosagem(), String.valueOf(t.total()), String.valueOf(t.tomadas()),
+            celulas(tabela, item.nome(), item.dosagem(), String.valueOf(t.total()), String.valueOf(t.confirmadasNoHorario()),
                     String.valueOf(t.confirmadasComAtraso()), String.valueOf(t.naoTomadas()),
                     String.valueOf(t.pendentes()), taxa(t.aderenciaPercentual()));
         }
@@ -120,9 +120,9 @@ public class OpenPdfGeradorAdapter implements GeradorDePdfPort {
 
     static String status(StatusDose status) {
         return switch (status) {
-            case TOMADA -> "Tomada";
-            case CONFIRMADA_COM_ATRASO -> "Com atraso";
-            case NAO_TOMADA -> "Não tomada";
+            case CONFIRMADA_NO_HORARIO -> "Confirmada no horário";
+            case CONFIRMADA_COM_ATRASO -> "Confirmada com atraso";
+            case NAO_TOMADA -> "Não noHorario";
             case PENDENTE -> "Pendente";
         };
     }

@@ -58,7 +58,7 @@ class PoliticaDeJanelaTest {
     }
 
     @ParameterizedTest
-    @EnumSource(value = StatusDose.class, names = {"TOMADA", "NAO_TOMADA", "CONFIRMADA_COM_ATRASO"})
+    @EnumSource(value = StatusDose.class, names = {"CONFIRMADA_NO_HORARIO", "NAO_TOMADA", "CONFIRMADA_COM_ATRASO"})
     void doseRegistradaEhJaRegistradaEmQualquerMomento(StatusDose registrado) {
         assertThat(politica.confirmabilidade(registrado, HORARIO, ABRE.minusHours(1))).isEqualTo(Confirmabilidade.JA_REGISTRADA);
         assertThat(politica.confirmabilidade(registrado, HORARIO, HORARIO)).isEqualTo(Confirmabilidade.JA_REGISTRADA);
@@ -87,7 +87,7 @@ class PoliticaDeJanelaTest {
     }
 
     @ParameterizedTest
-    @EnumSource(value = StatusDose.class, names = {"TOMADA", "NAO_TOMADA", "CONFIRMADA_COM_ATRASO"})
+    @EnumSource(value = StatusDose.class, names = {"CONFIRMADA_NO_HORARIO", "NAO_TOMADA", "CONFIRMADA_COM_ATRASO"})
     void doseRegistradaExibeOStatusGravado(StatusDose registrado) {
         assertThat(politica.statusExibicao(registrado, HORARIO, AVISO.plusMinutes(1), TOLERANCIA))
                 .isEqualTo(StatusExibicao.valueOf(registrado.name()));
@@ -98,10 +98,10 @@ class PoliticaDeJanelaTest {
     // ---- status da confirmação ------------------------------------------------------------------------------------
 
     @Test
-    void confirmacaoAteOAvisoInclusiveEhTomadaDepoisEhComAtraso() {
-        assertThat(politica.statusDaConfirmacao(HORARIO, ABRE, TOLERANCIA)).isEqualTo(StatusDose.TOMADA);
-        assertThat(politica.statusDaConfirmacao(HORARIO, AVISO.minusSeconds(1), TOLERANCIA)).isEqualTo(StatusDose.TOMADA);
-        assertThat(politica.statusDaConfirmacao(HORARIO, AVISO, TOLERANCIA)).isEqualTo(StatusDose.TOMADA);
+    void confirmacaoAteOAvisoInclusiveEhNoHorarioDepoisEhComAtraso() {
+        assertThat(politica.statusDaConfirmacao(HORARIO, ABRE, TOLERANCIA)).isEqualTo(StatusDose.CONFIRMADA_NO_HORARIO);
+        assertThat(politica.statusDaConfirmacao(HORARIO, AVISO.minusSeconds(1), TOLERANCIA)).isEqualTo(StatusDose.CONFIRMADA_NO_HORARIO);
+        assertThat(politica.statusDaConfirmacao(HORARIO, AVISO, TOLERANCIA)).isEqualTo(StatusDose.CONFIRMADA_NO_HORARIO);
         assertThat(politica.statusDaConfirmacao(HORARIO, AVISO.plusSeconds(1), TOLERANCIA)).isEqualTo(StatusDose.CONFIRMADA_COM_ATRASO);
         assertThat(politica.statusDaConfirmacao(HORARIO, ENCERRA, TOLERANCIA)).isEqualTo(StatusDose.CONFIRMADA_COM_ATRASO);
     }
@@ -132,7 +132,7 @@ class PoliticaDeJanelaTest {
                 .isEqualTo(StatusExibicao.PENDENTE);
         assertThat(politica.statusExibicao(StatusDose.PENDENTE, HORARIO, aviso60.plusSeconds(1), sessenta))
                 .isEqualTo(StatusExibicao.ATRASADA);
-        assertThat(politica.statusDaConfirmacao(HORARIO, aviso60, sessenta)).isEqualTo(StatusDose.TOMADA);
+        assertThat(politica.statusDaConfirmacao(HORARIO, aviso60, sessenta)).isEqualTo(StatusDose.CONFIRMADA_NO_HORARIO);
         assertThat(politica.statusDaConfirmacao(HORARIO, aviso60.plusSeconds(1), sessenta))
                 .isEqualTo(StatusDose.CONFIRMADA_COM_ATRASO);
         assertThat(politica.avaliar(new DoseDetalhada(Dose.pendente(1L, HORARIO), 10L, "José", 100L, "Losartana", "50mg",

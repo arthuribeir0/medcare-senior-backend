@@ -77,12 +77,12 @@ class HistoricoApiTest {
         tratamentoMetformina = tratamento(medicamento(idosoB, "Metformina"));
         tratamentoDoOutro = tratamento(medicamento(idoso(cuidador(), "Outro"), "Outro"));
 
-        dose(tratamentoLosartana, D1.atTime(8, 0), "TOMADA");
+        dose(tratamentoLosartana, D1.atTime(8, 0), "CONFIRMADA_NO_HORARIO");
         dose(tratamentoLosartana, D2.atTime(8, 0), "NAO_TOMADA");
         dose(tratamentoLosartana, D3.atTime(8, 0), "CONFIRMADA_COM_ATRASO");
-        dose(tratamentoMetformina, D2.atTime(20, 0), "TOMADA");
+        dose(tratamentoMetformina, D2.atTime(20, 0), "CONFIRMADA_NO_HORARIO");
         dose(tratamentoMetformina, D3.atTime(20, 0), "PENDENTE");
-        dose(tratamentoDoOutro, D2.atTime(9, 0), "TOMADA");
+        dose(tratamentoDoOutro, D2.atTime(9, 0), "CONFIRMADA_NO_HORARIO");
         // Dose anonimizada (sem dono) não aparece em histórico nenhum
         jdbc.update("INSERT INTO dose (tratamento_id, horario_programado, status) VALUES (NULL, ?, 'NAO_TOMADA')",
                 D2.atTime(10, 0));
@@ -111,7 +111,7 @@ class HistoricoApiTest {
 
     private void dose(Long tratamento, LocalDateTime horario, String status) {
         jdbc.update("INSERT INTO dose (tratamento_id, horario_programado, hora_confirmacao, status) VALUES (?, ?, ?, ?)",
-                tratamento, horario, "TOMADA".equals(status) || "CONFIRMADA_COM_ATRASO".equals(status)
+                tratamento, horario, "CONFIRMADA_NO_HORARIO".equals(status) || "CONFIRMADA_COM_ATRASO".equals(status)
                         ? horario.plusMinutes(5) : null, status);
     }
 
@@ -146,9 +146,9 @@ class HistoricoApiTest {
                 .andExpect(jsonPath("$.conteudo[*].medicamentoNome", contains("Metformina", "Metformina")));
         mvc.perform(historico().param("medicamentoId", losartana.toString()))
                 .andExpect(jsonPath("$.totalElementos").value(3));
-        mvc.perform(historico().param("status", "TOMADA"))
+        mvc.perform(historico().param("status", "CONFIRMADA_NO_HORARIO"))
                 .andExpect(jsonPath("$.totalElementos").value(2))
-                .andExpect(jsonPath("$.conteudo[*].status", contains("TOMADA", "TOMADA")));
+                .andExpect(jsonPath("$.conteudo[*].status", contains("CONFIRMADA_NO_HORARIO", "CONFIRMADA_NO_HORARIO")));
         mvc.perform(historico().param("status", "CONFIRMADA_COM_ATRASO").param("idosoId", idosoA.toString()))
                 .andExpect(jsonPath("$.totalElementos").value(1));
         // de e ate inclusivos: só o D2 inteiro

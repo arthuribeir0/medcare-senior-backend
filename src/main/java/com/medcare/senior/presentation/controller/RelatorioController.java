@@ -59,7 +59,7 @@ public class RelatorioController {
     @GetMapping(value = "/pdf", produces = {MediaType.APPLICATION_PDF_VALUE, MediaType.APPLICATION_JSON_VALUE})
     @Operation(summary = "Histórico de adesão em PDF de um idoso do cuidador (UC-012, HU10)",
             description = "RN-012: nome do idoso, período, medicamentos avaliados, cada dose (data, hora programada, "
-                    + "status e hora da confirmação), taxa de adesão por medicamento e do período ((tomadas + com "
+                    + "status e hora da confirmação), taxa de adesão por medicamento e do período ((no horário + com "
                     + "atraso) / (total - pendentes), 1 casa). RN-011: 'de' obrigatório e não posterior a 'ate'; sem "
                     + "'ate', vale hoje (fuso da aplicação). Período sem doses não gera arquivo (422).")
     @ApiResponse(responseCode = "200", description = "Arquivo PDF (Content-Disposition: attachment)",

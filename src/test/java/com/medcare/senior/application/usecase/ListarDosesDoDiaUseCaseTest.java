@@ -66,7 +66,7 @@ class ListarDosesDoDiaUseCaseTest {
         when(idosoRepository.findById(IDOSO_ID)).thenReturn(Optional.of(Idoso.builder().id(IDOSO_ID).build()));
         when(doseRepository.findDetalhadasDoIdosoEntre(IDOSO_ID, HOJE.atStartOfDay(), HOJE.plusDays(1).atStartOfDay()))
                 .thenReturn(List.of(
-                        detalhe(1L, HOJE.atTime(8, 0), StatusDose.TOMADA),
+                        detalhe(1L, HOJE.atTime(8, 0), StatusDose.CONFIRMADA_NO_HORARIO),
                         detalhe(2L, HOJE.atTime(22, 0), StatusDose.PENDENTE),
                         detalhe(3L, HOJE.atTime(23, 45), StatusDose.PENDENTE)));
 
@@ -74,7 +74,7 @@ class ListarDosesDoDiaUseCaseTest {
 
         assertThat(doses).extracting(d -> d.detalhe().dose().getId()).containsExactly(1L, 2L, 3L);
         assertThat(doses).extracting(DoseAvaliada::statusExibicao)
-                .containsExactly(StatusExibicao.TOMADA, StatusExibicao.ATRASADA, StatusExibicao.PENDENTE);
+                .containsExactly(StatusExibicao.CONFIRMADA_NO_HORARIO, StatusExibicao.ATRASADA, StatusExibicao.PENDENTE);
         assertThat(doses).extracting(DoseAvaliada::confirmabilidade)
                 .containsExactly(Confirmabilidade.JA_REGISTRADA, Confirmabilidade.OK, Confirmabilidade.OK);
     }
@@ -107,7 +107,7 @@ class ListarDosesDoDiaUseCaseTest {
         when(idosoRepository.findByIdAndCuidadorId(IDOSO_ID, CUIDADOR_ID))
                 .thenReturn(Optional.of(Idoso.builder().id(IDOSO_ID).cuidadorId(CUIDADOR_ID).build()));
         when(doseRepository.findDetalhadasDoIdosoEntre(IDOSO_ID, HOJE.atStartOfDay(), HOJE.plusDays(1).atStartOfDay()))
-                .thenReturn(List.of(detalhe(1L, HOJE.atTime(8, 0), StatusDose.TOMADA)));
+                .thenReturn(List.of(detalhe(1L, HOJE.atTime(8, 0), StatusDose.CONFIRMADA_NO_HORARIO)));
 
         assertThat(useCase.executarComoCuidador(IDOSO_ID, CUIDADOR_ID, HOJE)).hasSize(1);
     }

@@ -126,15 +126,15 @@ class RetentativaPostgresTest {
 
     @Test
     void trazOStatusDaDoseEQuemAvisarEMarcaDoseSemDono() {
-        long doseTomada = dose(AGORA.minusHours(1), StatusDose.TOMADA);
-        long eventoDaTomada = eventoComDose(doseTomada, 1, AGORA.minusHours(1));
+        long doseNoHorario = dose(AGORA.minusHours(1), StatusDose.CONFIRMADA_NO_HORARIO);
+        long eventoDaNoHorario = eventoComDose(doseNoHorario, 1, AGORA.minusHours(1));
         long dosePendente = dose(AGORA.minusMinutes(70), StatusDose.PENDENTE);
         long eventoDaPendente = eventoComDose(dosePendente, 2, AGORA.minusHours(1));
 
         List<EventoParaRetentativa> lista = eventoAdapter.findParaRetentativa(AGORA, MAX, BASE, 100);
 
-        EventoParaRetentativa tomada = lista.stream().filter(e -> e.eventoId() == eventoDaTomada).findFirst().orElseThrow();
-        assertThat(tomada.statusDose()).isEqualTo(StatusDose.TOMADA);
+        EventoParaRetentativa noHorario = lista.stream().filter(e -> e.eventoId() == eventoDaNoHorario).findFirst().orElseThrow();
+        assertThat(noHorario.statusDose()).isEqualTo(StatusDose.CONFIRMADA_NO_HORARIO);
         EventoParaRetentativa pendente = lista.stream().filter(e -> e.eventoId() == eventoDaPendente).findFirst().orElseThrow();
         assertThat(pendente.tentativas()).isEqualTo(2);
         assertThat(pendente.doseId()).isEqualTo(dosePendente);

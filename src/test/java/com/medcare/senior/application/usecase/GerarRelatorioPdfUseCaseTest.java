@@ -27,7 +27,7 @@ import java.util.Optional;
 import static com.medcare.senior.domain.dose.StatusDose.CONFIRMADA_COM_ATRASO;
 import static com.medcare.senior.domain.dose.StatusDose.NAO_TOMADA;
 import static com.medcare.senior.domain.dose.StatusDose.PENDENTE;
-import static com.medcare.senior.domain.dose.StatusDose.TOMADA;
+import static com.medcare.senior.domain.dose.StatusDose.CONFIRMADA_NO_HORARIO;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -72,8 +72,8 @@ class GerarRelatorioPdfUseCaseTest {
         idosoDoCuidador();
         when(doseRepository.contarPorMedicamentoEStatus(IDOSO_ID, DE.atStartOfDay(), LocalDate.of(2026, 10, 11).atStartOfDay()))
                 .thenReturn(List.of(
-                        new ContagemDeDoses(200L, "metformina", "500mg", TOMADA, 3),
-                        new ContagemDeDoses(100L, "Losartana", "50mg", TOMADA, 6),
+                        new ContagemDeDoses(200L, "metformina", "500mg", CONFIRMADA_NO_HORARIO, 3),
+                        new ContagemDeDoses(100L, "Losartana", "50mg", CONFIRMADA_NO_HORARIO, 6),
                         new ContagemDeDoses(100L, "Losartana", "50mg", CONFIRMADA_COM_ATRASO, 1),
                         new ContagemDeDoses(100L, "Losartana", "50mg", NAO_TOMADA, 1),
                         new ContagemDeDoses(200L, "metformina", "500mg", PENDENTE, 2)));
@@ -106,7 +106,7 @@ class GerarRelatorioPdfUseCaseTest {
     void semDataDeFimValeHoje() {
         idosoDoCuidador();
         when(doseRepository.contarPorMedicamentoEStatus(eq(IDOSO_ID), any(), eq(LocalDate.of(2026, 10, 21).atStartOfDay())))
-                .thenReturn(List.of(new ContagemDeDoses(100L, "Losartana", "50mg", TOMADA, 1)));
+                .thenReturn(List.of(new ContagemDeDoses(100L, "Losartana", "50mg", CONFIRMADA_NO_HORARIO, 1)));
         when(gerador.gerar(any(), any())).thenReturn(new byte[0]);
 
         assertThat(useCase.executar(CUIDADOR_ID, IDOSO_ID, DE, null).relatorio().ate()).isEqualTo(AGORA.toLocalDate());

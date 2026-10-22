@@ -107,7 +107,7 @@ public class GerarRelatorioPdfUseCase {
     }
 
     private static TotaisDoDia totais(Map<StatusDose, Long> porStatus) {
-        return TotaisDoDia.deContagens(Math.toIntExact(porStatus.getOrDefault(StatusDose.TOMADA, 0L)),
+        return TotaisDoDia.deContagens(Math.toIntExact(porStatus.getOrDefault(StatusDose.CONFIRMADA_NO_HORARIO, 0L)),
                 Math.toIntExact(porStatus.getOrDefault(StatusDose.CONFIRMADA_COM_ATRASO, 0L)),
                 Math.toIntExact(porStatus.getOrDefault(StatusDose.NAO_TOMADA, 0L)),
                 Math.toIntExact(porStatus.getOrDefault(StatusDose.PENDENTE, 0L)));

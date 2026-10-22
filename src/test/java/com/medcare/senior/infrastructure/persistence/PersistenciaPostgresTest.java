@@ -166,7 +166,7 @@ class PersistenciaPostgresTest {
         CodigoVinculoEntity codigo = codigoVinculo(cuidador, idoso);
         DoseEntity pendentePassada = dose(tratamentoAtivo, AGORA.minusDays(1), StatusDose.PENDENTE);
         DoseEntity pendenteFutura = dose(tratamentoAtivo, AGORA.plusDays(1), StatusDose.PENDENTE);
-        DoseEntity tomada = dose(tratamentoAtivo, AGORA.minusHours(6), StatusDose.TOMADA);
+        DoseEntity noHorario = dose(tratamentoAtivo, AGORA.minusHours(6), StatusDose.CONFIRMADA_NO_HORARIO);
         DoseEntity naoTomada = dose(tratamentoRemovido, AGORA.minusDays(5), StatusDose.NAO_TOMADA);
         DoseEntity comAtraso = dose(tratamentoRemovido, AGORA.minusDays(4), StatusDose.CONFIRMADA_COM_ATRASO);
 
@@ -186,8 +186,8 @@ class PersistenciaPostgresTest {
         assertThat(contar("dose", pendentePassada.getId(), pendenteFutura.getId())).isZero();
 
         // Registradas: mantidas, mas sem vínculo com ninguém (ON DELETE SET NULL)
-        assertThat(contar("dose", tomada.getId(), naoTomada.getId(), comAtraso.getId())).isEqualTo(3);
-        assertThat(tratamentoIdDaDose(tomada.getId())).isNull();
+        assertThat(contar("dose", noHorario.getId(), naoTomada.getId(), comAtraso.getId())).isEqualTo(3);
+        assertThat(tratamentoIdDaDose(noHorario.getId())).isNull();
         assertThat(tratamentoIdDaDose(naoTomada.getId())).isNull();
         assertThat(tratamentoIdDaDose(comAtraso.getId())).isNull();
 
@@ -317,7 +317,7 @@ class PersistenciaPostgresTest {
         MedicamentoEntity medicamento = medicamento(idoso, null);
         TratamentoEntity tratamento = tratamento(medicamento, null);
         DoseEntity noite = dose(tratamento, dia.atTime(20, 0), StatusDose.PENDENTE);
-        DoseEntity meiaNoite = dose(tratamento, dia.atStartOfDay(), StatusDose.TOMADA);
+        DoseEntity meiaNoite = dose(tratamento, dia.atStartOfDay(), StatusDose.CONFIRMADA_NO_HORARIO);
         DoseEntity manha = dose(tratamento, dia.atTime(8, 0), StatusDose.CONFIRMADA_COM_ATRASO);
         DoseEntity diaSeguinte = dose(tratamento, dia.plusDays(1).atStartOfDay(), StatusDose.PENDENTE);
         DoseEntity diaAnterior = dose(tratamento, dia.minusDays(1).atTime(23, 59), StatusDose.PENDENTE);
@@ -327,7 +327,7 @@ class PersistenciaPostgresTest {
         DoseEntity deOutroIdoso = dose(tratamento(medicamento(idoso(cuidador()), null), null), dia.atTime(11, 0),
                 StatusDose.PENDENTE);
         em.getEntityManager()
-                .createNativeQuery("INSERT INTO dose (tratamento_id, horario_programado, status) VALUES (NULL, ?1, 'TOMADA')")
+                .createNativeQuery("INSERT INTO dose (tratamento_id, horario_programado, status) VALUES (NULL, ?1, 'CONFIRMADA_NO_HORARIO')")
                 .setParameter(1, dia.atTime(12, 0))
                 .executeUpdate();
 
@@ -346,7 +346,7 @@ class PersistenciaPostgresTest {
         assertThat(primeira.dosagem()).isEqualTo("50mg");
         assertThat(primeira.tipo()).isEqualTo("COMPRIMIDO");
         assertThat(primeira.dose().getTratamentoId()).isEqualTo(tratamento.getId());
-        assertThat(primeira.dose().getStatus()).isEqualTo(StatusDose.TOMADA);
+        assertThat(primeira.dose().getStatus()).isEqualTo(StatusDose.CONFIRMADA_NO_HORARIO);
         assertThat(primeira.dose().getHoraConfirmacao()).isEqualTo(dia.atStartOfDay().plusMinutes(5));
     }
 
@@ -355,13 +355,13 @@ class PersistenciaPostgresTest {
     // ---------------------------------------------------------------------------------------------------------
 
     @Test
-    void confirmarGravaTomadaComAHoraDoServidor() {
+    void confirmarGravaConfirmadaNoHorarioComAHoraDoServidor() {
         IdosoEntity idoso = idoso(cuidador());
         DoseEntity pendente = dose(tratamento(medicamento(idoso, null), null), AGORA.minusMinutes(10), StatusDose.PENDENTE);
 
         confirmarDoseUseCase.executar(pendente.getId(), idoso.getId());
 
-        assertThat(statusDaDose(pendente.getId())).isEqualTo("TOMADA");
+        assertThat(statusDaDose(pendente.getId())).isEqualTo("CONFIRMADA_NO_HORARIO");
         assertThat(horaConfirmacaoDaDose(pendente.getId())).isEqualTo(AGORA);
     }
 
@@ -381,25 +381,25 @@ class PersistenciaPostgresTest {
                 .createNativeQuery("SELECT quantidade_estoque FROM medicamento WHERE id = ?1")
                 .setParameter(1, medicamento.getId())
                 .getSingleResult();
-        assertThat(statusDaDose(pendente.getId())).isEqualTo("TOMADA");
+        assertThat(statusDaDose(pendente.getId())).isEqualTo("CONFIRMADA_NO_HORARIO");
         assertThat(estoque.intValue()).isEqualTo(30);
     }
 
     @Test
-    void confirmarNaoSobrescreveDoseJaTomada() {
+    void confirmarNaoSobrescreveDoseJaConfirmada() {
         IdosoEntity idoso = idoso(cuidador());
-        DoseEntity tomada = dose(tratamento(medicamento(idoso, null), null), AGORA.minusMinutes(10), StatusDose.TOMADA);
-        LocalDateTime confirmadaEm = horaConfirmacaoDaDose(tomada.getId());
+        DoseEntity noHorario = dose(tratamento(medicamento(idoso, null), null), AGORA.minusMinutes(10), StatusDose.CONFIRMADA_NO_HORARIO);
+        LocalDateTime confirmadaEm = horaConfirmacaoDaDose(noHorario.getId());
 
-        assertThatThrownBy(() -> confirmarDoseUseCase.executar(tomada.getId(), idoso.getId()))
+        assertThatThrownBy(() -> confirmarDoseUseCase.executar(noHorario.getId(), idoso.getId()))
                 .isInstanceOf(DoseNaoConfirmavelException.class);
-        assertThat(statusDaDose(tomada.getId())).isEqualTo("TOMADA");
-        assertThat(horaConfirmacaoDaDose(tomada.getId())).isEqualTo(confirmadaEm);
+        assertThat(statusDaDose(noHorario.getId())).isEqualTo("CONFIRMADA_NO_HORARIO");
+        assertThat(horaConfirmacaoDaDose(noHorario.getId())).isEqualTo(confirmadaEm);
 
         // Mesmo com leitura "velha" (vista como PENDENTE), o UPDATE condicional não altera a dose já registrada
-        assertThat(doseAdapter.registrarSePendente(domainPendente(tomada).confirmar(StatusDose.CONFIRMADA_COM_ATRASO, AGORA)))
+        assertThat(doseAdapter.registrarSePendente(domainPendente(noHorario).confirmar(StatusDose.CONFIRMADA_COM_ATRASO, AGORA)))
                 .isZero();
-        assertThat(statusDaDose(tomada.getId())).isEqualTo("TOMADA");
+        assertThat(statusDaDose(noHorario.getId())).isEqualTo("CONFIRMADA_NO_HORARIO");
     }
 
     @Test
@@ -458,7 +458,7 @@ class PersistenciaPostgresTest {
         TratamentoEntity tratamento = tratamento(medicamento, null);
         DoseEntity pendentePassada = dose(tratamento, AGORA.minusHours(2), StatusDose.PENDENTE);
         DoseEntity pendenteFutura = dose(tratamento, AGORA.plusHours(2), StatusDose.PENDENTE);
-        DoseEntity tomada = dose(tratamento, AGORA.minusDays(1), StatusDose.TOMADA);
+        DoseEntity noHorario = dose(tratamento, AGORA.minusDays(1), StatusDose.CONFIRMADA_NO_HORARIO);
 
         removerMedicamentoUseCase.executar(medicamento.getId(), cuidador.getId(), true);
 
@@ -478,7 +478,7 @@ class PersistenciaPostgresTest {
 
         // Doses: só a pendente futura é apagada
         assertThat(contar("dose", pendenteFutura.getId())).isZero();
-        assertThat(contar("dose", pendentePassada.getId(), tomada.getId())).isEqualTo(2);
+        assertThat(contar("dose", pendentePassada.getId(), noHorario.getId())).isEqualTo(2);
     }
 
     @Test
@@ -505,15 +505,15 @@ class PersistenciaPostgresTest {
         CuidadorEntity cuidador = cuidador();
         TratamentoEntity tratamento = tratamento(medicamento(idoso(cuidador), null), null);
         DoseEntity pendentePassada = dose(tratamento, HOJE.minusDays(1).atTime(8, 0), StatusDose.PENDENTE);
-        DoseEntity tomadaHoje = dose(tratamento, HOJE.atTime(8, 0), StatusDose.TOMADA);
+        DoseEntity noHorarioHoje = dose(tratamento, HOJE.atTime(8, 0), StatusDose.CONFIRMADA_NO_HORARIO);
         DoseEntity pendenteFutura = dose(tratamento, HOJE.plusDays(1).atTime(8, 0), StatusDose.PENDENTE);
-        DoseEntity registradaFutura = dose(tratamento, HOJE.plusDays(2).atTime(8, 0), StatusDose.TOMADA);
+        DoseEntity registradaFutura = dose(tratamento, HOJE.plusDays(2).atTime(8, 0), StatusDose.CONFIRMADA_NO_HORARIO);
 
         editarTratamentoUseCase.executar(tratamento.getId(), HOJE.plusDays(2), List.of(LocalTime.of(9, 0)),
                 List.copyOf(EnumSet.allOf(DayOfWeek.class)), cuidador.getId());
 
         assertThat(contar("dose", pendenteFutura.getId())).isZero();
-        assertThat(contar("dose", pendentePassada.getId(), tomadaHoje.getId(), registradaFutura.getId())).isEqualTo(3);
+        assertThat(contar("dose", pendentePassada.getId(), noHorarioHoje.getId(), registradaFutura.getId())).isEqualTo(3);
         // Hoje 09:00 já passou (agora = 14:30); geradas: amanhã e depois de amanhã às 09:00
         assertThat(horariosPendentesFuturos(tratamento.getId()))
                 .containsExactly(HOJE.plusDays(1).atTime(9, 0), HOJE.plusDays(2).atTime(9, 0));
@@ -537,7 +537,7 @@ class PersistenciaPostgresTest {
     @Test
     void dosesAnonimizadasNoMesmoHorarioNaoConflitam() {
         LocalDateTime horario = AGORA.minusDays(1);
-        String insert = "INSERT INTO dose (tratamento_id, horario_programado, status) VALUES (NULL, ?1, 'TOMADA')";
+        String insert = "INSERT INTO dose (tratamento_id, horario_programado, status) VALUES (NULL, ?1, 'CONFIRMADA_NO_HORARIO')";
 
         em.getEntityManager().createNativeQuery(insert).setParameter(1, horario).executeUpdate();
         em.getEntityManager().createNativeQuery(insert).setParameter(1, horario).executeUpdate();
@@ -551,15 +551,15 @@ class PersistenciaPostgresTest {
     @Test
     void apagarTratamentoAnonimizaAsDosesPorOnDeleteSetNull() {
         TratamentoEntity tratamento = tratamento(medicamento(idoso(cuidador()), null), null);
-        DoseEntity tomada = dose(tratamento, AGORA.minusDays(1), StatusDose.TOMADA);
+        DoseEntity noHorario = dose(tratamento, AGORA.minusDays(1), StatusDose.CONFIRMADA_NO_HORARIO);
         em.flush();
         em.clear();
 
         em.getEntityManager().createNativeQuery("DELETE FROM tratamento WHERE id = ?1")
                 .setParameter(1, tratamento.getId()).executeUpdate();
 
-        assertThat(contar("dose", tomada.getId())).isEqualTo(1);
-        assertThat(tratamentoIdDaDose(tomada.getId())).isNull();
+        assertThat(contar("dose", noHorario.getId())).isEqualTo(1);
+        assertThat(tratamentoIdDaDose(noHorario.getId())).isNull();
     }
 
     // ---------------------------------------------------------------------------------------------------------
@@ -578,16 +578,16 @@ class PersistenciaPostgresTest {
     }
 
     @Test
-    void registrarSePendenteNaoSobrescreveDoseJaTomada() {
+    void registrarSePendenteNaoSobrescreveDoseJaConfirmada() {
         TratamentoEntity tratamento = tratamento(medicamento(idoso(cuidador()), null), null);
-        DoseEntity tomada = dose(tratamento, AGORA.minusHours(1), StatusDose.TOMADA);
+        DoseEntity noHorario = dose(tratamento, AGORA.minusHours(1), StatusDose.CONFIRMADA_NO_HORARIO);
         // Leitura "velha": o verificador viu a dose como PENDENTE antes da confirmação concorrente
-        Dose lidaComoPendente = domainPendente(tomada);
+        Dose lidaComoPendente = domainPendente(noHorario);
 
         int alteradas = doseAdapter.registrarSePendente(lidaComoPendente.marcarComoNaoTomada());
 
         assertThat(alteradas).isZero();
-        assertThat(statusDaDose(tomada.getId())).isEqualTo("TOMADA");
+        assertThat(statusDaDose(noHorario.getId())).isEqualTo("CONFIRMADA_NO_HORARIO");
     }
 
     @Test
@@ -607,7 +607,7 @@ class PersistenciaPostgresTest {
         DoseEntity noLimiteDoEncerramento = dose(tratamento, encerradasAte, StatusDose.PENDENTE);
         DoseEntity jaAvisada = dose(tratamento, agora.minusMinutes(60), StatusDose.PENDENTE);
         eventoAdapter.criarSeAusente(jaAvisada.getId());
-        DoseEntity tomada = dose(tratamento, agora.minusMinutes(50), StatusDose.TOMADA);
+        DoseEntity noHorario = dose(tratamento, agora.minusMinutes(50), StatusDose.CONFIRMADA_NO_HORARIO);
         DoseEntity deTratamentoRemovido = dose(tratamento(medicamento, agora), agora.minusMinutes(70), StatusDose.PENDENTE);
         DoseEntity deMedicamentoRemovido = dose(tratamento(medicamento(idoso, agora), null), agora.minusMinutes(80),
                 StatusDose.PENDENTE);
@@ -621,7 +621,7 @@ class PersistenciaPostgresTest {
         assertThat(paraAviso).extracting(DoseParaAviso::doseId)
                 .containsExactly(maisAntiga.getId(), noLimiteDoAviso.getId())
                 .doesNotContain(dentroDaTolerancia.getId(), noLimiteDoEncerramento.getId(), jaAvisada.getId(),
-                        tomada.getId(), deTratamentoRemovido.getId(), deMedicamentoRemovido.getId());
+                        noHorario.getId(), deTratamentoRemovido.getId(), deMedicamentoRemovido.getId());
         DoseParaAviso primeira = paraAviso.get(0);
         assertThat(primeira.cuidadorId()).isEqualTo(cuidador.getId());
         assertThat(primeira.idosoId()).isEqualTo(idoso.getId());
@@ -653,7 +653,7 @@ class PersistenciaPostgresTest {
         // Limite exato: horário + 180 min = agora encerra; 1 s antes do limite ainda não
         DoseEntity noLimite = dose(tratamento, encerradasAte, StatusDose.PENDENTE);
         DoseEntity umSegundoAntesDeEncerrar = dose(tratamento, encerradasAte.plusSeconds(1), StatusDose.PENDENTE);
-        DoseEntity tomada = dose(tratamento, encerradasAte.minusHours(1), StatusDose.TOMADA);
+        DoseEntity noHorario = dose(tratamento, encerradasAte.minusHours(1), StatusDose.CONFIRMADA_NO_HORARIO);
         DoseEntity deTratamentoRemovido = dose(tratamento(medicamento, encerradasAte), encerradasAte.minusHours(2),
                 StatusDose.PENDENTE);
         DoseEntity deMedicamentoRemovido = dose(tratamento(medicamento(idoso, encerradasAte), null),
@@ -663,7 +663,7 @@ class PersistenciaPostgresTest {
 
         assertThat(encerradas).extracting(Dose::getId)
                 .containsExactly(maisAntiga.getId(), noLimite.getId())
-                .doesNotContain(umSegundoAntesDeEncerrar.getId(), tomada.getId(), deTratamentoRemovido.getId(),
+                .doesNotContain(umSegundoAntesDeEncerrar.getId(), noHorario.getId(), deTratamentoRemovido.getId(),
                         deMedicamentoRemovido.getId());
         assertThat(encerradas.get(0).getStatus()).isEqualTo(StatusDose.PENDENTE);
         assertThat(encerradas.get(0).getTratamentoId()).isEqualTo(tratamento.getId());

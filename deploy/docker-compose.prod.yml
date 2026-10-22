@@ -46,6 +46,9 @@ services:
       JOBS_ENABLED: ${JOBS_ENABLED:-true}
       FCM_ENABLED: ${FCM_ENABLED:-false}
       FCM_DRY_RUN: ${FCM_DRY_RUN:-false}
+      # Pool de conexões com o banco (ver docs/capacidade.md)
+      DB_POOL_MAX: ${DB_POOL_MAX:-8}
+      DB_POOL_MIN_IDLE: ${DB_POOL_MIN_IDLE:-2}
       # Caminho DENTRO do contêiner; o arquivo vem do volume somente leitura abaixo
       FIREBASE_CREDENTIALS_PATH: /run/secrets/firebase-adminsdk.json
       # Heap: 75% da memória do contêiner (ver docs/capacidade.md para a VM de 1 GB)

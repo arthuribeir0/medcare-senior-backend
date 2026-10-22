@@ -10,7 +10,7 @@
 | Memória do contêiner do backend | 640 MB (VM AMD de 1 GB) / 2 GB (Ampere A1) | `BACKEND_MEM_LIMIT` no `.env.prod` |
 | Heap da JVM | 75% do contêiner: ~480 MB / ~1,5 GB | `-XX:MaxRAMPercentage=75` no Dockerfile |
 | Memória fora do heap (metaspace, threads, buffers) | ~150 a 200 MB | Spring Boot 4 + Hibernate + Tomcat, ordem de grandeza típica |
-| Pool de conexões (HikariCP) | 10 conexões (padrão) | `application.yml` não muda o tamanho |
+| Pool de conexões (HikariCP) | 8 conexões no máximo, 2 ociosas | `DB_POOL_MAX` / `DB_POOL_MIN_IDLE` (seção "Pool de conexões" abaixo) |
 | PostgreSQL | `max_connections` 100, `shared_buffers` 128 MB (padrões da imagem) | `postgres:16-alpine` sem ajuste |
 | Tempo de uma requisição típica | 10 a 30 ms de banco (consultas indexadas, uma por requisição) | consultas com projeção e índices das migrations |
 | Threads do Tomcat | até 200 | padrão do Spring Boot |
@@ -30,14 +30,14 @@ Usuário com o app fechado não gera requisição (o aviso de dose chega por pus
 
 ## Conta da capacidade
 
-**Banco**: 10 conexões × (1 / 0,02 s) = **~500 consultas por segundo** de teto teórico, com 20 ms por consulta.
+**Banco**: 8 conexões × (1 / 0,02 s) = **~400 consultas por segundo** de teto teórico, com 20 ms por consulta.
 
 **CPU**, que é o limite real:
 
 - **Ampere A1, 1 OCPU (ARM)**: uma API Spring simples serve, em ordem de grandeza, **150 a 300 req/s** num núcleo
   dedicado (JSON pequeno, uma consulta por requisição).
   → 150 req/s ÷ 0,1 req/s por usuário = **~1.500 usuários ativos ao mesmo tempo** (estimativa conservadora).
-  Com 2 OCPU, o dobro, até o teto do pool (~500 req/s ≈ 5.000 usuários ativos), quando o pool passa a limitar.
+  Com 2 OCPU, o dobro, até o teto do pool (~400 req/s ≈ 4.000 usuários ativos), quando o pool passa a limitar.
 - **AMD micro (1/8 de OCPU, com picos curtos)**: **15 a 30 req/s** sustentados.
   → 15 ÷ 0,1 = **~150 usuários ativos** (estimativa conservadora). A memória (1 GB, com 640 MB para o backend e o
   restante para PostgreSQL, nginx e sistema) também é apertada: precisa do swap do roteiro.
@@ -48,6 +48,21 @@ cada 5 minutos. Com poucos milhares de doses por dia isso leva milissegundos e n
 **Conclusão**: a VM **Ampere A1** comporta com folga um piloto (dezenas a centenas de usuários) e chega à ordem de
 1.000 usuários ativos simultâneos. A meta do RNF-10 (10.000 usuários simultâneos) **não** cabe no plano gratuito sem
 teste de carga e ajuste (pool, réplicas, banco gerenciado). A VM AMD micro serve só para demonstração.
+
+## Pool de conexões
+
+| Propriedade | Valor | Por quê |
+|---|---|---|
+| `maximum-pool-size` | 8 (`DB_POOL_MAX`) | A regra do HikariCP (núcleos × 2 + 1) dá 3 a 5 conexões para 1 a 2 OCPU. Mais conexões que isso só disputam a mesma CPU. 8 deixa folga para os jobs (varredura a cada minuto, retentativa a cada 5 min) sem tirar conexão das requisições, e fica muito abaixo do `max_connections` 100 do PostgreSQL. |
+| `minimum-idle` | 2 (`DB_POOL_MIN_IDLE`) | Com o app parado, só 2 conexões abertas: menos memória no PostgreSQL da VM pequena. |
+| `idle-timeout` | 5 min | Conexões acima das 2 ociosas fecham depois de 5 min sem uso. |
+| `max-lifetime` | 30 min | Recicla cada conexão antes de qualquer corte de rede ou firewall. |
+| `keepalive-time` | 5 min | Testa as conexões ociosas para não entregar uma conexão morta. |
+| `connection-timeout` | 5 s | Banco fora do ar: a requisição desiste em 5 s em vez de ficar presa (a saúde responde 503). |
+| `validation-timeout` | 3 s | Idem, para a validação da conexão. |
+
+Na VM AMD micro (1/8 de OCPU), `DB_POOL_MAX=4` basta. Só aumente depois de um teste de carga mostrar espera por
+conexão (métrica `hikaricp.connections.pending`).
 
 ## Limites do Oracle Cloud Always Free (confira a página oficial antes de criar)
 

@@ -19,6 +19,16 @@ spring:
       # segundos, em vez de prender a requisicao). Nao limita o tempo das consultas.
       connection-timeout: 5000
       validation-timeout: 3000
+      # Tamanho do pool para a VM pequena (1 a 2 OCPU, ver docs/capacidade.md): a regra do HikariCP
+      # (nucleos x 2 + 1) da 3 a 5; 8 deixa folga para os jobs (varredura e retentativa) sem disputar as
+      # requisicoes, e fica bem abaixo do max_connections 100 do PostgreSQL.
+      maximum-pool-size: ${DB_POOL_MAX:8}
+      # Ocioso: so 2 conexoes abertas; as demais fecham depois de 5 min sem uso (menos memoria no banco)
+      minimum-idle: ${DB_POOL_MIN_IDLE:2}
+      idle-timeout: 300000
+      # Recicla cada conexao em 30 min (abaixo de qualquer timeout de rede/firewall) e testa as ociosas a cada 5 min
+      max-lifetime: 1800000
+      keepalive-time: 300000
   jpa:
     hibernate:
       ddl-auto: validate

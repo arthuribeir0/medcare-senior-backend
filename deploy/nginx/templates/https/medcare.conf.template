@@ -4,7 +4,20 @@
 
 # Limite por IP contra abuso (o pareamento ainda tem o limite próprio do backend). Folgado o bastante para as telas
 # "Todos", que pedem em paralelo os idosos e os remédios de cada um.
-limit_req_zone $binary_remote_addr zone=api:10m rate=20r/s;
+#
+# Isenção para o teste de carga (desligada por padrão): os IPs listados em carga-isenta.conf (vazio no repositório)
+# ficam com a chave vazia, e o nginx não conta requisições com chave vazia. Todos os outros IPs seguem o limite.
+geo $carga_isenta {
+    default 0;
+    include /etc/nginx/snippets/carga-isenta.conf;
+}
+
+map $carga_isenta $limite_api_chave {
+    1 "";
+    default $binary_remote_addr;
+}
+
+limit_req_zone $limite_api_chave zone=api:10m rate=20r/s;
 
 upstream medcare_backend {
     server backend:8080;

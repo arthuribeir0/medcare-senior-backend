@@ -3,6 +3,7 @@ package com.medcare.senior.application.service;
 import com.medcare.senior.domain.dose.Dose;
 import com.medcare.senior.domain.dose.DoseRepositoryPort;
 import com.medcare.senior.domain.tratamento.Tratamento;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,8 +17,10 @@ import java.util.Set;
 
 /**
  * Motor de geração de doses com janela rolante: mantém doses PENDENTES geradas de max(dataInicio, hoje) até
- * min(hoje + {@value #JANELA_DIAS} dias, dataFim), nos dias da semana e horários do tratamento. O job diário
- * (ReabastecerDosesUseCase) empurra a janela para frente.
+ * min(hoje + horizonte, dataFim), nos dias da semana e horários do tratamento. O horizonte é configurável
+ * (app.doses.horizonte-dias, padrão {@value #HORIZONTE_PADRAO_DIAS} dias, de {@value #HORIZONTE_MINIMO_DIAS} a
+ * {@value #HORIZONTE_MAXIMO_DIAS}). O job diário (ReabastecerDosesUseCase) empurra a janela para frente: com o
+ * padrão, cada tratamento ativo tem sempre de 30 a 31 dias de doses à frente.
  *
  * <ul>
  *   <li>No dia de hoje, só gera horários posteriores ao momento atual.</li>
@@ -29,14 +32,31 @@ import java.util.Set;
 @Service
 public class GeradorDeDosesService {
 
-    public static final int JANELA_DIAS = 30;
+    public static final int HORIZONTE_PADRAO_DIAS = 30;
+    public static final int HORIZONTE_MINIMO_DIAS = 1;
+    public static final int HORIZONTE_MAXIMO_DIAS = 90;
 
     private final DoseRepositoryPort doseRepository;
     private final Clock clock;
+    private final int horizonteDias;
 
-    public GeradorDeDosesService(DoseRepositoryPort doseRepository, Clock clock) {
+    /**
+     * @param horizonteDias quantos dias à frente de hoje a janela vai
+     * @throws IllegalArgumentException fora de [1, 90] (a aplicação não sobe com o valor inválido)
+     */
+    public GeradorDeDosesService(DoseRepositoryPort doseRepository, Clock clock,
+                                 @Value("${app.doses.horizonte-dias:" + HORIZONTE_PADRAO_DIAS + "}") int horizonteDias) {
+        if (horizonteDias < HORIZONTE_MINIMO_DIAS || horizonteDias > HORIZONTE_MAXIMO_DIAS) {
+            throw new IllegalArgumentException("O horizonte de geração de doses deve ser de " + HORIZONTE_MINIMO_DIAS
+                    + " a " + HORIZONTE_MAXIMO_DIAS + " dias");
+        }
         this.doseRepository = doseRepository;
         this.clock = clock;
+        this.horizonteDias = horizonteDias;
+    }
+
+    public int horizonteDias() {
+        return horizonteDias;
     }
 
     /**
@@ -52,7 +72,7 @@ public class GeradorDeDosesService {
         LocalDate hoje = agora.toLocalDate();
 
         LocalDate inicio = tratamento.getDataInicio().isAfter(hoje) ? tratamento.getDataInicio() : hoje;
-        LocalDate fim = hoje.plusDays(JANELA_DIAS);
+        LocalDate fim = hoje.plusDays(horizonteDias);
         if (tratamento.getDataFim() != null && tratamento.getDataFim().isBefore(fim)) {
             fim = tratamento.getDataFim();
         }

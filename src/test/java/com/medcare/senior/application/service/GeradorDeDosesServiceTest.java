@@ -6,6 +6,8 @@ import com.medcare.senior.domain.dose.StatusDose;
 import com.medcare.senior.domain.tratamento.Tratamento;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
@@ -22,10 +24,12 @@ import java.util.List;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
@@ -46,7 +50,8 @@ class GeradorDeDosesServiceTest {
 
     @BeforeEach
     void setUp() {
-        gerador = new GeradorDeDosesService(doseRepository, Clock.fixed(AGORA.atZone(FUSO).toInstant(), FUSO));
+        gerador = new GeradorDeDosesService(doseRepository, Clock.fixed(AGORA.atZone(FUSO).toInstant(), FUSO),
+                GeradorDeDosesService.HORIZONTE_PADRAO_DIAS);
     }
 
     private static Tratamento tratamento(LocalDate inicio, LocalDate fim, List<DayOfWeek> dias, LocalTime... horarios) {
@@ -189,5 +194,50 @@ class GeradorDeDosesServiceTest {
         assertThat(gerador.gerar(tratamento(HOJE.plusDays(31), null, TODOS_OS_DIAS, LocalTime.of(20, 0)))).isZero();
 
         verifyNoInteractions(doseRepository);
+    }
+
+    // ---- horizonte configurável ---------------------------------------------------------------------------------
+
+    @Test
+    void oHorizontePadraoEhDeTrintaDias() {
+        assertThat(gerador.horizonteDias()).isEqualTo(30);
+    }
+
+    @Test
+    void horizonteConfiguradoLimitaAJanela() {
+        GeradorDeDosesService seteDias = new GeradorDeDosesService(doseRepository,
+                Clock.fixed(AGORA.atZone(FUSO).toInstant(), FUSO), 7);
+        semDosesExistentes();
+
+        int geradas = seteDias.gerar(tratamento(HOJE.minusDays(10), null, TODOS_OS_DIAS, LocalTime.of(20, 0)));
+
+        // Hoje às 20:00 e mais 7 dias
+        assertThat(geradas).isEqualTo(8);
+        assertThat(horarios(dosesSalvas())).last().isEqualTo(HOJE.plusDays(7).atTime(20, 0));
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {0, -1, 91, 365})
+    void horizonteForaDe1A90DiasImpedeASubida(int dias) {
+        Clock relogio = Clock.fixed(AGORA.atZone(FUSO).toInstant(), FUSO);
+        assertThatThrownBy(() -> new GeradorDeDosesService(doseRepository, relogio, dias))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("de 1 a 90 dias");
+    }
+
+    @Test
+    void geracaoRepetidaNoMesmoDiaNaoDuplicaNada() {
+        // Primeira chamada gera; na segunda, todos os horários já existem (o job e a edição podem rodar no mesmo dia)
+        semDosesExistentes();
+        Tratamento tratamento = tratamento(HOJE, null, TODOS_OS_DIAS, LocalTime.of(20, 0));
+        int primeira = gerador.gerar(tratamento);
+        Set<LocalDateTime> jaGeradas = Set.copyOf(horarios(dosesSalvas()));
+        when(doseRepository.findHorariosProgramadosByTratamentoIdDesde(anyLong(), any())).thenReturn(jaGeradas);
+
+        int segunda = gerador.gerar(tratamento);
+
+        assertThat(primeira).isEqualTo(31);
+        assertThat(segunda).isZero();
+        verify(doseRepository, times(1)).saveAll(any());
     }
 }

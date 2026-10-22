@@ -123,6 +123,30 @@ class GerarRelatorioPdfUseCaseTest {
     }
 
     @Test
+    void periodoDeExatamente12MesesEhAceito() {
+        LocalDate de = LocalDate.of(2025, 10, 10);
+        LocalDate ate = LocalDate.of(2026, 10, 10);
+        idosoDoCuidador();
+        when(doseRepository.contarPorMedicamentoEStatus(eq(IDOSO_ID), any(), any()))
+                .thenReturn(List.of(new ContagemDeDoses(100L, "Losartana", "50mg", CONFIRMADA_NO_HORARIO, 1)));
+        when(gerador.gerar(any(), any())).thenReturn(new byte[0]);
+
+        assertThat(useCase.executar(CUIDADOR_ID, IDOSO_ID, de, ate).relatorio().ate()).isEqualTo(ate);
+    }
+
+    @Test
+    void periodoDe12MesesMaisUmDiaEhRecusadoAntesDeConsultar() {
+        assertThatThrownBy(() -> useCase.executar(CUIDADOR_ID, IDOSO_ID, LocalDate.of(2025, 10, 10), LocalDate.of(2026, 10, 11)))
+                .isInstanceOf(ParametroInvalidoException.class)
+                .hasMessage("O período do relatório pode ter no máximo 12 meses. Escolha uma data de fim até 10/10/2026.")
+                .extracting("campo").isEqualTo("ate");
+        // Sem data de fim vale hoje (20/10/2026): início há mais de 12 meses também é recusado
+        assertThatThrownBy(() -> useCase.executar(CUIDADOR_ID, IDOSO_ID, LocalDate.of(2025, 10, 19), null))
+                .isInstanceOf(ParametroInvalidoException.class);
+        verifyNoInteractions(idosoRepository, doseRepository, gerador);
+    }
+
+    @Test
     void idosoDeOutroCuidadorEhNaoEncontrado() {
         when(idosoRepository.findByIdAndCuidadorId(IDOSO_ID, CUIDADOR_ID)).thenReturn(Optional.empty());
 

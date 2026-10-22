@@ -61,11 +61,13 @@ public class RelatorioController {
             description = "RN-012: nome do idoso, período, medicamentos avaliados, cada dose (data, hora programada, "
                     + "status e hora da confirmação), taxa de adesão por medicamento e do período ((no horário + com "
                     + "atraso) / (total - pendentes), 1 casa). RN-011: 'de' obrigatório e não posterior a 'ate'; sem "
-                    + "'ate', vale hoje (fuso da aplicação). Período sem doses não gera arquivo (422).")
+                    + "'ate', vale hoje (fuso da aplicação). Período de no máximo 12 meses (de 10/01/2025 a 10/01/2026 "
+                    + "é aceito; até 11/01/2026, não). Período sem doses não gera arquivo (422).")
     @ApiResponse(responseCode = "200", description = "Arquivo PDF (Content-Disposition: attachment)",
             content = @Content(mediaType = MediaType.APPLICATION_PDF_VALUE))
-    @ApiResponse(responseCode = "400", description = "idosoId ou 'de' ausente, data em formato inválido ou 'de' depois "
-            + "de 'ate' (VALIDACAO)", content = @Content(schema = @Schema(implementation = ErroResponse.class)))
+    @ApiResponse(responseCode = "400", description = "idosoId ou 'de' ausente, data em formato inválido, 'de' depois "
+            + "de 'ate' ou período maior que 12 meses (VALIDACAO; campo 'de' ou 'ate')",
+            content = @Content(schema = @Schema(implementation = ErroResponse.class)))
     @ApiResponse(responseCode = "404", description = "Idoso inexistente ou de outro cuidador",
             content = @Content(schema = @Schema(implementation = ErroResponse.class)))
     @ApiResponse(responseCode = "422", description = "Nenhuma dose no período (PERIODO_SEM_REGISTROS)",

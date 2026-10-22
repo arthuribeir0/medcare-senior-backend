@@ -194,7 +194,8 @@ docker compose -f docker-compose.prod.yml --env-file .env.prod logs backend | gr
 - `Verificação de doses: ...` a cada minuto (doses encerradas e avisos criados/enviados).
 - `Retentativa de avisos: ...` a cada 5 minutos.
 - `Reabastecimento de doses: ...` todo dia às 00:05.
-- Com `FCM_ENABLED=false` aparece, na subida, o aviso de que os avisos não serão entregues.
+- Com `FCM_ENABLED=false` aparece, na subida, o aviso de que os avisos não serão entregues, e cada aviso fica
+  registrado no banco como falha com motivo `PUSH_DESLIGADO` (`evento_notificacao.motivo_falha`), sem retentativa.
 
 Verificação de ponta a ponta contra a URL pública: `deploy/verificar-producao.ps1` (ver o próprio script).
 
@@ -220,6 +221,26 @@ mkdir -p ~/backups && chmod 700 ~/backups
 
 No build do app (EAS, perfis `preview` ou `production`), defina `EXPO_PUBLIC_API_URL=https://SEU_SUBDOMINIO.duckdns.org`.
 O app de release recusa endereço sem `https://` e não usa tráfego em texto claro.
+
+## 14. Teste de carga: isentar o IP do gerador de carga do limite do nginx
+
+O nginx limita cada IP a 20 requisições por segundo na API (rajada de 80), o que derrubaria um teste de carga feito
+de uma só máquina (JMeter). A isenção existe, mas vem **desligada**: `deploy/nginx/carga-isenta.conf` não tem nenhum
+IP ativo, e todos os clientes seguem o limite.
+
+```bash
+cd ~/medcare
+nano nginx/carga-isenta.conf           # descomente e troque o IP de exemplo pelo IP público da máquina do JMeter
+docker compose -f docker-compose.prod.yml --env-file .env.prod exec nginx nginx -t
+docker compose -f docker-compose.prod.yml --env-file .env.prod exec nginx nginx -s reload
+# ... teste de carga ...
+nano nginx/carga-isenta.conf           # comente a linha de novo
+docker compose -f docker-compose.prod.yml --env-file .env.prod exec nginx nginx -s reload
+```
+
+Como funciona: um `geo` marca os IPs do arquivo e um `map` dá a eles a chave vazia; o `limit_req` não conta
+requisições com chave vazia. Os demais IPs continuam com o limite de produção. Nunca deixe um IP isento depois do
+teste.
 
 ## Plano B: backend no PC com túnel HTTPS
 

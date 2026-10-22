@@ -81,6 +81,8 @@ services:
       # NGINX_MODO=http-inicial para emitir o certificado; depois https (ver docs/implantacao.md)
       - ./nginx/templates/${NGINX_MODO:-https}:/etc/nginx/templates:ro
       - ./nginx/seguranca.conf:/etc/nginx/snippets/seguranca.conf:ro
+      # IPs isentos do limite por IP, só para teste de carga (o arquivo do repositório não isenta ninguém)
+      - ./nginx/carga-isenta.conf:/etc/nginx/snippets/carga-isenta.conf:ro
       - ./certbot/www:/var/www/certbot:ro
       - ./certbot/conf:/etc/letsencrypt:ro
     networks:

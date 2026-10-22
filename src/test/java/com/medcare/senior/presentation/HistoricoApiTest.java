@@ -136,7 +136,8 @@ class HistoricoApiTest {
                         D3.atTime(20, 0) + ":00", D3.atTime(8, 0) + ":00", D2.atTime(20, 0) + ":00",
                         D2.atTime(8, 0) + ":00", D1.atTime(8, 0) + ":00")))
                 .andExpect(jsonPath("$.conteudo[0].statusExibicao").value("NAO_TOMADA"))
-                .andExpect(jsonPath("$.conteudo[0].janela.encerraEm").exists());
+                .andExpect(jsonPath("$.conteudo[0].janela.encerraEm").exists())
+                .andExpect(jsonPath("$.conteudo[0].limiteConfirmacao").value(D3.atTime(21, 0) + ":00"));
     }
 
     @Test

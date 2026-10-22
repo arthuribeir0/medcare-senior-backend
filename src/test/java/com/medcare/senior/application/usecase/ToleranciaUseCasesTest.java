@@ -36,7 +36,7 @@ class ToleranciaUseCasesTest {
     @BeforeEach
     void setUp() {
         PoliticaDeJanela politica = new PoliticaDeJanela(Duration.ofMinutes(60), Duration.ofMinutes(30),
-                Duration.ofMinutes(180));
+                Duration.ofMinutes(30));
         buscar = new BuscarToleranciaUseCase(configuracoes, politica);
         atualizar = new AtualizarToleranciaUseCase(configuracoes);
     }

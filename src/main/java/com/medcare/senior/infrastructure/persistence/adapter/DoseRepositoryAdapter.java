@@ -1,7 +1,9 @@
 package com.medcare.senior.infrastructure.persistence.adapter;
 
+import com.medcare.senior.domain.configuracao.Tolerancia;
 import com.medcare.senior.domain.dose.Dose;
 import com.medcare.senior.domain.dose.DoseDetalhada;
+import com.medcare.senior.domain.dose.DoseEncerrada;
 import com.medcare.senior.domain.dose.DoseParaAviso;
 import com.medcare.senior.domain.dose.DoseRepositoryPort;
 import com.medcare.senior.domain.dose.StatusDose;
@@ -49,8 +51,11 @@ public class DoseRepositoryAdapter implements DoseRepositoryPort {
 
     @Override
     public List<DoseParaAviso> findPendentesParaAviso(LocalDateTime agora, Duration toleranciaPadrao,
-                                                      LocalDateTime encerradasAte, int limite) {
-        return doseRepository.findParaAviso(agora, Math.toIntExact(toleranciaPadrao.toMinutes()), encerradasAte, limite)
+                                                      Duration margemPosAviso, int limite) {
+        // Nenhuma dose com horário antes disto ainda está aberta, qualquer que seja a tolerância do cuidador
+        LocalDateTime horarioMinimo = agora.minus(margemPosAviso).minus(maiorTolerancia(toleranciaPadrao));
+        return doseRepository.findParaAviso(agora, minutos(toleranciaPadrao), minutos(margemPosAviso), horarioMinimo,
+                        limite)
                 .stream()
                 .map(linha -> new DoseParaAviso(linha.getDoseId(), linha.getHorarioProgramado(), linha.getCuidadorId(),
                         linha.getIdosoId(), linha.getNomeIdoso()))
@@ -58,11 +63,31 @@ public class DoseRepositoryAdapter implements DoseRepositoryPort {
     }
 
     @Override
-    public List<Dose> findPendentesEncerradas(LocalDateTime encerradasAte, int limite) {
-        return doseRepository.findEncerradasByStatus(StatusDose.PENDENTE, encerradasAte, PageRequest.of(0, limite))
+    @Transactional
+    public List<DoseEncerrada> encerrarVencidas(LocalDateTime agora, Duration toleranciaPadrao, Duration margemPosAviso,
+                                                int limite) {
+        // Nenhuma dose com horário depois disto já venceu, qualquer que seja a tolerância do cuidador
+        LocalDateTime horarioMaximo = agora.minus(margemPosAviso).minus(menorTolerancia(toleranciaPadrao));
+        return doseRepository.encerrarVencidas(agora, minutos(toleranciaPadrao), minutos(margemPosAviso), horarioMaximo,
+                        limite)
                 .stream()
-                .map(doseMapper::toDomain)
+                .map(linha -> new DoseEncerrada(linha.getDoseId(), linha.getIdosoId()))
                 .toList();
+    }
+
+    private static int minutos(Duration duracao) {
+        return Math.toIntExact(duracao.toMinutes());
+    }
+
+    // Tolerâncias possíveis: a de cada cuidador (5 a 120 min, garantido pelo CHECK da configuracao_alerta) ou a padrão
+    private static Duration maiorTolerancia(Duration padrao) {
+        Duration maxima = Duration.ofMinutes(Tolerancia.MAXIMO_MINUTOS);
+        return padrao.compareTo(maxima) > 0 ? padrao : maxima;
+    }
+
+    private static Duration menorTolerancia(Duration padrao) {
+        Duration minima = Duration.ofMinutes(Tolerancia.MINIMO_MINUTOS);
+        return padrao.compareTo(minima) < 0 ? padrao : minima;
     }
 
     @Override

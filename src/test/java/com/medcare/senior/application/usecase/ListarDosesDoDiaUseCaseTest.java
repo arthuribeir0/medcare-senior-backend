@@ -51,7 +51,7 @@ class ListarDosesDoDiaUseCaseTest {
 
     @BeforeEach
     void setUp() {
-        PoliticaDeJanela politica = new PoliticaDeJanela(Duration.ofMinutes(60), Duration.ofMinutes(30), Duration.ofMinutes(180));
+        PoliticaDeJanela politica = new PoliticaDeJanela(Duration.ofMinutes(60), Duration.ofMinutes(30), Duration.ofMinutes(30));
         useCase = new ListarDosesDoDiaUseCase(doseRepository, idosoRepository, politica,
                 Clock.fixed(AGORA.atZone(FUSO).toInstant(), FUSO));
     }
@@ -67,7 +67,7 @@ class ListarDosesDoDiaUseCaseTest {
         when(doseRepository.findDetalhadasDoIdosoEntre(IDOSO_ID, HOJE.atStartOfDay(), HOJE.plusDays(1).atStartOfDay()))
                 .thenReturn(List.of(
                         detalhe(1L, HOJE.atTime(8, 0), StatusDose.CONFIRMADA_NO_HORARIO),
-                        detalhe(2L, HOJE.atTime(22, 0), StatusDose.PENDENTE),
+                        detalhe(2L, HOJE.atTime(22, 45), StatusDose.PENDENTE),
                         detalhe(3L, HOJE.atTime(23, 45), StatusDose.PENDENTE)));
 
         List<DoseAvaliada> doses = useCase.executarComoIdoso(IDOSO_ID, null);

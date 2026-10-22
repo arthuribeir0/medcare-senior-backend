@@ -4,6 +4,7 @@ import com.medcare.senior.domain.dose.StatusDose;
 import com.medcare.senior.domain.relatorio.ContagemDeDoses;
 import com.medcare.senior.infrastructure.persistence.entity.DoseEntity;
 import com.medcare.senior.infrastructure.persistence.projection.DoseDetalhadaProjection;
+import com.medcare.senior.infrastructure.persistence.projection.DoseEncerradaView;
 import com.medcare.senior.infrastructure.persistence.projection.DoseParaAvisoView;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -31,35 +32,54 @@ public interface DoseRepository extends JpaRepository<DoseEntity, Long> {
                                                      @Param("desde") LocalDateTime desde);
 
     // Fase de AVISO da varredura. Nativa por causa da soma horário + tolerância em minutos (make_interval), que é
-    // por linha: a do cuidador dono do idoso (configuracao_alerta, LEFT JOIN) ou a padrão (COALESCE com o parâmetro).
-    // "horario > :encerradasAte" limita a faixa no índice (status, horario_programado) da V11; o NOT EXISTS usa o
-    // UNIQUE de evento_notificacao.dose_id. JOINs internos: dose anonimizada (sem tratamento) fica de fora. Da mais
-    // antiga para a mais nova.
+    // por linha: a do cuidador dono do idoso (configuracao_alerta, LEFT JOIN pela chave primária cuidador_id) ou a
+    // padrão (COALESCE com o parâmetro). Avisa quando horário + tolerância <= agora e a dose ainda não encerrou
+    // (horário + tolerância + margem > agora). ":horarioMinimo" (agora - margem - maior tolerância possível) só limita a
+    // faixa lida no índice (status, horario_programado) da V11. O NOT EXISTS usa o UNIQUE de evento_notificacao.dose_id.
+    // JOINs internos: dose anonimizada (sem tratamento) fica de fora. Da mais antiga para a mais nova.
     @Query(value = "SELECT d.id AS doseId, d.horario_programado AS horarioProgramado, i.cuidador_id AS cuidadorId, "
             + "i.id AS idosoId, i.nome AS nomeIdoso "
             + "FROM dose d JOIN tratamento t ON t.id = d.tratamento_id JOIN medicamento m ON m.id = t.medicamento_id "
             + "JOIN idoso i ON i.id = m.idoso_id "
             + "LEFT JOIN configuracao_alerta c ON c.cuidador_id = i.cuidador_id "
             + "WHERE d.status = 'PENDENTE' AND t.removido_em IS NULL AND m.removido_em IS NULL "
-            + "AND d.horario_programado > :encerradasAte "
+            + "AND d.horario_programado > :horarioMinimo AND d.horario_programado <= :agora "
             + "AND d.horario_programado + make_interval(mins => COALESCE(c.tolerancia_minutos, :toleranciaPadraoMinutos)) "
             + "<= :agora "
+            + "AND d.horario_programado + make_interval(mins => COALESCE(c.tolerancia_minutos, :toleranciaPadraoMinutos) "
+            + "+ :margemMinutos) > :agora "
             + "AND NOT EXISTS (SELECT 1 FROM evento_notificacao e WHERE e.dose_id = d.id) "
             + "ORDER BY d.horario_programado, d.id LIMIT :limite", nativeQuery = true)
     List<DoseParaAvisoView> findParaAviso(@Param("agora") LocalDateTime agora,
                                           @Param("toleranciaPadraoMinutos") int toleranciaPadraoMinutos,
-                                          @Param("encerradasAte") LocalDateTime encerradasAte,
+                                          @Param("margemMinutos") int margemMinutos,
+                                          @Param("horarioMinimo") LocalDateTime horarioMinimo,
                                           @Param("limite") int limite);
 
-    // Fase de ENCERRAMENTO da varredura: só a dose (o encerramento não avisa ninguém). Mesmos filtros de dono e
-    // remoção; usa o índice (status, horario_programado) da V11.
-    @Query("SELECT d FROM DoseEntity d JOIN d.tratamento t JOIN t.medicamento m "
-            + "WHERE d.status = :status AND d.horarioProgramado <= :encerradasAte "
-            + "AND t.removidoEm IS NULL AND m.removidoEm IS NULL "
-            + "ORDER BY d.horarioProgramado, d.id")
-    List<DoseEntity> findEncerradasByStatus(@Param("status") StatusDose status,
-                                         @Param("encerradasAte") LocalDateTime encerradasAte,
-                                         Pageable pagina);
+    // Fase de ENCERRAMENTO da varredura, em UM comando (sem ler e depois gravar): a CTE escolhe até :limite doses
+    // PENDENTES com horário + tolerância do cuidador (ou a padrão) + margem <= agora, e o UPDATE as marca NAO_TOMADA
+    // SOMENTE se ainda estiverem PENDENTES. Se uma confirmação gravou a dose depois da escolha, o PostgreSQL reavalia
+    // "d.status = 'PENDENTE'" na versão nova da linha (READ COMMITTED) e ela fica de fora: a confirmação vence.
+    // ":horarioMaximo" (agora - margem - menor tolerância possível) só limita a faixa lida no índice da V11.
+    // Devolve a dose e o idoso de cada linha encerrada (o idoso serve para invalidar o cache do relatório diário).
+    @Query(value = "WITH vencidas AS ("
+            + "SELECT d.id AS dose_id, i.id AS idoso_id "
+            + "FROM dose d JOIN tratamento t ON t.id = d.tratamento_id JOIN medicamento m ON m.id = t.medicamento_id "
+            + "JOIN idoso i ON i.id = m.idoso_id "
+            + "LEFT JOIN configuracao_alerta c ON c.cuidador_id = i.cuidador_id "
+            + "WHERE d.status = 'PENDENTE' AND t.removido_em IS NULL AND m.removido_em IS NULL "
+            + "AND d.horario_programado <= :horarioMaximo "
+            + "AND d.horario_programado + make_interval(mins => COALESCE(c.tolerancia_minutos, :toleranciaPadraoMinutos) "
+            + "+ :margemMinutos) <= :agora "
+            + "ORDER BY d.horario_programado, d.id LIMIT :limite) "
+            + "UPDATE dose d SET status = 'NAO_TOMADA' FROM vencidas v "
+            + "WHERE d.id = v.dose_id AND d.status = 'PENDENTE' "
+            + "RETURNING d.id AS doseId, v.idoso_id AS idosoId", nativeQuery = true)
+    List<DoseEncerradaView> encerrarVencidas(@Param("agora") LocalDateTime agora,
+                                             @Param("toleranciaPadraoMinutos") int toleranciaPadraoMinutos,
+                                             @Param("margemMinutos") int margemMinutos,
+                                             @Param("horarioMaximo") LocalDateTime horarioMaximo,
+                                             @Param("limite") int limite);
 
     // JOINs internos: dose anonimizada (sem tratamento) fica de fora; removidos (tratamento ou medicamento) também.
     // LEFT JOIN na configuração de alerta do cuidador dono do idoso: tolerância própria ou nula (vale a padrão).

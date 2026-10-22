@@ -34,7 +34,8 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 /**
- * Janela: abre 60 min antes, aviso 30 min depois, encerra 180 min depois do horário (08:00).
+ * Janela com a tolerância padrão: abre 60 min antes, aviso 30 min depois e encerra 30 min depois do aviso (08:00 ->
+ * 07:00, 08:30 e 09:00). Com a tolerância do cuidador, o aviso e o encerramento acompanham.
  */
 @ExtendWith(MockitoExtension.class)
 class ConfirmarDoseUseCaseTest {
@@ -44,7 +45,7 @@ class ConfirmarDoseUseCaseTest {
     private static final ZoneId FUSO = ZoneId.of("America/Sao_Paulo");
     private static final LocalDateTime HORARIO = LocalDateTime.of(2026, 10, 8, 8, 0);
     private static final PoliticaDeJanela POLITICA = new PoliticaDeJanela(
-            Duration.ofMinutes(60), Duration.ofMinutes(30), Duration.ofMinutes(180));
+            Duration.ofMinutes(60), Duration.ofMinutes(30), Duration.ofMinutes(30));
 
     @Mock
     private DoseRepositoryPort doseRepository;
@@ -140,10 +141,39 @@ class ConfirmarDoseUseCaseTest {
     }
 
     @Test
+    void exatamenteNoEncerramentoAindaConfirmaComAtraso() {
+        idosoExisteComDose(StatusDose.PENDENTE);
+        when(doseRepository.registrarSePendente(any())).thenReturn(1);
+
+        DoseAvaliada resultado = useCaseEm(HORARIO.plusMinutes(60)).executar(DOSE_ID, IDOSO_ID);
+
+        assertThat(doseGravada().getStatus()).isEqualTo(StatusDose.CONFIRMADA_COM_ATRASO);
+        assertThat(resultado.limiteConfirmacao()).isEqualTo(HORARIO.plusMinutes(60));
+    }
+
+    @Test
+    void oEncerramentoAcompanhaAToleranciaDoCuidador() {
+        // Cuidador com 120 min: às 10:30 (= 08:00 + 120 + 30) ainda confirma; com a padrão já estaria encerrada
+        when(idosoRepository.findById(IDOSO_ID)).thenReturn(Optional.of(Idoso.builder().id(IDOSO_ID).build()));
+        Dose dose = Dose.builder().id(DOSE_ID).tratamentoId(1000L).horarioProgramado(HORARIO).status(StatusDose.PENDENTE).build();
+        when(doseRepository.findDetalhadaByIdAndIdosoId(DOSE_ID, IDOSO_ID)).thenReturn(Optional.of(
+                new DoseDetalhada(dose, IDOSO_ID, "José", 100L, "Losartana", "50mg", "COMPRIMIDO", 120)));
+        when(doseRepository.registrarSePendente(any())).thenReturn(1);
+
+        assertThatThrownBy(() -> useCaseEm(HORARIO.plusMinutes(150).plusSeconds(1)).executar(DOSE_ID, IDOSO_ID))
+                .isInstanceOfSatisfying(DoseNaoConfirmavelException.class,
+                        e -> assertThat(e.getMotivo()).isEqualTo(Confirmabilidade.ENCERRADA));
+        DoseAvaliada resultado = useCaseEm(HORARIO.plusMinutes(150)).executar(DOSE_ID, IDOSO_ID);
+
+        assertThat(doseGravada().getStatus()).isEqualTo(StatusDose.CONFIRMADA_COM_ATRASO);
+        assertThat(resultado.limiteConfirmacao()).isEqualTo(HORARIO.plusMinutes(150));
+    }
+
+    @Test
     void depoisDoEncerramentoEhEncerrada() {
         idosoExisteComDose(StatusDose.PENDENTE);
 
-        assertThatThrownBy(() -> useCaseEm(HORARIO.plusMinutes(180).plusSeconds(1)).executar(DOSE_ID, IDOSO_ID))
+        assertThatThrownBy(() -> useCaseEm(HORARIO.plusMinutes(60).plusSeconds(1)).executar(DOSE_ID, IDOSO_ID))
                 .isInstanceOfSatisfying(DoseNaoConfirmavelException.class,
                         e -> assertThat(e.getMotivo()).isEqualTo(Confirmabilidade.ENCERRADA));
         verify(doseRepository, never()).registrarSePendente(any());

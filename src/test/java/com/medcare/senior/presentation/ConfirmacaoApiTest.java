@@ -27,7 +27,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * Confirmação de dose pela API, ponta a ponta no PostgreSQL real: cada recusa com o seu código (antes da janela,
  * depois do encerramento, remédio removido, dose inexistente), confirmação com atraso e o que fica gravado.
- * Janela padrão: abre 60 min antes, tolerância de 30 min, encerra 180 min depois. Cada teste é desfeito com rollback.
+ * Janela padrão: abre 60 min antes, tolerância de 30 min, encerra 30 min depois do aviso. Cada teste é desfeito com rollback.
  */
 @SpringBootTest(properties = {"app.jobs.enabled=false", "app.fcm.enabled=false", "spring.jpa.show-sql=false"})
 @AutoConfigureMockMvc
@@ -92,7 +92,7 @@ class ConfirmacaoApiTest {
 
     @Test
     void depoisDoEncerramentoEh409DoseEncerradaENadaMuda() throws Exception {
-        Long dose = dosePendente(agora.minusMinutes(181));
+        Long dose = dosePendente(agora.minusMinutes(61));
 
         confirmar(dose)
                 .andExpect(status().isConflict())

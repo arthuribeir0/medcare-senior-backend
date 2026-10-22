@@ -1,7 +1,7 @@
 package com.medcare.senior.application.usecase;
 
 import com.medcare.senior.application.service.EnvioDeAvisoService;
-import com.medcare.senior.domain.dose.Dose;
+import com.medcare.senior.domain.dose.DoseEncerrada;
 import com.medcare.senior.domain.dose.DoseParaAviso;
 import com.medcare.senior.domain.dose.DoseRepositoryPort;
 import com.medcare.senior.domain.dose.PoliticaDeJanela;
@@ -21,13 +21,13 @@ import java.util.Optional;
  * Varredura de doses (RN-009, RN-014), em duas fases independentes:
  *
  * <ol>
- *   <li><b>Encerramento</b>: dose PENDENTE com horário + encerramento (180 min) <= agora vira NAO_TOMADA, por UPDATE
- *       atômico condicionado a status = PENDENTE (se o idoso confirmou ao mesmo tempo, a confirmação vence). Sem push:
- *       o cuidador já foi avisado no fim da tolerância. Dose que chega aqui sem ter sido avisada (aplicação parada)
- *       é encerrada sem aviso.</li>
+ *   <li><b>Encerramento</b>: dose PENDENTE com horário + tolerância do cuidador + margem pós-aviso <= agora vira
+ *       NAO_TOMADA, num único UPDATE atômico condicionado a status = PENDENTE (se a dose foi confirmada ao mesmo
+ *       tempo, a confirmação vence). Sem push: o cuidador já foi avisado no fim da tolerância. Dose que chega aqui sem
+ *       ter sido avisada (aplicação parada) é encerrada sem aviso.</li>
  *   <li><b>Aviso</b>: dose PENDENTE com horário + tolerância <= agora, ainda antes do encerramento e sem evento de
  *       notificação: cria o evento ({@code INSERT ... ON CONFLICT DO NOTHING}) e, SÓ se esta execução o criou e
- *       ganhou a primeira tentativa, envia o push. A dose CONTINUA PENDENTE: o idoso ainda pode confirmar (com
+ *       ganhou a primeira tentativa, envia o push. A dose CONTINUA PENDENTE: ainda pode ser confirmada (com
  *       atraso) até o encerramento.</li>
  * </ol>
  * Cada fase trata no máximo {@code loteMaximo} doses por execução; o restante fica para a próxima.
@@ -63,12 +63,10 @@ public class VerificarDosesVencidasUseCase {
 
     public Resultado executar() {
         LocalDateTime agora = LocalDateTime.now(clock);
-        // Encerrada = horário + encerramento <= agora, ou seja, horário <= agora - encerramento
-        LocalDateTime encerradasAte = agora.minus(politicaDeJanela.encerramento());
 
         Contagem contagem = new Contagem();
-        encerrar(encerradasAte, contagem);
-        avisar(agora, encerradasAte, contagem);
+        encerrar(agora, contagem);
+        avisar(agora, contagem);
 
         if (contagem.encerradas + contagem.avisos + contagem.falhas > 0) {
             log.info("Verificação de doses: {} encerrada(s) como NAO_TOMADA, {} aviso(s) criado(s), {} enviado(s), "
@@ -77,25 +75,23 @@ public class VerificarDosesVencidasUseCase {
         return new Resultado(contagem.encerradas, contagem.avisos, contagem.enviados, contagem.falhas);
     }
 
-    private void encerrar(LocalDateTime encerradasAte, Contagem contagem) {
-        for (Dose dose : doseRepository.findPendentesEncerradas(encerradasAte, parametros.loteMaximo())) {
-            try {
-                // 0 = perdeu a corrida: a dose foi confirmada entre a busca e o UPDATE
-                if (doseRepository.registrarSePendente(dose.marcarComoNaoTomada()) == 1) {
-                    contagem.encerradas++;
-                }
-            } catch (RuntimeException e) {
-                contagem.falhas++;
-                log.error("Falha ao encerrar a dose {}; seguindo para as demais", dose.getId(), e);
-            }
+    private void encerrar(LocalDateTime agora, Contagem contagem) {
+        try {
+            // Um UPDATE só, condicionado a PENDENTE: dose confirmada antes não entra na contagem
+            List<DoseEncerrada> encerradas = doseRepository.encerrarVencidas(agora, politicaDeJanela.toleranciaPadrao(),
+                    politicaDeJanela.margemPosAviso(), parametros.loteMaximo());
+            contagem.encerradas = encerradas.size();
+        } catch (RuntimeException e) {
+            contagem.falhas++;
+            log.error("Falha ao encerrar as doses vencidas; seguindo para os avisos", e);
         }
     }
 
-    private void avisar(LocalDateTime agora, LocalDateTime encerradasAte, Contagem contagem) {
+    private void avisar(LocalDateTime agora, Contagem contagem) {
         // A busca usa a tolerância do cuidador dono de cada idoso (ou a padrão). Mudar a tolerância só afeta avisos
         // ainda não enviados: dose que já tem evento de notificação não é avisada de novo
         List<DoseParaAviso> doses = doseRepository.findPendentesParaAviso(agora, politicaDeJanela.toleranciaPadrao(),
-                encerradasAte, parametros.loteMaximo());
+                politicaDeJanela.margemPosAviso(), parametros.loteMaximo());
         for (DoseParaAviso dose : doses) {
             try {
                 Optional<Long> evento = eventos.criarSeAusente(dose.doseId());

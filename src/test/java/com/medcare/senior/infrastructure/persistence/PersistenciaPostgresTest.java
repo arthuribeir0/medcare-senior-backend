@@ -8,10 +8,12 @@ import com.medcare.senior.application.usecase.ExcluirContaUseCase;
 import com.medcare.senior.application.usecase.RegistrarTokenDispositivoUseCase;
 import com.medcare.senior.application.usecase.RemoverTokenDispositivoUseCase;
 import com.medcare.senior.application.usecase.RemoverMedicamentoUseCase;
+import com.medcare.senior.domain.configuracao.Tolerancia;
 import com.medcare.senior.domain.dose.Dose;
 import com.medcare.senior.domain.dose.DoseDetalhada;
 import com.medcare.senior.domain.dose.DoseNaoConfirmavelException;
 import com.medcare.senior.domain.dose.PoliticaDeJanela;
+import com.medcare.senior.domain.dose.DoseEncerrada;
 import com.medcare.senior.domain.dose.DoseParaAviso;
 import com.medcare.senior.domain.dose.StatusDose;
 import com.medcare.senior.domain.exception.RecursoNaoEncontradoException;
@@ -99,7 +101,7 @@ class PersistenciaPostgresTest {
         @Bean
         PoliticaDeJanela politicaDeJanela() {
             return new PoliticaDeJanela(java.time.Duration.ofMinutes(60), java.time.Duration.ofMinutes(30),
-                    java.time.Duration.ofMinutes(180));
+                    java.time.Duration.ofMinutes(30));
         }
     }
 
@@ -595,28 +597,29 @@ class PersistenciaPostgresTest {
         // Horários em 2000: nenhum dado de desenvolvimento do banco local interfere na busca
         LocalDateTime agora = LocalDateTime.of(2000, 1, 10, 12, 0);
         java.time.Duration tolerancia = java.time.Duration.ofMinutes(30);
-        LocalDateTime encerradasAte = agora.minusMinutes(180);
         CuidadorEntity cuidador = cuidador();
         IdosoEntity idoso = idoso(cuidador);
         MedicamentoEntity medicamento = medicamento(idoso, null);
         TratamentoEntity tratamento = tratamento(medicamento, null);
-        // horário + 30 min <= 12:00 -> horário <= 11:30 (inclusive); e horário > 09:00 (ainda não encerrada)
-        DoseEntity maisAntiga = dose(tratamento, encerradasAte.plusMinutes(1), StatusDose.PENDENTE);
+        // Aviso: horário + 30 <= 12:00 -> horário <= 11:30 (inclusive). Ainda aberta: horário + 30 + 30 > 12:00 ->
+        // horário > 11:00 (em 11:00 exatas a dose já encerrou)
+        DoseEntity maisAntiga = dose(tratamento, agora.minusMinutes(60).plusSeconds(1), StatusDose.PENDENTE);
         DoseEntity noLimiteDoAviso = dose(tratamento, agora.minus(tolerancia), StatusDose.PENDENTE);
         DoseEntity dentroDaTolerancia = dose(tratamento, agora.minus(tolerancia).plusSeconds(1), StatusDose.PENDENTE);
-        DoseEntity noLimiteDoEncerramento = dose(tratamento, encerradasAte, StatusDose.PENDENTE);
-        DoseEntity jaAvisada = dose(tratamento, agora.minusMinutes(60), StatusDose.PENDENTE);
+        DoseEntity noLimiteDoEncerramento = dose(tratamento, agora.minusMinutes(60), StatusDose.PENDENTE);
+        DoseEntity jaAvisada = dose(tratamento, agora.minusMinutes(45), StatusDose.PENDENTE);
         eventoAdapter.criarSeAusente(jaAvisada.getId());
         DoseEntity noHorario = dose(tratamento, agora.minusMinutes(50), StatusDose.CONFIRMADA_NO_HORARIO);
-        DoseEntity deTratamentoRemovido = dose(tratamento(medicamento, agora), agora.minusMinutes(70), StatusDose.PENDENTE);
-        DoseEntity deMedicamentoRemovido = dose(tratamento(medicamento(idoso, agora), null), agora.minusMinutes(80),
+        DoseEntity deTratamentoRemovido = dose(tratamento(medicamento, agora), agora.minusMinutes(35), StatusDose.PENDENTE);
+        DoseEntity deMedicamentoRemovido = dose(tratamento(medicamento(idoso, agora), null), agora.minusMinutes(40),
                 StatusDose.PENDENTE);
         em.getEntityManager()
                 .createNativeQuery("INSERT INTO dose (tratamento_id, horario_programado, status) VALUES (NULL, ?1, 'PENDENTE')")
-                .setParameter(1, agora.minusMinutes(90))
+                .setParameter(1, agora.minusMinutes(42))
                 .executeUpdate();
 
-        List<DoseParaAviso> paraAviso = doseAdapter.findPendentesParaAviso(agora, tolerancia, encerradasAte, 100);
+        List<DoseParaAviso> paraAviso = doseAdapter.findPendentesParaAviso(agora, tolerancia,
+                java.time.Duration.ofMinutes(30), 100);
 
         assertThat(paraAviso).extracting(DoseParaAviso::doseId)
                 .containsExactly(maisAntiga.getId(), noLimiteDoAviso.getId())
@@ -626,60 +629,93 @@ class PersistenciaPostgresTest {
         assertThat(primeira.cuidadorId()).isEqualTo(cuidador.getId());
         assertThat(primeira.idosoId()).isEqualTo(idoso.getId());
         assertThat(primeira.nomeIdoso()).isEqualTo(idoso.getNome());
-        assertThat(primeira.horarioProgramado()).isEqualTo(encerradasAte.plusMinutes(1));
+        assertThat(primeira.horarioProgramado()).isEqualTo(agora.minusMinutes(60).plusSeconds(1));
     }
 
     @Test
     void findPendentesParaAvisoRespeitaOLimiteComecandoPelasMaisAntigas() {
         LocalDateTime agora = LocalDateTime.of(2000, 1, 10, 12, 0);
         TratamentoEntity tratamento = tratamento(medicamento(idoso(cuidador()), null), null);
-        DoseEntity primeira = dose(tratamento, agora.minusMinutes(90), StatusDose.PENDENTE);
-        DoseEntity segunda = dose(tratamento, agora.minusMinutes(80), StatusDose.PENDENTE);
-        dose(tratamento, agora.minusMinutes(70), StatusDose.PENDENTE);
+        DoseEntity primeira = dose(tratamento, agora.minusMinutes(50), StatusDose.PENDENTE);
+        DoseEntity segunda = dose(tratamento, agora.minusMinutes(45), StatusDose.PENDENTE);
+        dose(tratamento, agora.minusMinutes(40), StatusDose.PENDENTE);
 
         List<DoseParaAviso> paraAviso = doseAdapter.findPendentesParaAviso(agora, java.time.Duration.ofMinutes(30),
-                agora.minusMinutes(180), 2);
+                java.time.Duration.ofMinutes(30), 2);
 
         assertThat(paraAviso).extracting(DoseParaAviso::doseId).containsExactly(primeira.getId(), segunda.getId());
     }
 
     @Test
-    void findPendentesEncerradasIgnoraNaoEncerradasRegistradasRemovidasEAnonimizadas() {
-        LocalDateTime encerradasAte = LocalDateTime.of(2000, 1, 10, 9, 0);
+    void encerrarVencidasMarcaNaoTomadaSoAsVencidasPendentesENaoRemovidas() {
+        LocalDateTime agora = LocalDateTime.of(2000, 1, 10, 12, 0);
         IdosoEntity idoso = idoso(cuidador());
         MedicamentoEntity medicamento = medicamento(idoso, null);
         TratamentoEntity tratamento = tratamento(medicamento, null);
-        DoseEntity maisAntiga = dose(tratamento, encerradasAte.minusDays(1), StatusDose.PENDENTE);
-        // Limite exato: horário + 180 min = agora encerra; 1 s antes do limite ainda não
-        DoseEntity noLimite = dose(tratamento, encerradasAte, StatusDose.PENDENTE);
-        DoseEntity umSegundoAntesDeEncerrar = dose(tratamento, encerradasAte.plusSeconds(1), StatusDose.PENDENTE);
-        DoseEntity noHorario = dose(tratamento, encerradasAte.minusHours(1), StatusDose.CONFIRMADA_NO_HORARIO);
-        DoseEntity deTratamentoRemovido = dose(tratamento(medicamento, encerradasAte), encerradasAte.minusHours(2),
+        // Padrão 30 + margem 30: vence quando horário + 60 <= 12:00, ou seja, horário <= 11:00 (inclusive)
+        DoseEntity maisAntiga = dose(tratamento, agora.minusDays(1), StatusDose.PENDENTE);
+        DoseEntity noLimite = dose(tratamento, agora.minusMinutes(60), StatusDose.PENDENTE);
+        DoseEntity umSegundoAntesDeVencer = dose(tratamento, agora.minusMinutes(60).plusSeconds(1), StatusDose.PENDENTE);
+        DoseEntity noHorario = dose(tratamento, agora.minusHours(3), StatusDose.CONFIRMADA_NO_HORARIO);
+        DoseEntity deTratamentoRemovido = dose(tratamento(medicamento, agora), agora.minusHours(2), StatusDose.PENDENTE);
+        DoseEntity deMedicamentoRemovido = dose(tratamento(medicamento(idoso, agora), null), agora.minusHours(4),
                 StatusDose.PENDENTE);
-        DoseEntity deMedicamentoRemovido = dose(tratamento(medicamento(idoso, encerradasAte), null),
-                encerradasAte.minusHours(3), StatusDose.PENDENTE);
 
-        List<Dose> encerradas = doseAdapter.findPendentesEncerradas(encerradasAte, 100);
+        List<DoseEncerrada> encerradas = doseAdapter.encerrarVencidas(agora, java.time.Duration.ofMinutes(30),
+                java.time.Duration.ofMinutes(30), 100);
 
-        assertThat(encerradas).extracting(Dose::getId)
-                .containsExactly(maisAntiga.getId(), noLimite.getId())
-                .doesNotContain(umSegundoAntesDeEncerrar.getId(), noHorario.getId(), deTratamentoRemovido.getId(),
-                        deMedicamentoRemovido.getId());
-        assertThat(encerradas.get(0).getStatus()).isEqualTo(StatusDose.PENDENTE);
-        assertThat(encerradas.get(0).getTratamentoId()).isEqualTo(tratamento.getId());
+        assertThat(encerradas).containsExactlyInAnyOrder(new DoseEncerrada(maisAntiga.getId(), idoso.getId()),
+                new DoseEncerrada(noLimite.getId(), idoso.getId()));
+        assertThat(statusDaDose(maisAntiga.getId())).isEqualTo("NAO_TOMADA");
+        assertThat(statusDaDose(noLimite.getId())).isEqualTo("NAO_TOMADA");
+        assertThat(horaConfirmacaoDaDose(noLimite.getId())).isNull();
+        assertThat(statusDaDose(umSegundoAntesDeVencer.getId())).isEqualTo("PENDENTE");
+        assertThat(statusDaDose(noHorario.getId())).isEqualTo("CONFIRMADA_NO_HORARIO");
+        assertThat(statusDaDose(deTratamentoRemovido.getId())).isEqualTo("PENDENTE");
+        assertThat(statusDaDose(deMedicamentoRemovido.getId())).isEqualTo("PENDENTE");
     }
 
     @Test
-    void findPendentesEncerradasRespeitaOLimiteComecandoPelasMaisAntigas() {
-        LocalDateTime encerradasAte = LocalDateTime.of(2000, 1, 10, 12, 0);
+    void encerrarVencidasUsaAToleranciaDoCuidadorDonoDeCadaIdoso() {
+        LocalDateTime agora = LocalDateTime.of(2000, 1, 10, 12, 0);
+        java.time.Duration padrao = java.time.Duration.ofMinutes(30);
+        java.time.Duration margem = java.time.Duration.ofMinutes(30);
+        CuidadorEntity comCinco = cuidador();
+        CuidadorEntity comCentoEVinte = cuidador();
+        configuracaoAdapter.salvarToleranciaMinutos(comCinco.getId(), Tolerancia.MINIMO_MINUTOS);
+        configuracaoAdapter.salvarToleranciaMinutos(comCentoEVinte.getId(), Tolerancia.MAXIMO_MINUTOS);
+        TratamentoEntity doCinco = tratamento(medicamento(idoso(comCinco), null), null);
+        TratamentoEntity doCentoEVinte = tratamento(medicamento(idoso(comCentoEVinte), null), null);
+        // 5 + 30: vence às 11:25 (inclusive). Com a padrão (60 no total) ainda estaria aberta
+        DoseEntity cincoNoLimite = dose(doCinco, agora.minusMinutes(35), StatusDose.PENDENTE);
+        DoseEntity cincoAberta = dose(doCinco, agora.minusMinutes(35).plusSeconds(1), StatusDose.PENDENTE);
+        // 120 + 30: vence às 09:30 (inclusive). Com a padrão já estaria vencida
+        DoseEntity centoEVinteNoLimite = dose(doCentoEVinte, agora.minusMinutes(150), StatusDose.PENDENTE);
+        DoseEntity centoEVinteAberta = dose(doCentoEVinte, agora.minusMinutes(150).plusSeconds(1), StatusDose.PENDENTE);
+
+        List<Long> encerradas = doseAdapter.encerrarVencidas(agora, padrao, margem, 100).stream()
+                .map(DoseEncerrada::doseId)
+                .toList();
+
+        assertThat(encerradas).contains(cincoNoLimite.getId(), centoEVinteNoLimite.getId())
+                .doesNotContain(cincoAberta.getId(), centoEVinteAberta.getId());
+        assertThat(statusDaDose(cincoAberta.getId())).isEqualTo("PENDENTE");
+        assertThat(statusDaDose(centoEVinteAberta.getId())).isEqualTo("PENDENTE");
+    }
+
+    @Test
+    void encerrarVencidasRespeitaOLimiteComecandoPelasMaisAntigas() {
+        LocalDateTime agora = LocalDateTime.of(2000, 1, 10, 12, 0);
         TratamentoEntity tratamento = tratamento(medicamento(idoso(cuidador()), null), null);
-        DoseEntity primeira = dose(tratamento, encerradasAte.minusHours(3), StatusDose.PENDENTE);
-        DoseEntity segunda = dose(tratamento, encerradasAte.minusHours(2), StatusDose.PENDENTE);
-        dose(tratamento, encerradasAte.minusHours(1), StatusDose.PENDENTE);
+        DoseEntity primeira = dose(tratamento, agora.minusHours(4), StatusDose.PENDENTE);
+        DoseEntity segunda = dose(tratamento, agora.minusHours(3), StatusDose.PENDENTE);
+        DoseEntity terceira = dose(tratamento, agora.minusHours(2), StatusDose.PENDENTE);
 
-        List<Dose> encerradas = doseAdapter.findPendentesEncerradas(encerradasAte, 2);
+        List<DoseEncerrada> encerradas = doseAdapter.encerrarVencidas(agora, java.time.Duration.ofMinutes(30),
+                java.time.Duration.ofMinutes(30), 2);
 
-        assertThat(encerradas).extracting(Dose::getId).containsExactly(primeira.getId(), segunda.getId());
+        assertThat(encerradas).extracting(DoseEncerrada::doseId).containsExactlyInAnyOrder(primeira.getId(), segunda.getId());
+        assertThat(statusDaDose(terceira.getId())).isEqualTo("PENDENTE");
     }
 
     // ---------------------------------------------------------------------------------------------------------
@@ -903,20 +939,26 @@ class PersistenciaPostgresTest {
         configuracaoAdapter.salvarToleranciaMinutos(comDez.getId(), 10);
         configuracaoAdapter.salvarToleranciaMinutos(comSessenta.getId(), 60);
         // Todas às 11:45: 11:55 (10 min) já passou; 12:15 (padrão 30) e 12:45 (60) ainda não
-        DoseEntity doDez = dose(tratamento(medicamento(idoso(comDez), null), null), agora.minusMinutes(15), StatusDose.PENDENTE);
-        DoseEntity doSessenta = dose(tratamento(medicamento(idoso(comSessenta), null), null), agora.minusMinutes(15),
-                StatusDose.PENDENTE);
+        TratamentoEntity tratamentoDoDez = tratamento(medicamento(idoso(comDez), null), null);
+        DoseEntity doDez = dose(tratamentoDoDez, agora.minusMinutes(15), StatusDose.PENDENTE);
+        TratamentoEntity tratamentoDoSessenta = tratamento(medicamento(idoso(comSessenta), null), null);
+        DoseEntity doSessenta = dose(tratamentoDoSessenta, agora.minusMinutes(15), StatusDose.PENDENTE);
+        // O encerramento também é por cuidador: 11:15 + 10 + 30 = 11:55 já encerrou (com a padrão ainda estaria aberta);
+        // 11:00 + 60 = 12:00 é aviso (com a padrão, 11:00 + 30 + 30 = 12:00 já teria encerrado)
+        DoseEntity doDezEncerrada = dose(tratamentoDoDez, agora.minusMinutes(45), StatusDose.PENDENTE);
+        DoseEntity doSessentaNoAviso = dose(tratamentoDoSessenta, agora.minusMinutes(60), StatusDose.PENDENTE);
         TratamentoEntity tratamentoPadrao = tratamento(medicamento(idoso(semConfiguracao), null), null);
         DoseEntity doPadraoNoPrazo = dose(tratamentoPadrao, agora.minusMinutes(15), StatusDose.PENDENTE);
         // 11:30 + 30 (padrão) = 12:00: no limite, já é aviso
         DoseEntity doPadraoNoLimite = dose(tratamentoPadrao, agora.minusMinutes(30), StatusDose.PENDENTE);
 
-        List<Long> paraAviso = doseAdapter.findPendentesParaAviso(agora, padrao, agora.minusMinutes(180), 100).stream()
+        List<Long> paraAviso = doseAdapter.findPendentesParaAviso(agora, padrao, java.time.Duration.ofMinutes(30), 100)
+                .stream()
                 .map(DoseParaAviso::doseId)
                 .toList();
 
-        assertThat(paraAviso).contains(doDez.getId(), doPadraoNoLimite.getId())
-                .doesNotContain(doSessenta.getId(), doPadraoNoPrazo.getId());
+        assertThat(paraAviso).contains(doDez.getId(), doPadraoNoLimite.getId(), doSessentaNoAviso.getId())
+                .doesNotContain(doSessenta.getId(), doPadraoNoPrazo.getId(), doDezEncerrada.getId());
     }
 
     @Test

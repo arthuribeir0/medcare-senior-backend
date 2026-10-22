@@ -12,7 +12,8 @@ import java.time.LocalDate;
 import java.util.List;
 
 /**
- * Empurra a janela rolante de doses: para cada tratamento ativo, garante doses até hoje + 30 dias, sem duplicar.
+ * Empurra a janela rolante de doses: para cada tratamento ativo, garante doses até hoje + o horizonte do
+ * GeradorDeDosesService (padrão 30 dias), sem duplicar.
  *
  * <p>NÃO é @Transactional de propósito: cada tratamento roda na transação do próprio GeradorDeDosesService.gerar,
  * para que um erro em um tratamento desfaça só as doses dele e não impeça os demais.

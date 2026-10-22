@@ -70,6 +70,10 @@ app:
     retentativa-avisos:
       # Reenvio dos avisos que falharam temporariamente (RN-010). Padrao: a cada 5 minutos, no segundo 30.
       cron: ${RETENTATIVA_AVISOS_CRON:30 */5 * * * *}
+  doses:
+    # Quantos dias a frente de hoje cada tratamento ativo tem doses geradas (janela rolante, empurrada pelo job diario).
+    # De 1 a 90 (validado na subida). A geracao e idempotente: horario que ja tem dose nao e gerado de novo.
+    horizonte-dias: ${DOSES_HORIZONTE_DIAS:30}
   alertas:
     # Tolerancia PADRAO (minutos apos o horario programado): no fim dela o cuidador e avisado (a dose continua PENDENTE
     # e aparece ATRASADA; confirmar depois disto da CONFIRMADA_COM_ATRASO). Vale quando o cuidador nao tem a sua.

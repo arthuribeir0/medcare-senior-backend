@@ -49,6 +49,10 @@ services:
       # Pool de conexões com o banco (ver docs/capacidade.md)
       DB_POOL_MAX: ${DB_POOL_MAX:-8}
       DB_POOL_MIN_IDLE: ${DB_POOL_MIN_IDLE:-2}
+      # Regras com padrão no application.yml (opcionais no .env.prod)
+      ALERTAS_MARGEM_POS_AVISO_MINUTOS: ${ALERTAS_MARGEM_POS_AVISO_MINUTOS:-30}
+      DOSES_HORIZONTE_DIAS: ${DOSES_HORIZONTE_DIAS:-30}
+      CACHE_RELATORIO_DIARIO_SEGUNDOS: ${CACHE_RELATORIO_DIARIO_SEGUNDOS:-30}
       # Caminho DENTRO do contêiner; o arquivo vem do volume somente leitura abaixo
       FIREBASE_CREDENTIALS_PATH: /run/secrets/firebase-adminsdk.json
       # Heap: 75% da memória do contêiner (ver docs/capacidade.md para a VM de 1 GB)

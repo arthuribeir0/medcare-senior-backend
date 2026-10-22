@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Comparator;
 import java.util.EnumMap;
 import java.util.LinkedHashMap;
@@ -27,7 +28,9 @@ import java.util.Map;
  *
  * <ul>
  *   <li>RN-011: a data de início é obrigatória e não pode ser depois da de fim; sem data de fim, vale hoje (fuso da
- *       aplicação). O DRS não define período máximo: as doses são lidas em lotes, sem carregar o período inteiro.</li>
+ *       aplicação). Período de no máximo {@value #PERIODO_MAXIMO_MESES} meses (de "de" até "ate", inclusive: de
+ *       10/01/2025 a 10/01/2026 é aceito; até 11/01/2026, não). As doses são lidas em lotes, sem carregar o período
+ *       inteiro.</li>
  *   <li>RN-012: o arquivo traz o nome do idoso, o período, os medicamentos avaliados, cada dose (data, hora programada,
  *       status e hora da confirmação) e a taxa de adesão por medicamento e do período (mesma fórmula do relatório
  *       diário).</li>
@@ -39,6 +42,11 @@ public class GerarRelatorioPdfUseCase {
 
     /** Doses lidas do banco por vez ao montar a tabela. */
     static final int TAMANHO_DO_LOTE = 500;
+
+    /** Maior período aceito, em meses. */
+    public static final int PERIODO_MAXIMO_MESES = 12;
+
+    private static final DateTimeFormatter DATA = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
     private final IdosoRepositoryPort idosoRepository;
     private final DoseRepositoryPort doseRepository;
@@ -54,7 +62,7 @@ public class GerarRelatorioPdfUseCase {
     }
 
     /**
-     * @throws ParametroInvalidoException    sem data de início ou início depois do fim
+     * @throws ParametroInvalidoException    sem data de início, início depois do fim ou período maior que 12 meses
      * @throws RecursoNaoEncontradoException idoso inexistente ou de outro cuidador
      * @throws PeriodoSemRegistrosException  nenhuma dose do idoso no período
      */
@@ -66,6 +74,10 @@ public class GerarRelatorioPdfUseCase {
         LocalDate fim = ate != null ? ate : agora.toLocalDate();
         if (de.isAfter(fim)) {
             throw new ParametroInvalidoException("de", "A data de início não pode ser posterior à data de fim");
+        }
+        if (fim.isAfter(de.plusMonths(PERIODO_MAXIMO_MESES))) {
+            throw new ParametroInvalidoException("ate", "O período do relatório pode ter no máximo 12 meses. "
+                    + "Escolha uma data de fim até " + de.plusMonths(PERIODO_MAXIMO_MESES).format(DATA) + ".");
         }
         Idoso idoso = idosoRepository.findByIdAndCuidadorId(idosoId, cuidadorId)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Idoso não encontrado"));

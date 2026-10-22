@@ -188,6 +188,16 @@ class RelatorioPdfApiTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.codigo").value("VALIDACAO"))
                 .andExpect(jsonPath("$.campos[0].campo").value("de"));
+        // Período: exatamente 12 meses passa da validação (e cai no 422 por não ter doses); 12 meses + 1 dia é 400
+        mvc.perform(pdf("1990-01-10", "1991-01-10"))
+                .andExpect(status().isUnprocessableContent())
+                .andExpect(jsonPath("$.codigo").value("PERIODO_SEM_REGISTROS"));
+        mvc.perform(pdf("1990-01-10", "1991-01-11"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.codigo").value("VALIDACAO"))
+                .andExpect(jsonPath("$.campos[0].campo").value("ate"))
+                .andExpect(jsonPath("$.campos[0].mensagem").value(
+                        "O período do relatório pode ter no máximo 12 meses. Escolha uma data de fim até 10/01/1991."));
         mvc.perform(pdf("10/01/2000", null))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.codigo").value("VALIDACAO"));
@@ -200,21 +210,21 @@ class RelatorioPdfApiTest {
     void autorizacao() throws Exception {
         // Idoso de outro cuidador: 404, como inexistente
         mvc.perform(get(ROTA).header(HttpHeaders.AUTHORIZATION, "Bearer " + tokens.generateToken(cuidador(), Role.CUIDADOR))
-                        .param("idosoId", idosoId.toString()).param("de", D1.toString()))
+                        .param("idosoId", idosoId.toString()).param("de", D1.toString()).param("ate", D1.plusDays(2).toString()))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.codigo").value("RECURSO_NAO_ENCONTRADO"));
         // Token de idoso: 403
         mvc.perform(get(ROTA).header(HttpHeaders.AUTHORIZATION, "Bearer " + tokens.generateToken(idosoId, Role.IDOSO))
-                        .param("idosoId", idosoId.toString()).param("de", D1.toString()))
+                        .param("idosoId", idosoId.toString()).param("de", D1.toString()).param("ate", D1.plusDays(2).toString()))
                 .andExpect(status().isForbidden());
         // Sem token: 401
-        mvc.perform(get(ROTA).param("idosoId", idosoId.toString()).param("de", D1.toString()))
+        mvc.perform(get(ROTA).param("idosoId", idosoId.toString()).param("de", D1.toString()).param("ate", D1.plusDays(2).toString()))
                 .andExpect(status().isUnauthorized());
         // Cuidador de conta excluída: 401 SESSAO_INVALIDA
         Long excluido = cuidador();
         jdbc.update("DELETE FROM cuidador WHERE id = ?", excluido);
         mvc.perform(get(ROTA).header(HttpHeaders.AUTHORIZATION, "Bearer " + tokens.generateToken(excluido, Role.CUIDADOR))
-                        .param("idosoId", idosoId.toString()).param("de", D1.toString()))
+                        .param("idosoId", idosoId.toString()).param("de", D1.toString()).param("ate", D1.plusDays(2).toString()))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.codigo").value("SESSAO_INVALIDA"));
     }

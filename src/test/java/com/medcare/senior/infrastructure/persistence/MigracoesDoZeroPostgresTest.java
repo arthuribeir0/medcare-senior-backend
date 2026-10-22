@@ -68,7 +68,7 @@ class MigracoesDoZeroPostgresTest {
     }
 
     @Test
-    void aV15ConverteAsDosesTomadaParaConfirmadaNoHorarioEOCheckSoAceitaONomeNovo() {
+    void aV15ConverteAsDosesTomadaParaConfirmadaNoHorarioPreencheQuemConfirmouEOCheckSoAceitaONomeNovo() {
         flyway("14").migrate();
         // Dose anonimizada (sem tratamento): a mais simples de criar com o schema da V14
         jdbc.update("INSERT INTO " + schema + ".dose (horario_programado, hora_confirmacao, status) "
@@ -79,9 +79,35 @@ class MigracoesDoZeroPostgresTest {
 
         assertThat(jdbc.queryForList("SELECT status FROM " + schema + ".dose ORDER BY horario_programado", String.class))
                 .containsExactly("CONFIRMADA_NO_HORARIO", "NAO_TOMADA");
+        // Até a V15 só o idoso confirmava: as confirmadas recebem IDOSO; a não tomada fica sem quem confirmou
+        assertThat(jdbc.queryForList("SELECT confirmado_por FROM " + schema + ".dose ORDER BY horario_programado",
+                String.class)).containsExactly("IDOSO", null);
         assertThatThrownBy(() -> jdbc.update("INSERT INTO " + schema + ".dose (horario_programado, status) "
                 + "VALUES ('2000-01-10 10:00', 'TOMADA')"))
                 .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    @Test
+    void soDoseConfirmadaTemQuemConfirmouEOValorEhIdosoOuCuidador() {
+        flyway(null).migrate();
+        String insert = "INSERT INTO " + schema + ".dose (horario_programado, status, confirmado_por) VALUES (?, ?, ?)";
+
+        // Pendente ou não tomada com quem confirmou, confirmada sem quem confirmou, ou valor desconhecido: o CHECK recusa
+        List<String[]> invalidos = List.of(new String[]{"PENDENTE", "IDOSO"}, new String[]{"NAO_TOMADA", "CUIDADOR"},
+                new String[]{"CONFIRMADA_NO_HORARIO", null}, new String[]{"CONFIRMADA_COM_ATRASO", null},
+                new String[]{"CONFIRMADA_NO_HORARIO", "VIZINHO"});
+        for (String[] invalido : invalidos) {
+            assertThatThrownBy(() -> jdbc.update(insert, java.sql.Timestamp.valueOf("2000-01-10 08:00:00"), invalido[0],
+                    invalido[1]))
+                    .as("%s / %s", invalido[0], invalido[1])
+                    .isInstanceOf(DataIntegrityViolationException.class)
+                    .hasMessageContaining("ck_dose_confirmado_por");
+        }
+        jdbc.update(insert, java.sql.Timestamp.valueOf("2000-01-10 08:00:00"), "CONFIRMADA_NO_HORARIO", "IDOSO");
+        jdbc.update(insert, java.sql.Timestamp.valueOf("2000-01-10 09:00:00"), "CONFIRMADA_COM_ATRASO", "CUIDADOR");
+        jdbc.update(insert, java.sql.Timestamp.valueOf("2000-01-10 10:00:00"), "PENDENTE", null);
+        jdbc.update(insert, java.sql.Timestamp.valueOf("2000-01-10 11:00:00"), "NAO_TOMADA", null);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM " + schema + ".dose", Long.class)).isEqualTo(4L);
     }
 
     private Flyway flyway(String alvo) {

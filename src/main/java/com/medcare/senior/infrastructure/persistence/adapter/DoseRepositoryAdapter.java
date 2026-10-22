@@ -133,6 +133,11 @@ public class DoseRepositoryAdapter implements DoseRepositoryPort {
         return doseRepository.findDetalhadaByIdAndIdosoId(doseId, idosoId).map(DoseRepositoryAdapter::toDetalhada);
     }
 
+    @Override
+    public Optional<DoseDetalhada> findDetalhadaByIdAndCuidadorId(Long doseId, Long cuidadorId) {
+        return doseRepository.findDetalhadaByIdAndCuidadorId(doseId, cuidadorId).map(DoseRepositoryAdapter::toDetalhada);
+    }
+
     private static DoseDetalhada toDetalhada(DoseDetalhadaProjection linha) {
         Dose dose = Dose.builder()
                 .id(linha.doseId())
@@ -140,6 +145,7 @@ public class DoseRepositoryAdapter implements DoseRepositoryPort {
                 .horarioProgramado(linha.horarioProgramado())
                 .horaConfirmacao(linha.horaConfirmacao())
                 .status(linha.status())
+                .confirmadoPor(linha.confirmadoPor())
                 .build();
         return new DoseDetalhada(dose, linha.idosoId(), linha.idosoNome(), linha.medicamentoId(), linha.medicamentoNome(),
                 linha.dosagem(), linha.tipo(), linha.toleranciaMinutosDoCuidador(), linha.cor());
@@ -157,7 +163,7 @@ public class DoseRepositoryAdapter implements DoseRepositoryPort {
             throw new IllegalArgumentException("Só uma dose existente e já registrada pode substituir uma PENDENTE");
         }
         return doseRepository.atualizarStatusSeAtual(doseRegistrada.getId(), StatusDose.PENDENTE,
-                doseRegistrada.getStatus(), doseRegistrada.getHoraConfirmacao());
+                doseRegistrada.getStatus(), doseRegistrada.getHoraConfirmacao(), doseRegistrada.getConfirmadoPor());
     }
 
     @Override

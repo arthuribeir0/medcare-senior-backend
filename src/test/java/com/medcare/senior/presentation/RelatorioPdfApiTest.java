@@ -98,9 +98,10 @@ class RelatorioPdfApiTest {
     }
 
     private void dose(Long tratamento, LocalDateTime horario, String status) {
-        jdbc.update("INSERT INTO dose (tratamento_id, horario_programado, hora_confirmacao, status) VALUES (?, ?, ?, ?)",
-                tratamento, horario, "CONFIRMADA_NO_HORARIO".equals(status) || "CONFIRMADA_COM_ATRASO".equals(status)
-                        ? horario.plusMinutes(5) : null, status);
+        boolean confirmada = "CONFIRMADA_NO_HORARIO".equals(status) || "CONFIRMADA_COM_ATRASO".equals(status);
+        jdbc.update("INSERT INTO dose (tratamento_id, horario_programado, hora_confirmacao, status, confirmado_por) "
+                + "VALUES (?, ?, ?, ?, ?)", tratamento, horario, confirmada ? horario.plusMinutes(5) : null, status,
+                confirmada ? "IDOSO" : null);
     }
 
     private MockHttpServletRequestBuilder pdf(String de, String ate) {
@@ -135,10 +136,10 @@ class RelatorioPdfApiTest {
         for (String esperado : List.of("Idoso: " + nomeDoIdoso(), "Período: 10/01/2000 a 12/01/2000",
                 "Taxa de adesão: 75,0%", "5 2 1 1 1",
                 "Losartana 50mg 3 1 1 1 0 66,7%", "Metformina 500mg 2 1 0 0 1 100,0%",
-                "10/01/2000 08:00 Losartana 50mg Confirmada no horário 08:05",
-                "10/01/2000 20:00 Losartana 50mg Confirmada com atraso 20:05",
-                "11/01/2000 08:00 Losartana 50mg Não noHorario —",
-                "11/01/2000 12:00 Metformina 500mg Confirmada no horário 12:05",
+                "10/01/2000 08:00 Losartana 50mg Confirmada no horário 08:05 pelo idoso",
+                "10/01/2000 20:00 Losartana 50mg Confirmada com atraso 20:05 pelo idoso",
+                "11/01/2000 08:00 Losartana 50mg Não confirmada —",
+                "11/01/2000 12:00 Metformina 500mg Confirmada no horário 12:05 pelo idoso",
                 "12/01/2000 12:00 Metformina 500mg Pendente —")) {
             assertThat(texto).contains(semEspacos(esperado));
         }
@@ -151,9 +152,10 @@ class RelatorioPdfApiTest {
         LocalDateTime inicio = D1.plusDays(5).atTime(6, 0);
         for (int i = 0; i < 600; i++) {
             LocalDateTime horario = inicio.plusHours(6L * i);
-            linhas.add(new Object[]{tratamentoLosartana, horario, horario.plusMinutes(2), "CONFIRMADA_NO_HORARIO"});
+            linhas.add(new Object[]{tratamentoLosartana, horario, horario.plusMinutes(2), "CONFIRMADA_NO_HORARIO", "CUIDADOR"});
         }
-        jdbc.batchUpdate("INSERT INTO dose (tratamento_id, horario_programado, hora_confirmacao, status) VALUES (?, ?, ?, ?)", linhas);
+        jdbc.batchUpdate("INSERT INTO dose (tratamento_id, horario_programado, hora_confirmacao, status, confirmado_por) "
+                + "VALUES (?, ?, ?, ?, ?)", linhas);
         // Remédio removido continua no histórico (RN-008)
         jdbc.update("UPDATE medicamento SET removido_em = now() WHERE id = ?", losartana);
 
@@ -164,9 +166,9 @@ class RelatorioPdfApiTest {
         assertThat(paginas(arquivo)).isGreaterThan(10);
         String texto = semEspacos(texto(arquivo));
         assertThat(texto).contains(semEspacos("Losartana 50mg 603"))
-                .contains(semEspacos("15/01/2000 06:00 Losartana 50mg Confirmada no horário 06:02"))
+                .contains(semEspacos("15/01/2000 06:00 Losartana 50mg Confirmada no horário 06:02 pelo cuidador"))
                 .contains(semEspacos(inicio.plusHours(6L * 599).toLocalDate().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy"))
-                        + " 00:00 Losartana 50mg Confirmada no horário 00:02"));
+                        + " 00:00 Losartana 50mg Confirmada no horário 00:02 pelo cuidador"));
     }
 
     @Test

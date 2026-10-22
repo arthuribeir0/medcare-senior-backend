@@ -65,7 +65,8 @@ public class SecurityConfig {
                             // Rotas do aparelho do idoso: ANTES de /api/idosos/** (a primeira regra que casa vence)
                             .requestMatchers(HttpMethod.GET, "/api/idosos/me", "/api/idosos/me/doses").hasRole(Role.IDOSO.name())
                             .requestMatchers("/api/idosos/**").hasRole(Role.CUIDADOR.name())
-                            .requestMatchers(HttpMethod.PUT, "/api/doses/*/confirmar").hasRole(Role.IDOSO.name())
+                            // Confirmação de dose: o idoso (a própria) ou o cuidador (dos idosos dele); o dono fica no use case
+                            .requestMatchers(HttpMethod.PUT, "/api/doses/*/confirmar").hasAnyRole(Role.IDOSO.name(), Role.CUIDADOR.name())
                             .requestMatchers("/api/medicamentos/**").hasRole(Role.CUIDADOR.name())
                             .requestMatchers("/api/tratamentos/**").hasRole(Role.CUIDADOR.name())
                             .requestMatchers(HttpMethod.GET, "/api/configuracoes/tolerancia").hasRole(Role.CUIDADOR.name())

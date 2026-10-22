@@ -1,5 +1,6 @@
 package com.medcare.senior.infrastructure.persistence.projection;
 
+import com.medcare.senior.domain.dose.ConfirmadoPor;
 import com.medcare.senior.domain.dose.StatusDose;
 
 import java.time.LocalDateTime;
@@ -13,6 +14,7 @@ public record DoseDetalhadaProjection(Long doseId,
                                       LocalDateTime horarioProgramado,
                                       LocalDateTime horaConfirmacao,
                                       StatusDose status,
+                                      ConfirmadoPor confirmadoPor,
                                       Long idosoId,
                                       String idosoNome,
                                       Long medicamentoId,

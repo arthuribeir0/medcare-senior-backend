@@ -12,6 +12,7 @@ import com.lowagie.text.pdf.PdfPCell;
 import com.lowagie.text.pdf.PdfPTable;
 import com.lowagie.text.pdf.PdfPageEventHelper;
 import com.lowagie.text.pdf.PdfWriter;
+import com.medcare.senior.domain.dose.ConfirmadoPor;
 import com.medcare.senior.domain.dose.DoseDetalhada;
 import com.medcare.senior.domain.dose.StatusDose;
 import com.medcare.senior.domain.relatorio.GeradorDePdfPort;
@@ -109,7 +110,7 @@ public class OpenPdfGeradorAdapter implements GeradorDePdfPort {
                 LocalDateTime programada = dose.dose().getHorarioProgramado();
                 celulas(tabela, programada.format(DATA), programada.format(HORA),
                         dose.medicamentoNome() + " " + dose.dosagem(), status(dose.dose().getStatus()),
-                        confirmacao(programada, dose.dose().getHoraConfirmacao()));
+                        confirmacao(programada, dose.dose().getHoraConfirmacao(), dose.dose().getConfirmadoPor()));
             }
             // Envia as linhas do lote para o arquivo e libera da memória
             documento.add(tabela);
@@ -122,18 +123,25 @@ public class OpenPdfGeradorAdapter implements GeradorDePdfPort {
         return switch (status) {
             case CONFIRMADA_NO_HORARIO -> "Confirmada no horário";
             case CONFIRMADA_COM_ATRASO -> "Confirmada com atraso";
-            case NAO_TOMADA -> "Não noHorario";
+            case NAO_TOMADA -> "Não confirmada";
             case PENDENTE -> "Pendente";
         };
     }
 
-    /** Hora da confirmação; com a data quando foi em outro dia; "—" quando não houve. */
-    static String confirmacao(LocalDateTime programada, LocalDateTime confirmada) {
+    /**
+     * Hora da confirmação (com a data quando foi em outro dia) e quem confirmou: "08:05 pelo idoso"; "—" quando não
+     * houve.
+     */
+    static String confirmacao(LocalDateTime programada, LocalDateTime confirmada, ConfirmadoPor quem) {
         if (confirmada == null) {
             return "—";
         }
-        return confirmada.toLocalDate().equals(programada.toLocalDate()) ? confirmada.format(HORA)
+        String hora = confirmada.toLocalDate().equals(programada.toLocalDate()) ? confirmada.format(HORA)
                 : confirmada.format(DATA_HORA);
+        if (quem == null) {
+            return hora;
+        }
+        return hora + (quem == ConfirmadoPor.CUIDADOR ? " pelo cuidador" : " pelo idoso");
     }
 
     /** "87,5%" com 1 casa e vírgula; sem dose encerrada no período, a taxa não existe. */

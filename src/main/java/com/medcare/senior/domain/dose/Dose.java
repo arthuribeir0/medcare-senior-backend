@@ -17,6 +17,8 @@ import java.time.temporal.ChronoUnit;
  * {@link #marcarComoNaoTomada()} e {@link #confirmar}).
  *
  * <p>{@code tratamentoId} nulo = dose anonimizada: o tratamento foi apagado na exclusão de conta (LGPD).
+ *
+ * <p>{@code confirmadoPor} só existe nas doses confirmadas (no horário ou com atraso): quem registrou a confirmação.
  */
 @Getter
 @Builder
@@ -28,6 +30,7 @@ public class Dose {
     private final LocalDateTime horarioProgramado;
     private final LocalDateTime horaConfirmacao;
     private final StatusDose status;
+    private final ConfirmadoPor confirmadoPor;
 
     /**
      * Nova dose ainda não registrada, criada pelo motor de geração de doses.
@@ -66,16 +69,20 @@ public class Dose {
     }
 
     /**
-     * Versão confirmada desta dose (pelo idoso), em {@code agora}. Não altera esta instância. O status (CONFIRMADA_NO_HORARIO ou
+     * Versão confirmada desta dose, em {@code agora}, por {@code quem} (o idoso ou o cuidador dele). Não altera esta instância. O status (CONFIRMADA_NO_HORARIO ou
      * CONFIRMADA_COM_ATRASO) vem da {@link PoliticaDeJanela}; no banco, a gravação também é um UPDATE condicionado a
      * status = 'PENDENTE' ({@link DoseRepositoryPort#registrarSePendente}).
      *
      * @throws TransicaoDeDoseInvalidaException se a dose não estiver PENDENTE
-     * @throws IllegalArgumentException         se {@code statusConfirmado} não for CONFIRMADA_NO_HORARIO nem CONFIRMADA_COM_ATRASO
+     * @throws IllegalArgumentException         se {@code statusConfirmado} não for CONFIRMADA_NO_HORARIO nem
+     *                                          CONFIRMADA_COM_ATRASO, ou se {@code quem} for nulo
      */
-    public Dose confirmar(StatusDose statusConfirmado, LocalDateTime agora) {
+    public Dose confirmar(StatusDose statusConfirmado, LocalDateTime agora, ConfirmadoPor quem) {
         if (statusConfirmado != StatusDose.CONFIRMADA_NO_HORARIO && statusConfirmado != StatusDose.CONFIRMADA_COM_ATRASO) {
             throw new IllegalArgumentException("Confirmação só pode gerar CONFIRMADA_NO_HORARIO ou CONFIRMADA_COM_ATRASO");
+        }
+        if (quem == null) {
+            throw new IllegalArgumentException("Informe quem confirmou a dose");
         }
         if (status != StatusDose.PENDENTE) {
             throw new TransicaoDeDoseInvalidaException(id, status, statusConfirmado);
@@ -88,6 +95,7 @@ public class Dose {
                 .horarioProgramado(horarioProgramado)
                 .horaConfirmacao(agora.truncatedTo(ChronoUnit.MICROS))
                 .status(statusConfirmado)
+                .confirmadoPor(quem)
                 .build();
     }
 }

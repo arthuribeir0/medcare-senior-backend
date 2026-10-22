@@ -75,9 +75,10 @@ class RelatorioApiTest {
     }
 
     private void dose(LocalDate dia, int hora, String status) {
-        jdbc.update("INSERT INTO dose (tratamento_id, horario_programado, hora_confirmacao, status) VALUES (?, ?, ?, ?)",
-                tratamentoId, dia.atTime(hora, 0), "PENDENTE".equals(status) || "NAO_TOMADA".equals(status)
-                        ? null : dia.atTime(hora, 10), status);
+        boolean confirmada = !"PENDENTE".equals(status) && !"NAO_TOMADA".equals(status);
+        jdbc.update("INSERT INTO dose (tratamento_id, horario_programado, hora_confirmacao, status, confirmado_por) "
+                + "VALUES (?, ?, ?, ?, ?)", tratamentoId, dia.atTime(hora, 0), confirmada ? dia.atTime(hora, 10) : null,
+                status, confirmada ? "IDOSO" : null);
     }
 
     private MockHttpServletRequestBuilder como(MockHttpServletRequestBuilder requisicao, Long id, Role papel) {

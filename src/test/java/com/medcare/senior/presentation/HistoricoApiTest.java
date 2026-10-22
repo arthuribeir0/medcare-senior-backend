@@ -110,9 +110,10 @@ class HistoricoApiTest {
     }
 
     private void dose(Long tratamento, LocalDateTime horario, String status) {
-        jdbc.update("INSERT INTO dose (tratamento_id, horario_programado, hora_confirmacao, status) VALUES (?, ?, ?, ?)",
-                tratamento, horario, "CONFIRMADA_NO_HORARIO".equals(status) || "CONFIRMADA_COM_ATRASO".equals(status)
-                        ? horario.plusMinutes(5) : null, status);
+        boolean confirmada = "CONFIRMADA_NO_HORARIO".equals(status) || "CONFIRMADA_COM_ATRASO".equals(status);
+        jdbc.update("INSERT INTO dose (tratamento_id, horario_programado, hora_confirmacao, status, confirmado_por) "
+                + "VALUES (?, ?, ?, ?, ?)", tratamento, horario, confirmada ? horario.plusMinutes(5) : null, status,
+                confirmada ? "IDOSO" : null);
     }
 
     private MockHttpServletRequestBuilder historico() {

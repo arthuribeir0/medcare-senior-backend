@@ -9,6 +9,7 @@ import com.medcare.senior.infrastructure.persistence.adapter.IdosoRepositoryAdap
 import com.medcare.senior.infrastructure.persistence.mapper.DoseMapper;
 import com.medcare.senior.infrastructure.persistence.mapper.IdosoMapper;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
@@ -38,8 +39,8 @@ import java.util.concurrent.TimeUnit;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Duas confirmações da MESMA dose ao mesmo tempo, em transações reais (commit) contra o PostgreSQL: o UPDATE
- * condicionado a status = 'PENDENTE' deixa exatamente uma vencer. Roda sem a transação de teste e apaga o que criou.
+ * Duas confirmações da MESMA dose ao mesmo tempo (do idoso, ou do idoso e do cuidador), em transações reais (commit)
+ * contra o PostgreSQL: o UPDATE condicionado a status = 'PENDENTE' deixa exatamente uma vencer. Roda sem a transação de teste e apaga o que criou.
  */
 @DataJpaTest(properties = "spring.jpa.show-sql=false")
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
@@ -134,6 +135,44 @@ class ConfirmacaoConcorrentePostgresTest {
             assertThat(sucessos).isEqualTo(1);
             assertThat(jdbc.queryForObject("SELECT status FROM dose WHERE id = ?", String.class, doseId))
                     .isEqualTo(StatusDose.CONFIRMADA_NO_HORARIO.name());
+        } finally {
+            executor.shutdownNow();
+        }
+    }
+
+    @RepeatedTest(5)
+    void idosoECuidadorConfirmandoAoMesmoTempoSoUmVenceEQuemConfirmouEhOVencedor() throws Exception {
+        criarDosePendente();
+        CountDownLatch largada = new CountDownLatch(1);
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+        try {
+            Future<Boolean> idoso = executor.submit(() -> {
+                largada.await();
+                try {
+                    confirmarDoseUseCase.executar(doseId, idosoId);
+                    return true;
+                } catch (DoseNaoConfirmavelException e) {
+                    return false;
+                }
+            });
+            Future<Boolean> cuidador = executor.submit(() -> {
+                largada.await();
+                try {
+                    confirmarDoseUseCase.executarComoCuidador(doseId, cuidadorId);
+                    return true;
+                } catch (DoseNaoConfirmavelException e) {
+                    return false;
+                }
+            });
+            largada.countDown();
+            boolean idosoVenceu = idoso.get(30, TimeUnit.SECONDS);
+            boolean cuidadorVenceu = cuidador.get(30, TimeUnit.SECONDS);
+
+            assertThat(idosoVenceu).isNotEqualTo(cuidadorVenceu);
+            assertThat(jdbc.queryForObject("SELECT status FROM dose WHERE id = ?", String.class, doseId))
+                    .isEqualTo(StatusDose.CONFIRMADA_NO_HORARIO.name());
+            assertThat(jdbc.queryForObject("SELECT confirmado_por FROM dose WHERE id = ?", String.class, doseId))
+                    .isEqualTo(idosoVenceu ? "IDOSO" : "CUIDADOR");
         } finally {
             executor.shutdownNow();
         }

@@ -5,6 +5,7 @@ import com.medcare.senior.infrastructure.security.JwtTokenProvider;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.HttpHeaders;
@@ -53,6 +54,9 @@ class SegurancaApiTest {
     @Autowired
     private Clock clock;
 
+    @Value("${jwt.secret}")
+    private String segredoJwt;
+
     private LocalDateTime agora;
 
     // Cuidador A (com um idoso, um medicamento e uma dose no horário de agora: sempre no dia de hoje e dentro da
@@ -92,7 +96,27 @@ class SegurancaApiTest {
     void tokenDeCuidadorEmRotaDeIdosoResponde403() throws Exception {
         mvc.perform(comoCuidador(get("/api/idosos/me"), cuidadorA)).andExpect(status().isForbidden());
         mvc.perform(comoCuidador(get("/api/idosos/me/doses"), cuidadorA)).andExpect(status().isForbidden());
-        mvc.perform(comoCuidador(put("/api/doses/" + doseA + "/confirmar"), cuidadorA)).andExpect(status().isForbidden());
+    }
+
+    @Test
+    void tokenSemPapelOuComPapelDesconhecidoResponde401() throws Exception {
+        // Assinado com a chave certa, mas sem o papel (ou com um papel que não existe): não autentica
+        javax.crypto.SecretKey chave = io.jsonwebtoken.security.Keys.hmacShaKeyFor(segredoJwt.getBytes(
+                java.nio.charset.StandardCharsets.UTF_8));
+        java.util.Date agoraData = new java.util.Date();
+        java.util.Date expira = new java.util.Date(agoraData.getTime() + 60_000);
+        String semPapel = io.jsonwebtoken.Jwts.builder().subject(String.valueOf(cuidadorA)).issuedAt(agoraData)
+                .expiration(expira).signWith(chave).compact();
+        String papelDesconhecido = io.jsonwebtoken.Jwts.builder().subject(String.valueOf(cuidadorA)).claim("role", "ADMIN")
+                .issuedAt(agoraData).expiration(expira).signWith(chave).compact();
+
+        for (String token : List.of(semPapel, papelDesconhecido)) {
+            mvc.perform(put("/api/doses/" + doseA + "/confirmar").header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
+                    .andExpect(status().isUnauthorized());
+            mvc.perform(get("/api/idosos").header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
+                    .andExpect(status().isUnauthorized());
+        }
+        assertThat(jdbc.queryForObject("SELECT status FROM dose WHERE id = ?", String.class, doseA)).isEqualTo("PENDENTE");
     }
 
     @Test
@@ -107,6 +131,10 @@ class SegurancaApiTest {
     void rotaForaDaListaEhNegadaMesmoComToken() throws Exception {
         mvc.perform(comoCuidador(get("/api/rota-que-nao-existe"), cuidadorA)).andExpect(status().isForbidden());
         mvc.perform(comoIdoso(get("/api/doses/" + doseA), idosoA)).andExpect(status().isForbidden());
+        // A confirmação só existe como PUT: outro método na mesma rota cai no bloqueio padrão, para os dois papéis
+        mvc.perform(comoCuidador(post("/api/doses/" + doseA + "/confirmar"), cuidadorA)).andExpect(status().isForbidden());
+        mvc.perform(comoIdoso(post("/api/doses/" + doseA + "/confirmar"), idosoA)).andExpect(status().isForbidden());
+        mvc.perform(comoCuidador(put("/api/doses/" + doseA), cuidadorA)).andExpect(status().isForbidden());
         mvc.perform(comoCuidador(get("/api/cuidadores"), cuidadorA)).andExpect(status().isForbidden());
     }
 
@@ -209,7 +237,8 @@ class SegurancaApiTest {
                 get("/api/idosos/" + idosoA + "/doses"),
                 post("/api/idosos/" + idosoA + "/gerar-codigo"),
                 get("/api/medicamentos"),
-                get("/api/medicamentos/" + medicamentoA));
+                get("/api/medicamentos/" + medicamentoA),
+                put("/api/doses/" + doseA + "/confirmar"));
         for (MockHttpServletRequestBuilder rota : rotas) {
             mvc.perform(comoCuidador(rota, cuidadorExcluido))
                     .andExpect(status().isUnauthorized())
@@ -236,6 +265,28 @@ class SegurancaApiTest {
         mvc.perform(comoIdoso(put("/api/doses/" + doseA + "/confirmar"), idosoA))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.codigo").value("DOSE_JA_REGISTRADA"));
+    }
+
+    @Test
+    void cuidadorConfirmaDoseDoProprioIdosoENaoADoIdosoDeOutroCuidador() throws Exception {
+        mvc.perform(comoCuidador(put("/api/doses/" + doseB + "/confirmar"), cuidadorA))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.codigo").value("RECURSO_NAO_ENCONTRADO"))
+                .andExpect(jsonPath("$.mensagem").value("Dose não encontrada"));
+        assertThat(jdbc.queryForObject("SELECT status FROM dose WHERE id = ?", String.class, doseB)).isEqualTo("PENDENTE");
+
+        mvc.perform(comoCuidador(put("/api/doses/" + doseA + "/confirmar"), cuidadorA))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.confirmadoPor").value("CUIDADOR"));
+    }
+
+    @Test
+    void idosoNaoConfirmaDoseDeOutroIdosoNemPeloIdDoCuidador() throws Exception {
+        // O ID vem do token: um idoso com o mesmo número de um cuidador continua sendo só idoso
+        mvc.perform(comoIdoso(put("/api/doses/" + doseB + "/confirmar"), idosoA))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.mensagem").value("Dose não encontrada"));
+        assertThat(jdbc.queryForObject("SELECT confirmado_por FROM dose WHERE id = ?", String.class, doseB)).isNull();
     }
 
     @Test

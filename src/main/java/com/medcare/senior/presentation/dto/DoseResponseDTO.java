@@ -1,6 +1,7 @@
 package com.medcare.senior.presentation.dto;
 
 import com.medcare.senior.domain.dose.Confirmabilidade;
+import com.medcare.senior.domain.dose.ConfirmadoPor;
 import com.medcare.senior.domain.dose.DoseAvaliada;
 import com.medcare.senior.domain.dose.DoseDetalhada;
 import com.medcare.senior.domain.dose.JanelaDose;
@@ -48,6 +49,9 @@ public record DoseResponseDTO(
         @Schema(description = "Status gravado no banco", example = "PENDENTE")
         StatusDose status,
 
+        @Schema(description = "Quem confirmou a dose (null se não foi confirmada)", example = "IDOSO", nullable = true)
+        ConfirmadoPor confirmadoPor,
+
         @Schema(description = "Status a exibir: para dose PENDENTE, ATRASADA depois da tolerância e NAO_TOMADA depois "
                 + "do limite de confirmação", example = "ATRASADA")
         StatusExibicao statusExibicao,
@@ -86,6 +90,7 @@ public record DoseResponseDTO(
         return new DoseResponseDTO(detalhe.dose().getId(), detalhe.idosoId(), detalhe.idosoNome(), detalhe.medicamentoId(),
                 detalhe.medicamentoNome(), detalhe.dosagem(), detalhe.tipo(), detalhe.cor(), detalhe.dose().getTratamentoId(),
                 detalhe.dose().getHorarioProgramado(), detalhe.dose().getHoraConfirmacao(), detalhe.dose().getStatus(),
+                detalhe.dose().getConfirmadoPor(),
                 avaliada.statusExibicao(), avaliada.toleranciaMinutos(),
                 new JanelaDTO(janela.abreEm(), janela.avisoEm(), janela.encerraEm()), avaliada.limiteConfirmacao(),
                 avaliada.confirmabilidade());

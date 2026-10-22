@@ -50,7 +50,7 @@ class GerarRelatorioDiarioUseCaseTest {
 
     @BeforeEach
     void setUp() {
-        PoliticaDeJanela politica = new PoliticaDeJanela(Duration.ofMinutes(60), Duration.ofMinutes(30), Duration.ofMinutes(180));
+        PoliticaDeJanela politica = new PoliticaDeJanela(Duration.ofMinutes(60), Duration.ofMinutes(30), Duration.ofMinutes(30));
         useCase = new GerarRelatorioDiarioUseCase(idosoRepository, doseRepository, politica,
                 Clock.fixed(AGORA.atZone(FUSO).toInstant(), FUSO));
     }
@@ -72,7 +72,7 @@ class GerarRelatorioDiarioUseCaseTest {
                 .thenReturn(List.of(
                         detalhe(1L, HOJE.atTime(8, 0), StatusDose.CONFIRMADA_NO_HORARIO),
                         detalhe(2L, HOJE.atTime(12, 0), StatusDose.NAO_TOMADA),
-                        detalhe(3L, HOJE.atTime(22, 0), StatusDose.PENDENTE)));
+                        detalhe(3L, HOJE.atTime(22, 45), StatusDose.PENDENTE)));
 
         RelatorioDiario relatorio = useCase.executar(IDOSO_ID, CUIDADOR_ID, null);
 
@@ -81,7 +81,7 @@ class GerarRelatorioDiarioUseCaseTest {
         assertThat(relatorio.idosoNome()).isEqualTo("José");
         assertThat(relatorio.totais()).isEqualTo(new TotaisDoDia(3, 1, 0, 1, 1, 50.0));
         assertThat(relatorio.doses()).extracting(d -> d.detalhe().dose().getId()).containsExactly(1L, 2L, 3L);
-        // As doses vêm avaliadas no instante atual: a das 22:00 ainda PENDENTE já aparece ATRASADA
+        // As doses vêm avaliadas no instante atual: a das 22:45 ainda PENDENTE já aparece ATRASADA
         assertThat(relatorio.doses().get(2).statusExibicao()).isEqualTo(StatusExibicao.ATRASADA);
     }
 

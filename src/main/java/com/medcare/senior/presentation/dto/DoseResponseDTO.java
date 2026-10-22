@@ -49,13 +49,18 @@ public record DoseResponseDTO(
         StatusDose status,
 
         @Schema(description = "Status a exibir: para dose PENDENTE, ATRASADA depois da tolerância e NAO_TOMADA depois "
-                + "do encerramento da janela", example = "ATRASADA")
+                + "do limite de confirmação", example = "ATRASADA")
         StatusExibicao statusExibicao,
 
         @Schema(description = "Minutos de tolerância depois do horário programado", example = "30")
         long toleranciaMinutos,
 
         JanelaDTO janela,
+
+        @Schema(description = "Último instante em que a dose ainda pode ser confirmada: horário programado + tolerância "
+                + "do cuidador + margem depois do aviso (igual a janela.encerraEm). Para o texto \"Pode ser confirmada até "
+                + "HH:mm\"", example = "2026-10-08T09:00:00")
+        LocalDateTime limiteConfirmacao,
 
         @Schema(description = "Se a dose pode ser confirmada agora", example = "OK")
         Confirmabilidade confirmabilidade
@@ -69,7 +74,8 @@ public record DoseResponseDTO(
             @Schema(description = "Fim da tolerância: depois disto a confirmação é com atraso", example = "2026-10-08T08:30:00")
             LocalDateTime avisoEm,
 
-            @Schema(description = "Depois disto não pode mais ser confirmada", example = "2026-10-08T11:00:00")
+            @Schema(description = "Horário + tolerância + margem depois do aviso: depois disto não pode mais ser "
+                    + "confirmada e vira NAO_TOMADA", example = "2026-10-08T09:00:00")
             LocalDateTime encerraEm
     ) {
     }
@@ -81,6 +87,7 @@ public record DoseResponseDTO(
                 detalhe.medicamentoNome(), detalhe.dosagem(), detalhe.tipo(), detalhe.cor(), detalhe.dose().getTratamentoId(),
                 detalhe.dose().getHorarioProgramado(), detalhe.dose().getHoraConfirmacao(), detalhe.dose().getStatus(),
                 avaliada.statusExibicao(), avaliada.toleranciaMinutos(),
-                new JanelaDTO(janela.abreEm(), janela.avisoEm(), janela.encerraEm()), avaliada.confirmabilidade());
+                new JanelaDTO(janela.abreEm(), janela.avisoEm(), janela.encerraEm()), avaliada.limiteConfirmacao(),
+                avaliada.confirmabilidade());
     }
 }

@@ -52,7 +52,7 @@ class ConsultarHistoricoUseCaseTest {
 
     @BeforeEach
     void setUp() {
-        PoliticaDeJanela politica = new PoliticaDeJanela(Duration.ofMinutes(60), Duration.ofMinutes(30), Duration.ofMinutes(180));
+        PoliticaDeJanela politica = new PoliticaDeJanela(Duration.ofMinutes(60), Duration.ofMinutes(30), Duration.ofMinutes(30));
         useCase = new ConsultarHistoricoUseCase(doseRepository, idosoRepository, politica,
                 Clock.fixed(AGORA.atZone(FUSO).toInstant(), FUSO));
     }

@@ -17,7 +17,7 @@ class DoseResponseDTOTest {
 
     private static final LocalDateTime HORARIO = LocalDateTime.of(2026, 10, 8, 8, 0);
     private static final JanelaDose JANELA = new JanelaDose(HORARIO.minusHours(1), HORARIO.plusMinutes(30),
-            HORARIO.plusHours(3));
+            HORARIO.plusMinutes(60));
 
     private static DoseAvaliada avaliada(DoseDetalhada detalhe) {
         return new DoseAvaliada(detalhe, JANELA, StatusExibicao.PENDENTE, Confirmabilidade.OK, 30);
@@ -37,6 +37,8 @@ class DoseResponseDTOTest {
         assertThat(dto.tratamentoId()).isEqualTo(1000L);
         assertThat(dto.toleranciaMinutos()).isEqualTo(30);
         assertThat(dto.janela().avisoEm()).isEqualTo(HORARIO.plusMinutes(30));
+        // Tolerância 30 + margem 30: pode ser confirmada até 1 hora depois do horário
+        assertThat(dto.limiteConfirmacao()).isEqualTo(HORARIO.plusMinutes(60)).isEqualTo(dto.janela().encerraEm());
     }
 
     @Test

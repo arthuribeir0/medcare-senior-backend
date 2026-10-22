@@ -27,21 +27,26 @@ public interface DoseRepositoryPort {
 
     /**
      * Até {@code limite} doses PENDENTES que devem ser avisadas em {@code agora}: horário + tolerância do cuidador dono
-     * do idoso (ou {@code toleranciaPadrao}, se ele não tem uma própria) <= agora,
-     * horário > {@code encerradasAte} (ainda não chegaram ao encerramento) e sem evento de notificação. Das mais
-     * antigas para as mais novas. Ignora doses anonimizadas e de tratamento ou medicamento removido logicamente.
+     * do idoso (ou {@code toleranciaPadrao}, se ele não tem uma própria) <= agora, ainda não encerradas (horário +
+     * tolerância + {@code margemPosAviso} > agora) e sem evento de notificação. Das mais antigas para as mais novas.
+     * Ignora doses anonimizadas e de tratamento ou medicamento removido logicamente.
      *
      * @param toleranciaPadrao tolerância de quem não configurou a sua (app.alertas.tolerancia-minutos)
+     * @param margemPosAviso   app.alertas.margem-pos-aviso-minutos
      */
-    List<DoseParaAviso> findPendentesParaAviso(LocalDateTime agora, Duration toleranciaPadrao, LocalDateTime encerradasAte,
+    List<DoseParaAviso> findPendentesParaAviso(LocalDateTime agora, Duration toleranciaPadrao, Duration margemPosAviso,
                                                int limite);
 
     /**
-     * Até {@code limite} doses PENDENTES com horário programado igual ou anterior a {@code encerradasAte} (horário +
-     * encerramento <= agora), das mais antigas para as mais novas. Ignora doses anonimizadas e de tratamento ou
-     * medicamento removido logicamente.
+     * Encerra como NAO_TOMADA até {@code limite} doses PENDENTES vencidas em {@code agora} (horário + tolerância do
+     * cuidador, ou a padrão, + {@code margemPosAviso} <= agora), das mais antigas para as mais novas, em um único
+     * UPDATE atômico condicionado a status = 'PENDENTE': uma confirmação gravada antes vence e a dose fica de fora.
+     * Ignora doses anonimizadas e de tratamento ou medicamento removido logicamente.
+     *
+     * @return as doses que este comando encerrou
      */
-    List<Dose> findPendentesEncerradas(LocalDateTime encerradasAte, int limite);
+    List<DoseEncerrada> encerrarVencidas(LocalDateTime agora, Duration toleranciaPadrao, Duration margemPosAviso,
+                                         int limite);
 
     /**
      * Doses do idoso com horário programado em [{@code inicio}, {@code fim}), com idoso, medicamento e a tolerância

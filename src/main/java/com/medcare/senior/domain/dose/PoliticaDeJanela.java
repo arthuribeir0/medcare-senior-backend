@@ -10,51 +10,49 @@ import java.time.LocalDateTime;
  *
  * <ul>
  *   <li>abreEm = horário programado - antecedência</li>
- *   <li>avisoEm = horário programado + tolerância (fim do "no prazo"; o cuidador é avisado e a dose continua PENDENTE)</li>
- *   <li>encerraEm = horário programado + encerramento (a dose passa a NAO_TOMADA e não pode mais ser confirmada)</li>
+ *   <li>avisoEm = horário programado + tolerância (fim do "no horário"; o cuidador é avisado e a dose continua
+ *       PENDENTE)</li>
+ *   <li>encerraEm = avisoEm + margem pós-aviso (a dose passa a NAO_TOMADA e não pode mais ser confirmada)</li>
  * </ul>
  * A tolerância é informada POR CHAMADA porque pode ser de cada cuidador; {@link #toleranciaPadrao} é o valor
- * global (app.alertas.tolerancia-minutos), usado quando não há outro. O encerramento é fixo para todos.
+ * global (app.alertas.tolerancia-minutos), usado quando não há outro. Como o encerramento vem depois do aviso por
+ * construção, qualquer tolerância positiva é válida.
  *
- * <p>Os limites exatos contam como dentro da janela de confirmação (comparações estritas com isBefore/isAfter).
+ * <p>Fronteiras (comparações estritas com isBefore/isAfter):
+ * <ul>
+ *   <li>exatamente em abreEm: já pode confirmar;</li>
+ *   <li>exatamente em avisoEm: a confirmação ainda é no horário (depois, com atraso);</li>
+ *   <li>exatamente em encerraEm: a confirmação ainda é aceita (com atraso), e o job já pode encerrar a dose. O
+ *       que chegar primeiro ao banco vence, pelo UPDATE condicionado a status = 'PENDENTE'.</li>
+ * </ul>
  *
  * @param antecedencia     quanto antes do horário a dose já pode ser confirmada
  * @param toleranciaPadrao tolerância global, quando o cuidador não tem uma própria
- * @param encerramento     quanto depois do horário a dose ainda pode ser confirmada (com atraso)
+ * @param margemPosAviso   quanto depois do aviso a dose ainda pode ser confirmada (com atraso)
  */
-public record PoliticaDeJanela(Duration antecedencia, Duration toleranciaPadrao, Duration encerramento) {
+public record PoliticaDeJanela(Duration antecedencia, Duration toleranciaPadrao, Duration margemPosAviso) {
 
     public PoliticaDeJanela {
         exigirPositiva(antecedencia, "A antecedência de confirmação");
-        exigirPositiva(encerramento, "O encerramento da janela");
-        validarTolerancia(toleranciaPadrao, encerramento);
+        exigirPositiva(margemPosAviso, "A margem depois do aviso");
+        exigirPositiva(toleranciaPadrao, "A tolerância");
     }
 
-    private static void exigirPositiva(Duration valor, String nome) {
+    private static Duration exigirPositiva(Duration valor, String nome) {
         if (valor == null || valor.isNegative() || valor.isZero()) {
             throw new IllegalArgumentException(nome + " deve ser positiva");
         }
+        return valor;
     }
 
-    private static void validarTolerancia(Duration tolerancia, Duration encerramento) {
-        exigirPositiva(tolerancia, "A tolerância");
-        if (tolerancia.compareTo(encerramento) >= 0) {
-            throw new IllegalArgumentException("A tolerância deve ser menor que o encerramento da janela de confirmação");
-        }
-    }
-
-    /**
-     * @throws IllegalArgumentException se a tolerância não for positiva ou não for menor que o encerramento
-     */
-    private Duration exigirTolerancia(Duration tolerancia) {
-        validarTolerancia(tolerancia, encerramento);
-        return tolerancia;
+    private static Duration exigirTolerancia(Duration tolerancia) {
+        return exigirPositiva(tolerancia, "A tolerância");
     }
 
     /**
      * Tolerância a aplicar para um cuidador: a própria (em minutos) ou, se ele não tem, a padrão.
      *
-     * @throws IllegalArgumentException se a própria não for positiva ou não for menor que o encerramento
+     * @throws IllegalArgumentException se a própria não for positiva
      */
     public Duration toleranciaEfetiva(Integer minutosDoCuidador) {
         return minutosDoCuidador == null ? toleranciaPadrao : exigirTolerancia(Duration.ofMinutes(minutosDoCuidador));
@@ -68,27 +66,31 @@ public record PoliticaDeJanela(Duration antecedencia, Duration toleranciaPadrao,
         return horarioProgramado.plus(exigirTolerancia(tolerancia));
     }
 
-    public LocalDateTime encerraEm(LocalDateTime horarioProgramado) {
-        return horarioProgramado.plus(encerramento);
+    /**
+     * Horário + tolerância + margem pós-aviso: o último instante em que a dose ainda pode ser confirmada.
+     */
+    public LocalDateTime encerraEm(LocalDateTime horarioProgramado, Duration tolerancia) {
+        return avisoEm(horarioProgramado, tolerancia).plus(margemPosAviso);
     }
 
     public JanelaDose janela(LocalDateTime horarioProgramado, Duration tolerancia) {
         return new JanelaDose(abreEm(horarioProgramado), avisoEm(horarioProgramado, tolerancia),
-                encerraEm(horarioProgramado));
+                encerraEm(horarioProgramado, tolerancia));
     }
 
     /**
-     * Não depende da tolerância: a dose pode ser confirmada de abreEm a encerraEm (a tolerância só decide se a
-     * confirmação é no prazo ou com atraso, em {@link #statusDaConfirmacao}).
+     * A dose pode ser confirmada de abreEm a encerraEm, inclusive. A tolerância define o encerramento e, em
+     * {@link #statusDaConfirmacao}, se a confirmação é no horário ou com atraso.
      */
-    public Confirmabilidade confirmabilidade(StatusDose statusGravado, LocalDateTime horarioProgramado, LocalDateTime agora) {
+    public Confirmabilidade confirmabilidade(StatusDose statusGravado, LocalDateTime horarioProgramado,
+                                             LocalDateTime agora, Duration tolerancia) {
         if (statusGravado != StatusDose.PENDENTE) {
             return Confirmabilidade.JA_REGISTRADA;
         }
         if (agora.isBefore(abreEm(horarioProgramado))) {
             return Confirmabilidade.MUITO_CEDO;
         }
-        if (agora.isAfter(encerraEm(horarioProgramado))) {
+        if (agora.isAfter(encerraEm(horarioProgramado, tolerancia))) {
             return Confirmabilidade.ENCERRADA;
         }
         return Confirmabilidade.OK;
@@ -99,7 +101,7 @@ public record PoliticaDeJanela(Duration antecedencia, Duration toleranciaPadrao,
         if (statusGravado != StatusDose.PENDENTE) {
             return StatusExibicao.de(statusGravado);
         }
-        if (agora.isAfter(encerraEm(horarioProgramado))) {
+        if (agora.isAfter(encerraEm(horarioProgramado, tolerancia))) {
             return StatusExibicao.NAO_TOMADA;
         }
         if (agora.isAfter(avisoEm(horarioProgramado, tolerancia))) {
@@ -109,11 +111,12 @@ public record PoliticaDeJanela(Duration antecedencia, Duration toleranciaPadrao,
     }
 
     /**
-     * Status a gravar numa confirmação feita em {@code agora} (supõe confirmabilidade OK): CONFIRMADA_NO_HORARIO até o fim da
-     * tolerância, inclusive; depois, CONFIRMADA_COM_ATRASO.
+     * Status a gravar numa confirmação feita em {@code agora} (supõe confirmabilidade OK): CONFIRMADA_NO_HORARIO até o
+     * fim da tolerância, inclusive; depois, CONFIRMADA_COM_ATRASO.
      */
     public StatusDose statusDaConfirmacao(LocalDateTime horarioProgramado, LocalDateTime agora, Duration tolerancia) {
-        return agora.isAfter(avisoEm(horarioProgramado, tolerancia)) ? StatusDose.CONFIRMADA_COM_ATRASO : StatusDose.CONFIRMADA_NO_HORARIO;
+        return agora.isAfter(avisoEm(horarioProgramado, tolerancia)) ? StatusDose.CONFIRMADA_COM_ATRASO
+                : StatusDose.CONFIRMADA_NO_HORARIO;
     }
 
     /**
@@ -124,6 +127,6 @@ public record PoliticaDeJanela(Duration antecedencia, Duration toleranciaPadrao,
         LocalDateTime horario = dose.dose().getHorarioProgramado();
         StatusDose status = dose.dose().getStatus();
         return new DoseAvaliada(dose, janela(horario, tolerancia), statusExibicao(status, horario, agora, tolerancia),
-                confirmabilidade(status, horario, agora), tolerancia.toMinutes());
+                confirmabilidade(status, horario, agora, tolerancia), tolerancia.toMinutes());
     }
 }

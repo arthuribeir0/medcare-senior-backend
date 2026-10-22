@@ -10,8 +10,8 @@ import org.springframework.context.annotation.Configuration;
 import java.time.Duration;
 
 /**
- * Parâmetros da varredura de doses, da retentativa de avisos e da janela de confirmação (app.alertas.*). Valores inválidos (negativos, zero,
- * lote zero, tolerância maior ou igual ao encerramento) impedem a aplicação de subir.
+ * Parâmetros da varredura de doses, da retentativa de avisos e da janela de confirmação (app.alertas.*). Valores
+ * inválidos (negativos, zero, lote zero) impedem a aplicação de subir.
  */
 @Configuration
 public class AlertasConfig {
@@ -36,15 +36,16 @@ public class AlertasConfig {
     }
 
     /**
-     * Janela da dose. app.alertas.tolerancia-minutos é a tolerância PADRÃO (quando o cuidador não tem a sua). O
-     * construtor de PoliticaDeJanela valida: todos positivos e tolerância menor que o encerramento.
+     * Janela da dose. app.alertas.tolerancia-minutos é a tolerância PADRÃO (quando o cuidador não tem a sua); a
+     * dose encerra em horário + tolerância + app.alertas.margem-pos-aviso-minutos. O construtor de PoliticaDeJanela
+     * valida que todos são positivos.
      */
     @Bean
     public PoliticaDeJanela politicaDeJanela(
             @Value("${app.alertas.antecedencia-confirmacao-minutos:60}") long antecedenciaMinutos,
             @Value("${app.alertas.tolerancia-minutos:30}") long toleranciaMinutos,
-            @Value("${app.alertas.encerramento-minutos:180}") long encerramentoMinutos) {
+            @Value("${app.alertas.margem-pos-aviso-minutos:30}") long margemPosAvisoMinutos) {
         return new PoliticaDeJanela(Duration.ofMinutes(antecedenciaMinutos), Duration.ofMinutes(toleranciaMinutos),
-                Duration.ofMinutes(encerramentoMinutos));
+                Duration.ofMinutes(margemPosAvisoMinutos));
     }
 }

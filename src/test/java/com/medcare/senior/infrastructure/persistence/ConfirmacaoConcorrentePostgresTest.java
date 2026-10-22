@@ -62,7 +62,7 @@ class ConfirmacaoConcorrentePostgresTest {
 
         @Bean
         PoliticaDeJanela politicaDeJanela() {
-            return new PoliticaDeJanela(Duration.ofMinutes(60), Duration.ofMinutes(30), Duration.ofMinutes(180));
+            return new PoliticaDeJanela(Duration.ofMinutes(60), Duration.ofMinutes(30), Duration.ofMinutes(30));
         }
     }
 

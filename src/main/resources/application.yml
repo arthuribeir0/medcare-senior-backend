@@ -65,7 +65,7 @@ app:
       cron: ${REABASTECER_DOSES_CRON:0 5 0 * * *}
     verificar-doses:
       # Varredura de doses: aviso ao cuidador no fim da tolerancia (dose segue PENDENTE) e encerramento como NAO_TOMADA
-      # depois de encerramento-minutos. Padrao: segundo 0 de cada minuto.
+      # margem-pos-aviso-minutos depois do aviso. Padrao: segundo 0 de cada minuto.
       cron: ${VERIFICAR_DOSES_CRON:0 * * * * *}
     retentativa-avisos:
       # Reenvio dos avisos que falharam temporariamente (RN-010). Padrao: a cada 5 minutos, no segundo 30.
@@ -76,8 +76,9 @@ app:
     tolerancia-minutos: ${ALERTAS_TOLERANCIA_MINUTOS:30}
     # Janela de confirmacao de dose (calculada no servidor): abre N minutos ANTES do horario programado...
     antecedencia-confirmacao-minutos: ${ALERTAS_ANTECEDENCIA_CONFIRMACAO_MINUTOS:60}
-    # ...e encerra N minutos DEPOIS dele (a dose vira NAO_TOMADA). Deve ser maior que a tolerancia (validado na subida).
-    encerramento-minutos: ${ALERTAS_ENCERRAMENTO_MINUTOS:180}
+    # ...e encerra N minutos DEPOIS do aviso, ou seja, em horario + tolerancia (do cuidador ou a padrao) + N. Ate la a
+    # dose ainda pode ser confirmada (com atraso); depois vira NAO_TOMADA.
+    margem-pos-aviso-minutos: ${ALERTAS_MARGEM_POS_AVISO_MINUTOS:30}
     # Maximo de doses tratadas por fase (encerramento e aviso) em cada execucao da varredura; o resto fica para a proxima
     lote-maximo: ${ALERTAS_LOTE_MAXIMO:500}
     retentativa:

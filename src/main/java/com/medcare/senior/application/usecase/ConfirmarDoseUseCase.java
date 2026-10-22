@@ -61,14 +61,15 @@ public class ConfirmarDoseUseCase {
         Dose dose = detalhe.dose();
 
         LocalDateTime agora = LocalDateTime.now(clock);
+        // Tolerância do cuidador dono do idoso (ou a padrão), lida junto com a dose: define o encerramento e se a
+        // confirmação é no horário ou com atraso
+        Duration tolerancia = politicaDeJanela.toleranciaEfetiva(detalhe.toleranciaMinutosDoCuidador());
         Confirmabilidade confirmabilidade = politicaDeJanela.confirmabilidade(dose.getStatus(),
-                dose.getHorarioProgramado(), agora);
+                dose.getHorarioProgramado(), agora, tolerancia);
         if (confirmabilidade != Confirmabilidade.OK) {
             throw new DoseNaoConfirmavelException(confirmabilidade);
         }
 
-        // Tolerância do cuidador dono do idoso (ou a padrão), lida junto com a dose
-        Duration tolerancia = politicaDeJanela.toleranciaEfetiva(detalhe.toleranciaMinutosDoCuidador());
         Dose confirmada = dose.confirmar(politicaDeJanela.statusDaConfirmacao(dose.getHorarioProgramado(), agora, tolerancia),
                 agora);
         if (doseRepository.registrarSePendente(confirmada) == 0) {

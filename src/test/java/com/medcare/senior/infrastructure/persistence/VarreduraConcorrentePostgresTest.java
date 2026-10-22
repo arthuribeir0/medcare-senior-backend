@@ -15,6 +15,7 @@ import com.medcare.senior.infrastructure.persistence.adapter.IdosoRepositoryAdap
 import com.medcare.senior.infrastructure.persistence.mapper.DoseMapper;
 import com.medcare.senior.infrastructure.persistence.mapper.IdosoMapper;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
@@ -83,7 +84,7 @@ class VarreduraConcorrentePostgresTest {
 
         @Bean
         PoliticaDeJanela politicaDeJanela() {
-            return new PoliticaDeJanela(Duration.ofMinutes(60), Duration.ofMinutes(30), Duration.ofMinutes(180));
+            return new PoliticaDeJanela(Duration.ofMinutes(60), Duration.ofMinutes(30), Duration.ofMinutes(30));
         }
 
         @Bean
@@ -188,11 +189,25 @@ class VarreduraConcorrentePostgresTest {
         assertThat(notificador.avisos).hasSize(1);
     }
 
-    @Test
+    @RepeatedTest(10)
     void encerramentoEConfirmacaoNoMesmoInstanteSoUmVence() throws Exception {
-        // Exatamente horário + 180 min: o job encerra (<=) e a confirmação ainda é aceita (limite inclusivo)
-        criarDosePendente(AGORA.minusMinutes(180));
+        // Exatamente horário + tolerância padrão (30) + margem (30): o job encerra (<=) e a confirmação ainda é aceita
+        // (limite inclusivo). Repetido para variar quem chega primeiro ao banco.
+        criarDosePendente(AGORA.minusMinutes(60));
 
+        corridaEntreEncerramentoEConfirmacao();
+    }
+
+    @RepeatedTest(5)
+    void encerramentoEConfirmacaoComAToleranciaDoCuidadorSoUmVence() throws Exception {
+        // Cuidador com tolerância máxima (120): a dose encerra em horário + 150 min, não em horário + 60
+        criarDosePendente(AGORA.minusMinutes(150));
+        jdbc.update("INSERT INTO configuracao_alerta (cuidador_id, tolerancia_minutos) VALUES (?, 120)", cuidadorId);
+
+        corridaEntreEncerramentoEConfirmacao();
+    }
+
+    private void corridaEntreEncerramentoEConfirmacao() throws Exception {
         List<Boolean> venceu = emParalelo(2, new Callable<>() {
             private final java.util.concurrent.atomic.AtomicInteger vez = new java.util.concurrent.atomic.AtomicInteger();
 
@@ -213,6 +228,13 @@ class VarreduraConcorrentePostgresTest {
         assertThat(venceu.stream().filter(Boolean::booleanValue).count()).isEqualTo(1);
         String status = jdbc.queryForObject("SELECT status FROM dose WHERE id = ?", String.class, doseId);
         assertThat(status).isIn(StatusDose.NAO_TOMADA.name(), StatusDose.CONFIRMADA_COM_ATRASO.name());
+        // Quem perdeu não mudou nada: confirmada tem hora; encerrada não
+        Object hora = jdbc.queryForObject("SELECT hora_confirmacao FROM dose WHERE id = ?", Object.class, doseId);
+        if (StatusDose.NAO_TOMADA.name().equals(status)) {
+            assertThat(hora).isNull();
+        } else {
+            assertThat(hora).isNotNull();
+        }
         // Encerramento não avisa ninguém
         assertThat(notificador.avisos).isEmpty();
     }

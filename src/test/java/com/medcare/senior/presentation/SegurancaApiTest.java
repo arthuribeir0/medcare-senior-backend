@@ -156,7 +156,8 @@ class SegurancaApiTest {
                 .andExpect(jsonPath("$[0].toleranciaMinutos").value(30))
                 .andExpect(jsonPath("$[0].janela.abreEm", notNullValue()))
                 .andExpect(jsonPath("$[0].janela.avisoEm", notNullValue()))
-                .andExpect(jsonPath("$[0].janela.encerraEm", notNullValue()));
+                .andExpect(jsonPath("$[0].janela.encerraEm", notNullValue()))
+                .andExpect(jsonPath("$[0].limiteConfirmacao", notNullValue()));
 
         mvc.perform(comoIdoso(get("/api/idosos/me/doses").param("data", "2000-01-01"), idosoA))
                 .andExpect(status().isOk())

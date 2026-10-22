@@ -11,13 +11,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 class LogNotificadorDeDoseNaoTomadaAdapterTest {
 
     @Test
-    void comOFcmDesligadoOAvisoVaiParaOLogEContaComoEnviado() {
+    void comOFcmDesligadoOAvisoVaiSoParaOLogEContaComoPushDesligado() {
         LogNotificadorDeDoseNaoTomadaAdapter notificador = new LogNotificadorDeDoseNaoTomadaAdapter();
 
         ResultadoEnvioPush resultado = notificador.notificar(
                 new DoseNaoTomadaNotificacao(10L, 1L, 20L, "Maria", LocalDateTime.of(2026, 10, 16, 8, 0)));
 
-        // O log é o canal de entrega neste modo: o evento não pode ficar PENDENTE para sempre
-        assertThat(resultado).isEqualTo(ResultadoEnvioPush.ENVIADO);
+        // O aviso não chegou ao cuidador: o evento vira FALHA (PUSH_DESLIGADO), sem retentativa
+        assertThat(resultado).isEqualTo(ResultadoEnvioPush.PUSH_DESLIGADO);
     }
 }

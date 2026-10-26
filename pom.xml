@@ -48,9 +48,18 @@
 
 		<!-- SonarQube local (mvn sonar:sonar). O token é passado na linha de comando: -Dsonar.token=... -->
 		<sonar.host.url>http://localhost:9000</sonar.host.url>
-		<sonar.projectKey>medcare-senior</sonar.projectKey>
-		<sonar.projectName>medcare-senior</sonar.projectName>
+		<sonar.projectKey>medcare-senior-backend</sonar.projectKey>
+		<sonar.projectName>MedCare Sênior - backend</sonar.projectName>
 		<sonar.coverage.jacoco.xmlReportPaths>${project.build.directory}/site/jacoco/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
+		<!-- Fora só do cálculo de COBERTURA (bugs, vulnerabilidades e code smells continuam analisados nelas): records de
+		     entrada e saída sem lógica, classes de configuração do Spring (exercitadas por subirem o contexto nos
+		     testes de integração) e o main. Ver docs/qualidade.md. -->
+		<sonar.coverage.exclusions>
+			**/presentation/dto/**,
+			**/infrastructure/config/*Config.java,
+			**/infrastructure/jobs/ShedLockConfig.java,
+			**/SeniorApplication.java
+		</sonar.coverage.exclusions>
 	</properties>
 	<dependencies>
 		<dependency>

@@ -30,8 +30,8 @@ public class MedicamentoRepositoryAdapter implements MedicamentoRepositoryPort {
     }
 
     @Override
-    public List<Medicamento> findAllByIdosoId(Long idosoId) {
-        return medicamentoRepository.findAllByIdoso_IdAndRemovidoEmIsNullOrderByNomeAsc(idosoId).stream()
+    public List<Medicamento> findAllByPacienteId(Long pacienteId) {
+        return medicamentoRepository.findAllByPaciente_IdAndRemovidoEmIsNullOrderByNomeAsc(pacienteId).stream()
                 .map(medicamentoMapper::toDomain)
                 .toList();
     }

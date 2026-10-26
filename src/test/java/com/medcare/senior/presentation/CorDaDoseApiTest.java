@@ -49,7 +49,7 @@ class CorDaDoseApiTest {
 
     private LocalDateTime agora;
     private Long cuidadorId;
-    private Long idosoId;
+    private Long pacienteId;
     private Long doseAzul;
 
     @BeforeEach
@@ -58,7 +58,7 @@ class CorDaDoseApiTest {
         cuidadorId = jdbc.queryForObject("INSERT INTO cuidador (nome, email, senha_hash, data_cadastro, consentimento_lgpd, "
                 + "data_consentimento) VALUES ('Cuidador cor', ?, 'hash', ?, true, ?) RETURNING id", Long.class,
                 "cor-" + UUID.randomUUID() + "@teste.com", agora, agora);
-        idosoId = jdbc.queryForObject("INSERT INTO idoso (nome, data_nascimento, cuidador_id) VALUES ('Maria', ?, ?) "
+        pacienteId = jdbc.queryForObject("INSERT INTO paciente (nome, data_nascimento, cuidador_id) VALUES ('Maria', ?, ?) "
                 + "RETURNING id", Long.class, LocalDate.of(1945, 3, 12), cuidadorId);
         doseAzul = dose(medicamento("Losartana", "Azul-claro"), agora);
         // Mesmo horário, id maior: vem depois na ordem (horário, id)
@@ -66,8 +66,8 @@ class CorDaDoseApiTest {
     }
 
     private Long medicamento(String nome, String cor) {
-        return jdbc.queryForObject("INSERT INTO medicamento (nome, dosagem, tipo, cor, idoso_id) "
-                + "VALUES (?, '50mg', 'COMPRIMIDO', ?, ?) RETURNING id", Long.class, nome, cor, idosoId);
+        return jdbc.queryForObject("INSERT INTO medicamento (nome, dosagem, tipo, cor, paciente_id) "
+                + "VALUES (?, '50mg', 'COMPRIMIDO', ?, ?) RETURNING id", Long.class, nome, cor, pacienteId);
     }
 
     private Long dose(Long medicamentoId, LocalDateTime horario) {
@@ -84,12 +84,12 @@ class CorDaDoseApiTest {
 
     @Test
     void dosesDoDiaTrazemACorNosDoisPapeis() throws Exception {
-        mvc.perform(como(get("/api/idosos/" + idosoId + "/doses"), cuidadorId, Role.CUIDADOR))
+        mvc.perform(como(get("/api/pacientes/" + pacienteId + "/doses"), cuidadorId, Role.CUIDADOR))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[*].medicamentoNome", contains("Losartana", "Metformina")))
                 .andExpect(jsonPath("$[0].cor").value("Azul-claro"))
                 .andExpect(jsonPath("$[1].cor").value(nullValue()));
-        mvc.perform(como(get("/api/idosos/me/doses"), idosoId, Role.IDOSO))
+        mvc.perform(como(get("/api/pacientes/me/doses"), pacienteId, Role.PACIENTE))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].cor").value("Azul-claro"))
                 .andExpect(jsonPath("$[1].cor").value(nullValue()));
@@ -97,16 +97,16 @@ class CorDaDoseApiTest {
 
     @Test
     void confirmacaoDevolveADoseComACor() throws Exception {
-        mvc.perform(como(put("/api/doses/" + doseAzul + "/confirmar"), idosoId, Role.IDOSO))
+        mvc.perform(como(put("/api/doses/" + doseAzul + "/confirmar"), pacienteId, Role.PACIENTE))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("TOMADA"))
+                .andExpect(jsonPath("$.status").value("CONFIRMADA_NO_HORARIO"))
                 .andExpect(jsonPath("$.cor").value("Azul-claro"));
     }
 
     @Test
     void historicoTrazACor() throws Exception {
         mvc.perform(como(get("/api/historico"), cuidadorId, Role.CUIDADOR)
-                        .param("idosoId", idosoId.toString())
+                        .param("pacienteId", pacienteId.toString())
                         .param("de", agora.toLocalDate().toString()).param("ate", agora.toLocalDate().toString()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.totalElementos").value(2))

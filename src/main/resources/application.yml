@@ -10,7 +10,8 @@ spring:
   datasource:
     # Host e porta do banco: localhost:5432 no desenvolvimento; no conteiner de producao, o servico "postgres"
     # connectTimeout (s): abrir conexao com o banco inacessivel falha rapido em vez de esperar o TCP
-    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB:medcare_db}?connectTimeout=5
+    # reWriteBatchedInserts: o driver junta os INSERTs de um lote JDBC em poucos comandos (geracao de doses)
+    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB:medcare_db}?connectTimeout=5&reWriteBatchedInserts=true
     username: ${POSTGRES_USER:medcare_admin}
     password: ${POSTGRES_PASSWORD:medcare_pass}
     driver-class-name: org.postgresql.Driver
@@ -19,6 +20,16 @@ spring:
       # segundos, em vez de prender a requisicao). Nao limita o tempo das consultas.
       connection-timeout: 5000
       validation-timeout: 3000
+      # Tamanho do pool para a VM pequena (1 a 2 OCPU, ver docs/capacidade.md): a regra do HikariCP
+      # (nucleos x 2 + 1) da 3 a 5; 8 deixa folga para os jobs (varredura e retentativa) sem disputar as
+      # requisicoes, e fica bem abaixo do max_connections 100 do PostgreSQL.
+      maximum-pool-size: ${DB_POOL_MAX:8}
+      # Ocioso: so 2 conexoes abertas; as demais fecham depois de 5 min sem uso (menos memoria no banco)
+      minimum-idle: ${DB_POOL_MIN_IDLE:2}
+      idle-timeout: 300000
+      # Recicla cada conexao em 30 min (abaixo de qualquer timeout de rede/firewall) e testa as ociosas a cada 5 min
+      max-lifetime: 1800000
+      keepalive-time: 300000
   jpa:
     hibernate:
       ddl-auto: validate
@@ -41,9 +52,10 @@ jwt:
   secret: ${JWT_SECRET:medcare-senior-dev-secret-key-trocar-em-producao-123456}
   # Validade do token do CUIDADOR (padrao: 24 horas)
   expiration-ms: ${JWT_EXPIRATION_MS:86400000}
-  # Validade do token do IDOSO (padrao: 180 dias). Mais longa porque o pareamento usa codigo de uso unico
-  # e o idoso nao deve precisar parear de novo com frequencia (RNF-02/RNF-06).
-  expiration-idoso-ms: ${JWT_EXPIRATION_IDOSO_MS:15552000000}
+  # Validade do token do PACIENTE (padrao: 180 dias). Mais longa porque o pareamento usa codigo de uso unico
+  # e o paciente nao deve precisar parear de novo com frequencia (RNF-02/RNF-06).
+  # JWT_EXPIRATION_IDOSO_MS e o nome antigo da variavel, aceito para nao quebrar ambientes ja configurados.
+  expiration-paciente-ms: ${JWT_EXPIRATION_PACIENTE_MS:${JWT_EXPIRATION_IDOSO_MS:15552000000}}
 app:
   # Fuso usado pelo Clock da aplicacao para "hoje" e "agora" (geracao de doses, remocao logica etc.)
   timezone: ${APP_TIMEZONE:America/Sao_Paulo}
@@ -55,19 +67,24 @@ app:
       cron: ${REABASTECER_DOSES_CRON:0 5 0 * * *}
     verificar-doses:
       # Varredura de doses: aviso ao cuidador no fim da tolerancia (dose segue PENDENTE) e encerramento como NAO_TOMADA
-      # depois de encerramento-minutos. Padrao: segundo 0 de cada minuto.
+      # margem-pos-aviso-minutos depois do aviso. Padrao: segundo 0 de cada minuto.
       cron: ${VERIFICAR_DOSES_CRON:0 * * * * *}
     retentativa-avisos:
       # Reenvio dos avisos que falharam temporariamente (RN-010). Padrao: a cada 5 minutos, no segundo 30.
       cron: ${RETENTATIVA_AVISOS_CRON:30 */5 * * * *}
+  doses:
+    # Quantos dias a frente de hoje cada tratamento ativo tem doses geradas (janela rolante, empurrada pelo job diario).
+    # De 1 a 90 (validado na subida). A geracao e idempotente: horario que ja tem dose nao e gerado de novo.
+    horizonte-dias: ${DOSES_HORIZONTE_DIAS:30}
   alertas:
     # Tolerancia PADRAO (minutos apos o horario programado): no fim dela o cuidador e avisado (a dose continua PENDENTE
     # e aparece ATRASADA; confirmar depois disto da CONFIRMADA_COM_ATRASO). Vale quando o cuidador nao tem a sua.
     tolerancia-minutos: ${ALERTAS_TOLERANCIA_MINUTOS:30}
     # Janela de confirmacao de dose (calculada no servidor): abre N minutos ANTES do horario programado...
     antecedencia-confirmacao-minutos: ${ALERTAS_ANTECEDENCIA_CONFIRMACAO_MINUTOS:60}
-    # ...e encerra N minutos DEPOIS dele (a dose vira NAO_TOMADA). Deve ser maior que a tolerancia (validado na subida).
-    encerramento-minutos: ${ALERTAS_ENCERRAMENTO_MINUTOS:180}
+    # ...e encerra N minutos DEPOIS do aviso, ou seja, em horario + tolerancia (do cuidador ou a padrao) + N. Ate la a
+    # dose ainda pode ser confirmada (com atraso); depois vira NAO_TOMADA.
+    margem-pos-aviso-minutos: ${ALERTAS_MARGEM_POS_AVISO_MINUTOS:30}
     # Maximo de doses tratadas por fase (encerramento e aviso) em cada execucao da varredura; o resto fica para a proxima
     lote-maximo: ${ALERTAS_LOTE_MAXIMO:500}
     retentativa:
@@ -77,6 +94,10 @@ app:
       intervalo-base-minutos: ${ALERTAS_RETENTATIVA_INTERVALO_BASE_MINUTOS:5}
       # Maximo de eventos reprocessados por execucao
       lote-maximo: ${ALERTAS_RETENTATIVA_LOTE_MAXIMO:200}
+  cache:
+    # Relatorio diario em memoria por cuidador, paciente e dia, por N segundos. Confirmacao e encerramento de dose e as
+    # alteracoes do cuidador (tolerancia, medicamento, tratamento) descartam a entrada na hora. 0 = sem cache.
+    relatorio-diario-segundos: ${CACHE_RELATORIO_DIARIO_SEGUNDOS:30}
   fcm:
     # Push via Firebase Cloud Messaging. Desligado por padrao (e nos testes e no CI): os avisos so vao para o log.
     enabled: ${FCM_ENABLED:false}
@@ -86,9 +107,10 @@ app:
     # true = o Firebase valida a mensagem (validateOnly) mas nao entrega ao aparelho; para testar credenciais e tokens
     dry-run: ${FCM_DRY_RUN:false}
   docs:
-    # Swagger UI e /v3/api-docs. Desligado por padrao (fail closed); para ligar, defina DOCS_ENABLED=true.
-    # Quando false, as rotas tambem continuam negadas no SecurityConfig.
-    enabled: ${DOCS_ENABLED:false}
+    # Swagger UI e /v3/api-docs, publicos (sem token) quando ligados. Ligado por padrao fora do perfil prod; no prod,
+    # desligado salvo SWAGGER_ENABLED=true (ver application-prod.yml e docs/api/README.md). Desligado, as rotas
+    # respondem 404. DOCS_ENABLED e o nome antigo da variavel, ainda aceito fora do prod.
+    enabled: ${SWAGGER_ENABLED:${DOCS_ENABLED:true}}
 management:
   # Fail closed: nenhum endpoint do actuator, exceto a saude, so leitura e sem detalhes ({"status":"UP"} ou 503 se o
   # banco cair). Usada pelo HEALTHCHECK do conteiner; liberada sem token so em GET /actuator/health no SecurityConfig.

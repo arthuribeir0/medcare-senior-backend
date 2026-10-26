@@ -30,8 +30,8 @@ public class CodigoVinculoEntity {
     private CuidadorEntity cuidador;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "idoso_id", nullable = false)
-    private IdosoEntity idoso;
+    @JoinColumn(name = "paciente_id", nullable = false)
+    private PacienteEntity paciente;
 
     @Column(name = "expira_em", nullable = false)
     private LocalDateTime expiraEm;

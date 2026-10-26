@@ -3,6 +3,7 @@ package com.medcare.senior.application.usecase;
 import com.medcare.senior.domain.configuracao.ConfiguracaoAlertaRepositoryPort;
 import com.medcare.senior.domain.configuracao.ToleranciaInvalidaException;
 import com.medcare.senior.domain.dose.PoliticaDeJanela;
+import com.medcare.senior.domain.relatorio.CacheDeRelatorioDiarioPort;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -28,6 +29,9 @@ class ToleranciaUseCasesTest {
     private static final Long CUIDADOR_ID = 1L;
 
     @Mock
+    private CacheDeRelatorioDiarioPort cacheDeRelatorio;
+
+    @Mock
     private ConfiguracaoAlertaRepositoryPort configuracoes;
 
     private BuscarToleranciaUseCase buscar;
@@ -36,9 +40,9 @@ class ToleranciaUseCasesTest {
     @BeforeEach
     void setUp() {
         PoliticaDeJanela politica = new PoliticaDeJanela(Duration.ofMinutes(60), Duration.ofMinutes(30),
-                Duration.ofMinutes(180));
+                Duration.ofMinutes(30));
         buscar = new BuscarToleranciaUseCase(configuracoes, politica);
-        atualizar = new AtualizarToleranciaUseCase(configuracoes);
+        atualizar = new AtualizarToleranciaUseCase(configuracoes, cacheDeRelatorio);
     }
 
     @Test
@@ -60,6 +64,8 @@ class ToleranciaUseCasesTest {
     void gravaDentroDosLimitesInclusivos(int minutos) {
         assertThat(atualizar.executar(CUIDADOR_ID, minutos)).isEqualTo(minutos);
         verify(configuracoes).salvarToleranciaMinutos(CUIDADOR_ID, minutos);
+        // O limite de confirmação de todas as doses do cuidador mudou: o relatório diário em cache é descartado
+        verify(cacheDeRelatorio).descartarDoCuidador(CUIDADOR_ID);
     }
 
     @ParameterizedTest

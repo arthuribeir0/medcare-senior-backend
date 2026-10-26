@@ -1,0 +1,556 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jmeterTestPlan version="1.2" properties="5.0" jmeter="5.6.3">
+<hashTree>
+<TestPlan guiclass="TestPlanGui" testclass="TestPlan" testname="MedCare - teste de carga">
+<stringProp name="TestPlan.comments">Propriedades: protocolo, host, porta, cuidadores, pacientes, rampa (s), duracao (s), pausa_min_ms, pausa_var_ms, prefixo, senha. Leitura e Escrita no início do nome separam os critérios de aceitação (docs/carga/README.md).</stringProp>
+<boolProp name="TestPlan.functional_mode">false</boolProp>
+<boolProp name="TestPlan.serialize_threadgroups">false</boolProp>
+<elementProp name="TestPlan.user_defined_variables" elementType="Arguments" guiclass="ArgumentsPanel" testclass="Arguments">
+<collectionProp name="Arguments.arguments">
+  <elementProp name="protocolo" elementType="Argument"><stringProp name="Argument.name">protocolo</stringProp><stringProp name="Argument.value">${__P(protocolo,http)}</stringProp><stringProp name="Argument.metadata">=</stringProp></elementProp>
+  <elementProp name="host" elementType="Argument"><stringProp name="Argument.name">host</stringProp><stringProp name="Argument.value">${__P(host,localhost)}</stringProp><stringProp name="Argument.metadata">=</stringProp></elementProp>
+  <elementProp name="porta" elementType="Argument"><stringProp name="Argument.name">porta</stringProp><stringProp name="Argument.value">${__P(porta,8080)}</stringProp><stringProp name="Argument.metadata">=</stringProp></elementProp>
+  <elementProp name="prefixo" elementType="Argument"><stringProp name="Argument.name">prefixo</stringProp><stringProp name="Argument.value">${__P(prefixo,carga)}</stringProp><stringProp name="Argument.metadata">=</stringProp></elementProp>
+  <elementProp name="senha" elementType="Argument"><stringProp name="Argument.name">senha</stringProp><stringProp name="Argument.value">${__P(senha,CargaSomente1)}</stringProp><stringProp name="Argument.metadata">=</stringProp></elementProp>
+</collectionProp>
+</elementProp>
+</TestPlan>
+<hashTree>
+<ConfigTestElement guiclass="HttpDefaultsGui" testclass="ConfigTestElement" testname="Servidor">
+<elementProp name="HTTPsampler.Arguments" elementType="Arguments"><collectionProp name="Arguments.arguments">
+</collectionProp></elementProp>
+<stringProp name="HTTPSampler.protocol">${protocolo}</stringProp><stringProp name="HTTPSampler.domain">${host}</stringProp><stringProp name="HTTPSampler.port">${porta}</stringProp>
+<stringProp name="HTTPSampler.contentEncoding">UTF-8</stringProp><stringProp name="HTTPSampler.connect_timeout">5000</stringProp><stringProp name="HTTPSampler.response_timeout">30000</stringProp>
+<stringProp name="HTTPSampler.implementation">HttpClient4</stringProp>
+</ConfigTestElement>
+<hashTree>
+
+</hashTree>
+<HeaderManager guiclass="HeaderPanel" testclass="HeaderManager" testname="JSON">
+<collectionProp name="HeaderManager.headers">
+  <elementProp name="" elementType="Header"><stringProp name="Header.name">Content-Type</stringProp><stringProp name="Header.value">application/json</stringProp></elementProp>
+  <elementProp name="" elementType="Header"><stringProp name="Header.name">Accept</stringProp><stringProp name="Header.value">application/json</stringProp></elementProp>
+</collectionProp>
+</HeaderManager>
+<hashTree>
+
+</hashTree>
+<ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup" testname="Cuidadores">
+<stringProp name="ThreadGroup.on_sample_error">continue</stringProp>
+<elementProp name="ThreadGroup.main_controller" elementType="LoopController" guiclass="LoopControlPanel" testclass="LoopController">
+<boolProp name="LoopController.continue_forever">false</boolProp><stringProp name="LoopController.loops">-1</stringProp>
+</elementProp>
+<stringProp name="ThreadGroup.num_threads">${__P(cuidadores,25)}</stringProp><stringProp name="ThreadGroup.ramp_time">${__P(rampa,60)}</stringProp>
+<boolProp name="ThreadGroup.scheduler">true</boolProp><stringProp name="ThreadGroup.duration">${__P(duracao,300)}</stringProp><stringProp name="ThreadGroup.delay"></stringProp>
+<boolProp name="ThreadGroup.same_user_on_next_iteration">true</boolProp>
+</ThreadGroup>
+<hashTree>
+<HeaderManager guiclass="HeaderPanel" testclass="HeaderManager" testname="Token">
+<collectionProp name="HeaderManager.headers">
+  <elementProp name="" elementType="Header"><stringProp name="Header.name">Authorization</stringProp><stringProp name="Header.value">Bearer ${token}</stringProp></elementProp>
+</collectionProp>
+</HeaderManager>
+<hashTree>
+
+</hashTree>
+<OnceOnlyController guiclass="OnceOnlyControllerGui" testclass="OnceOnlyController" testname="Uma vez por usuário"/>
+<hashTree>
+<HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="Escrita - login do cuidador (início)">
+<boolProp name="HTTPSampler.postBodyRaw">true</boolProp>
+<elementProp name="HTTPsampler.Arguments" elementType="Arguments"><collectionProp name="Arguments.arguments">
+  <elementProp name="" elementType="HTTPArgument"><boolProp name="HTTPArgument.always_encode">false</boolProp><stringProp name="Argument.value">{&quot;email&quot;:&quot;${prefixo}+${__threadNum}@exemplo.invalid&quot;,&quot;senha&quot;:&quot;${senha}&quot;}</stringProp><stringProp name="Argument.metadata">=</stringProp></elementProp>
+</collectionProp></elementProp>
+<stringProp name="HTTPSampler.path">/api/auth/login</stringProp><stringProp name="HTTPSampler.method">POST</stringProp>
+<boolProp name="HTTPSampler.follow_redirects">false</boolProp><boolProp name="HTTPSampler.use_keepalive">true</boolProp>
+</HTTPSamplerProxy>
+<hashTree>
+<JSONPostProcessor guiclass="JSONPostProcessorGui" testclass="JSONPostProcessor" testname="token">
+<stringProp name="JSONPostProcessor.referenceNames">token</stringProp><stringProp name="JSONPostProcessor.jsonPathExprs">$.token</stringProp>
+<stringProp name="JSONPostProcessor.match_numbers">1</stringProp><stringProp name="JSONPostProcessor.defaultValues">NAO_ENCONTRADO</stringProp>
+</JSONPostProcessor>
+<hashTree>
+
+</hashTree>
+</hashTree>
+<HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="Pacientes do cuidador">
+
+<elementProp name="HTTPsampler.Arguments" elementType="Arguments"><collectionProp name="Arguments.arguments">
+</collectionProp></elementProp>
+<stringProp name="HTTPSampler.path">/api/pacientes</stringProp><stringProp name="HTTPSampler.method">GET</stringProp>
+<boolProp name="HTTPSampler.follow_redirects">false</boolProp><boolProp name="HTTPSampler.use_keepalive">true</boolProp>
+</HTTPSamplerProxy>
+<hashTree>
+<JSONPostProcessor guiclass="JSONPostProcessorGui" testclass="JSONPostProcessor" testname="pacienteId">
+<stringProp name="JSONPostProcessor.referenceNames">pacienteId</stringProp><stringProp name="JSONPostProcessor.jsonPathExprs">$[0].id</stringProp>
+<stringProp name="JSONPostProcessor.match_numbers">1</stringProp><stringProp name="JSONPostProcessor.defaultValues">NAO_ENCONTRADO</stringProp>
+</JSONPostProcessor>
+<hashTree>
+
+</hashTree>
+</hashTree>
+</hashTree>
+<ThroughputController guiclass="ThroughputControllerGui" testclass="ThroughputController" testname="Doses do dia (40%)">
+<intProp name="ThroughputController.style">1</intProp><boolProp name="ThroughputController.perThread">false</boolProp>
+<FloatProperty><name>ThroughputController.percentThroughput</name><value>40</value><savedValue>0.0</savedValue></FloatProperty>
+</ThroughputController>
+<hashTree>
+<HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="Leitura - doses do dia (cuidador)">
+
+<elementProp name="HTTPsampler.Arguments" elementType="Arguments"><collectionProp name="Arguments.arguments">
+</collectionProp></elementProp>
+<stringProp name="HTTPSampler.path">/api/pacientes/${pacienteId}/doses</stringProp><stringProp name="HTTPSampler.method">GET</stringProp>
+<boolProp name="HTTPSampler.follow_redirects">false</boolProp><boolProp name="HTTPSampler.use_keepalive">true</boolProp>
+</HTTPSamplerProxy>
+<hashTree>
+
+</hashTree>
+</hashTree>
+<ThroughputController guiclass="ThroughputControllerGui" testclass="ThroughputController" testname="Não lidas (15%)">
+<intProp name="ThroughputController.style">1</intProp><boolProp name="ThroughputController.perThread">false</boolProp>
+<FloatProperty><name>ThroughputController.percentThroughput</name><value>15</value><savedValue>0.0</savedValue></FloatProperty>
+</ThroughputController>
+<hashTree>
+<HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="Leitura - mensagens não lidas (cuidador)">
+
+<elementProp name="HTTPsampler.Arguments" elementType="Arguments"><collectionProp name="Arguments.arguments">
+</collectionProp></elementProp>
+<stringProp name="HTTPSampler.path">/api/mensagens/nao-lidas</stringProp><stringProp name="HTTPSampler.method">GET</stringProp>
+<boolProp name="HTTPSampler.follow_redirects">false</boolProp><boolProp name="HTTPSampler.use_keepalive">true</boolProp>
+</HTTPSamplerProxy>
+<hashTree>
+
+</hashTree>
+</hashTree>
+<ThroughputController guiclass="ThroughputControllerGui" testclass="ThroughputController" testname="Relatório diário (10%)">
+<intProp name="ThroughputController.style">1</intProp><boolProp name="ThroughputController.perThread">false</boolProp>
+<FloatProperty><name>ThroughputController.percentThroughput</name><value>10</value><savedValue>0.0</savedValue></FloatProperty>
+</ThroughputController>
+<hashTree>
+<HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="Leitura - relatório diário">
+
+<elementProp name="HTTPsampler.Arguments" elementType="Arguments"><collectionProp name="Arguments.arguments">
+</collectionProp></elementProp>
+<stringProp name="HTTPSampler.path">/api/relatorios/diario?pacienteId=${pacienteId}</stringProp><stringProp name="HTTPSampler.method">GET</stringProp>
+<boolProp name="HTTPSampler.follow_redirects">false</boolProp><boolProp name="HTTPSampler.use_keepalive">true</boolProp>
+</HTTPSamplerProxy>
+<hashTree>
+
+</hashTree>
+</hashTree>
+<ThroughputController guiclass="ThroughputControllerGui" testclass="ThroughputController" testname="Histórico (10%)">
+<intProp name="ThroughputController.style">1</intProp><boolProp name="ThroughputController.perThread">false</boolProp>
+<FloatProperty><name>ThroughputController.percentThroughput</name><value>10</value><savedValue>0.0</savedValue></FloatProperty>
+</ThroughputController>
+<hashTree>
+<HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="Leitura - histórico paginado">
+
+<elementProp name="HTTPsampler.Arguments" elementType="Arguments"><collectionProp name="Arguments.arguments">
+</collectionProp></elementProp>
+<stringProp name="HTTPSampler.path">/api/historico?pacienteId=${pacienteId}&amp;page=0&amp;size=20</stringProp><stringProp name="HTTPSampler.method">GET</stringProp>
+<boolProp name="HTTPSampler.follow_redirects">false</boolProp><boolProp name="HTTPSampler.use_keepalive">true</boolProp>
+</HTTPSamplerProxy>
+<hashTree>
+
+</hashTree>
+</hashTree>
+<ThroughputController guiclass="ThroughputControllerGui" testclass="ThroughputController" testname="Conversa (8%)">
+<intProp name="ThroughputController.style">1</intProp><boolProp name="ThroughputController.perThread">false</boolProp>
+<FloatProperty><name>ThroughputController.percentThroughput</name><value>8</value><savedValue>0.0</savedValue></FloatProperty>
+</ThroughputController>
+<hashTree>
+<HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="Leitura - conversa (cuidador)">
+
+<elementProp name="HTTPsampler.Arguments" elementType="Arguments"><collectionProp name="Arguments.arguments">
+</collectionProp></elementProp>
+<stringProp name="HTTPSampler.path">/api/mensagens?pacienteId=${pacienteId}&amp;page=0&amp;size=20</stringProp><stringProp name="HTTPSampler.method">GET</stringProp>
+<boolProp name="HTTPSampler.follow_redirects">false</boolProp><boolProp name="HTTPSampler.use_keepalive">true</boolProp>
+</HTTPSamplerProxy>
+<hashTree>
+
+</hashTree>
+</hashTree>
+<ThroughputController guiclass="ThroughputControllerGui" testclass="ThroughputController" testname="Envia mensagem (5%)">
+<intProp name="ThroughputController.style">1</intProp><boolProp name="ThroughputController.perThread">false</boolProp>
+<FloatProperty><name>ThroughputController.percentThroughput</name><value>5</value><savedValue>0.0</savedValue></FloatProperty>
+</ThroughputController>
+<hashTree>
+<HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="Escrita - envia mensagem (cuidador)">
+<boolProp name="HTTPSampler.postBodyRaw">true</boolProp>
+<elementProp name="HTTPsampler.Arguments" elementType="Arguments"><collectionProp name="Arguments.arguments">
+  <elementProp name="" elementType="HTTPArgument"><boolProp name="HTTPArgument.always_encode">false</boolProp><stringProp name="Argument.value">{&quot;pacienteId&quot;:${pacienteId},&quot;conteudo&quot;:&quot;Mensagem de carga do cuidador&quot;}</stringProp><stringProp name="Argument.metadata">=</stringProp></elementProp>
+</collectionProp></elementProp>
+<stringProp name="HTTPSampler.path">/api/mensagens</stringProp><stringProp name="HTTPSampler.method">POST</stringProp>
+<boolProp name="HTTPSampler.follow_redirects">false</boolProp><boolProp name="HTTPSampler.use_keepalive">true</boolProp>
+</HTTPSamplerProxy>
+<hashTree>
+
+</hashTree>
+</hashTree>
+<ThroughputController guiclass="ThroughputControllerGui" testclass="ThroughputController" testname="Confirma dose (5%)">
+<intProp name="ThroughputController.style">1</intProp><boolProp name="ThroughputController.perThread">false</boolProp>
+<FloatProperty><name>ThroughputController.percentThroughput</name><value>5</value><savedValue>0.0</savedValue></FloatProperty>
+</ThroughputController>
+<hashTree>
+<HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="Leitura - doses do dia (cuidador)">
+
+<elementProp name="HTTPsampler.Arguments" elementType="Arguments"><collectionProp name="Arguments.arguments">
+</collectionProp></elementProp>
+<stringProp name="HTTPSampler.path">/api/pacientes/${pacienteId}/doses</stringProp><stringProp name="HTTPSampler.method">GET</stringProp>
+<boolProp name="HTTPSampler.follow_redirects">false</boolProp><boolProp name="HTTPSampler.use_keepalive">true</boolProp>
+</HTTPSamplerProxy>
+<hashTree>
+<JSONPostProcessor guiclass="JSONPostProcessorGui" testclass="JSONPostProcessor" testname="doseId">
+<stringProp name="JSONPostProcessor.referenceNames">doseId</stringProp><stringProp name="JSONPostProcessor.jsonPathExprs">$[?(@.confirmabilidade == 'OK')].id</stringProp>
+<stringProp name="JSONPostProcessor.match_numbers">0</stringProp><stringProp name="JSONPostProcessor.defaultValues">NAO_ENCONTRADO</stringProp>
+</JSONPostProcessor>
+<hashTree>
+
+</hashTree>
+</hashTree>
+<IfController guiclass="IfControllerPanel" testclass="IfController" testname="Há dose para confirmar">
+<stringProp name="IfController.condition">${__jexl3(&quot;${doseId}&quot; != &quot;NAO_ENCONTRADO&quot;,)}</stringProp><boolProp name="IfController.evaluateAll">false</boolProp><boolProp name="IfController.useExpression">true</boolProp>
+</IfController>
+<hashTree>
+<HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="Escrita - confirma dose (cuidador)">
+
+<elementProp name="HTTPsampler.Arguments" elementType="Arguments"><collectionProp name="Arguments.arguments">
+</collectionProp></elementProp>
+<stringProp name="HTTPSampler.path">/api/doses/${doseId}/confirmar</stringProp><stringProp name="HTTPSampler.method">PUT</stringProp>
+<boolProp name="HTTPSampler.follow_redirects">false</boolProp><boolProp name="HTTPSampler.use_keepalive">true</boolProp>
+</HTTPSamplerProxy>
+<hashTree>
+
+</hashTree>
+</hashTree>
+</hashTree>
+<ThroughputController guiclass="ThroughputControllerGui" testclass="ThroughputController" testname="Login (2%)">
+<intProp name="ThroughputController.style">1</intProp><boolProp name="ThroughputController.perThread">false</boolProp>
+<FloatProperty><name>ThroughputController.percentThroughput</name><value>2</value><savedValue>0.0</savedValue></FloatProperty>
+</ThroughputController>
+<hashTree>
+<HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="Escrita - login do cuidador">
+<boolProp name="HTTPSampler.postBodyRaw">true</boolProp>
+<elementProp name="HTTPsampler.Arguments" elementType="Arguments"><collectionProp name="Arguments.arguments">
+  <elementProp name="" elementType="HTTPArgument"><boolProp name="HTTPArgument.always_encode">false</boolProp><stringProp name="Argument.value">{&quot;email&quot;:&quot;${prefixo}+${__threadNum}@exemplo.invalid&quot;,&quot;senha&quot;:&quot;${senha}&quot;}</stringProp><stringProp name="Argument.metadata">=</stringProp></elementProp>
+</collectionProp></elementProp>
+<stringProp name="HTTPSampler.path">/api/auth/login</stringProp><stringProp name="HTTPSampler.method">POST</stringProp>
+<boolProp name="HTTPSampler.follow_redirects">false</boolProp><boolProp name="HTTPSampler.use_keepalive">true</boolProp>
+</HTTPSamplerProxy>
+<hashTree>
+<JSONPostProcessor guiclass="JSONPostProcessorGui" testclass="JSONPostProcessor" testname="token">
+<stringProp name="JSONPostProcessor.referenceNames">token</stringProp><stringProp name="JSONPostProcessor.jsonPathExprs">$.token</stringProp>
+<stringProp name="JSONPostProcessor.match_numbers">1</stringProp><stringProp name="JSONPostProcessor.defaultValues">NAO_ENCONTRADO</stringProp>
+</JSONPostProcessor>
+<hashTree>
+
+</hashTree>
+</hashTree>
+</hashTree>
+<ThroughputController guiclass="ThroughputControllerGui" testclass="ThroughputController" testname="PDF (1%)">
+<intProp name="ThroughputController.style">1</intProp><boolProp name="ThroughputController.perThread">false</boolProp>
+<FloatProperty><name>ThroughputController.percentThroughput</name><value>1</value><savedValue>0.0</savedValue></FloatProperty>
+</ThroughputController>
+<hashTree>
+<HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="Leitura - histórico em PDF">
+
+<elementProp name="HTTPsampler.Arguments" elementType="Arguments"><collectionProp name="Arguments.arguments">
+</collectionProp></elementProp>
+<stringProp name="HTTPSampler.path">/api/relatorios/pdf?pacienteId=${pacienteId}&amp;de=${__time(yyyy-MM-dd,)}</stringProp><stringProp name="HTTPSampler.method">GET</stringProp>
+<boolProp name="HTTPSampler.follow_redirects">false</boolProp><boolProp name="HTTPSampler.use_keepalive">true</boolProp>
+</HTTPSamplerProxy>
+<hashTree>
+<HeaderManager guiclass="HeaderPanel" testclass="HeaderManager" testname="PDF">
+<collectionProp name="HeaderManager.headers">
+  <elementProp name="" elementType="Header"><stringProp name="Header.name">Accept</stringProp><stringProp name="Header.value">application/pdf</stringProp></elementProp>
+</collectionProp>
+</HeaderManager>
+<hashTree>
+
+</hashTree>
+</hashTree>
+</hashTree>
+<UniformRandomTimer guiclass="UniformRandomTimerGui" testclass="UniformRandomTimer" testname="Pausa entre ações">
+<stringProp name="ConstantTimer.delay">${__P(pausa_min_ms,500)}</stringProp><stringProp name="RandomTimer.range">${__P(pausa_var_ms,1000)}</stringProp>
+</UniformRandomTimer>
+<hashTree>
+
+</hashTree>
+</hashTree>
+<ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup" testname="Pacientes">
+<stringProp name="ThreadGroup.on_sample_error">continue</stringProp>
+<elementProp name="ThreadGroup.main_controller" elementType="LoopController" guiclass="LoopControlPanel" testclass="LoopController">
+<boolProp name="LoopController.continue_forever">false</boolProp><stringProp name="LoopController.loops">-1</stringProp>
+</elementProp>
+<stringProp name="ThreadGroup.num_threads">${__P(pacientes,25)}</stringProp><stringProp name="ThreadGroup.ramp_time">${__P(rampa,60)}</stringProp>
+<boolProp name="ThreadGroup.scheduler">true</boolProp><stringProp name="ThreadGroup.duration">${__P(duracao,300)}</stringProp><stringProp name="ThreadGroup.delay"></stringProp>
+<boolProp name="ThreadGroup.same_user_on_next_iteration">true</boolProp>
+</ThreadGroup>
+<hashTree>
+<HeaderManager guiclass="HeaderPanel" testclass="HeaderManager" testname="Token">
+<collectionProp name="HeaderManager.headers">
+  <elementProp name="" elementType="Header"><stringProp name="Header.name">Authorization</stringProp><stringProp name="Header.value">Bearer ${token}</stringProp></elementProp>
+</collectionProp>
+</HeaderManager>
+<hashTree>
+
+</hashTree>
+<OnceOnlyController guiclass="OnceOnlyControllerGui" testclass="OnceOnlyController" testname="Uma vez por usuário"/>
+<hashTree>
+<HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="Escrita - login do cuidador (para o código)">
+<boolProp name="HTTPSampler.postBodyRaw">true</boolProp>
+<elementProp name="HTTPsampler.Arguments" elementType="Arguments"><collectionProp name="Arguments.arguments">
+  <elementProp name="" elementType="HTTPArgument"><boolProp name="HTTPArgument.always_encode">false</boolProp><stringProp name="Argument.value">{&quot;email&quot;:&quot;${prefixo}+${__threadNum}@exemplo.invalid&quot;,&quot;senha&quot;:&quot;${senha}&quot;}</stringProp><stringProp name="Argument.metadata">=</stringProp></elementProp>
+</collectionProp></elementProp>
+<stringProp name="HTTPSampler.path">/api/auth/login</stringProp><stringProp name="HTTPSampler.method">POST</stringProp>
+<boolProp name="HTTPSampler.follow_redirects">false</boolProp><boolProp name="HTTPSampler.use_keepalive">true</boolProp>
+</HTTPSamplerProxy>
+<hashTree>
+<JSONPostProcessor guiclass="JSONPostProcessorGui" testclass="JSONPostProcessor" testname="tokenCuidador">
+<stringProp name="JSONPostProcessor.referenceNames">tokenCuidador</stringProp><stringProp name="JSONPostProcessor.jsonPathExprs">$.token</stringProp>
+<stringProp name="JSONPostProcessor.match_numbers">1</stringProp><stringProp name="JSONPostProcessor.defaultValues">NAO_ENCONTRADO</stringProp>
+</JSONPostProcessor>
+<hashTree>
+
+</hashTree>
+</hashTree>
+<HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="Pacientes do cuidador (para o código)">
+
+<elementProp name="HTTPsampler.Arguments" elementType="Arguments"><collectionProp name="Arguments.arguments">
+</collectionProp></elementProp>
+<stringProp name="HTTPSampler.path">/api/pacientes</stringProp><stringProp name="HTTPSampler.method">GET</stringProp>
+<boolProp name="HTTPSampler.follow_redirects">false</boolProp><boolProp name="HTTPSampler.use_keepalive">true</boolProp>
+</HTTPSamplerProxy>
+<hashTree>
+<JSONPostProcessor guiclass="JSONPostProcessorGui" testclass="JSONPostProcessor" testname="pacienteId">
+<stringProp name="JSONPostProcessor.referenceNames">pacienteId</stringProp><stringProp name="JSONPostProcessor.jsonPathExprs">$[0].id</stringProp>
+<stringProp name="JSONPostProcessor.match_numbers">1</stringProp><stringProp name="JSONPostProcessor.defaultValues">NAO_ENCONTRADO</stringProp>
+</JSONPostProcessor>
+<hashTree>
+
+</hashTree>
+<HeaderManager guiclass="HeaderPanel" testclass="HeaderManager" testname="Token">
+<collectionProp name="HeaderManager.headers">
+  <elementProp name="" elementType="Header"><stringProp name="Header.name">Authorization</stringProp><stringProp name="Header.value">Bearer ${tokenCuidador}</stringProp></elementProp>
+</collectionProp>
+</HeaderManager>
+<hashTree>
+
+</hashTree>
+</hashTree>
+<HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="Escrita - gera código de vínculo">
+
+<elementProp name="HTTPsampler.Arguments" elementType="Arguments"><collectionProp name="Arguments.arguments">
+</collectionProp></elementProp>
+<stringProp name="HTTPSampler.path">/api/pacientes/${pacienteId}/gerar-codigo</stringProp><stringProp name="HTTPSampler.method">POST</stringProp>
+<boolProp name="HTTPSampler.follow_redirects">false</boolProp><boolProp name="HTTPSampler.use_keepalive">true</boolProp>
+</HTTPSamplerProxy>
+<hashTree>
+<JSONPostProcessor guiclass="JSONPostProcessorGui" testclass="JSONPostProcessor" testname="codigo">
+<stringProp name="JSONPostProcessor.referenceNames">codigo</stringProp><stringProp name="JSONPostProcessor.jsonPathExprs">$.codigo</stringProp>
+<stringProp name="JSONPostProcessor.match_numbers">1</stringProp><stringProp name="JSONPostProcessor.defaultValues">NAO_ENCONTRADO</stringProp>
+</JSONPostProcessor>
+<hashTree>
+
+</hashTree>
+<HeaderManager guiclass="HeaderPanel" testclass="HeaderManager" testname="Token">
+<collectionProp name="HeaderManager.headers">
+  <elementProp name="" elementType="Header"><stringProp name="Header.name">Authorization</stringProp><stringProp name="Header.value">Bearer ${tokenCuidador}</stringProp></elementProp>
+</collectionProp>
+</HeaderManager>
+<hashTree>
+
+</hashTree>
+</hashTree>
+<HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="Escrita - login do paciente por código">
+<boolProp name="HTTPSampler.postBodyRaw">true</boolProp>
+<elementProp name="HTTPsampler.Arguments" elementType="Arguments"><collectionProp name="Arguments.arguments">
+  <elementProp name="" elementType="HTTPArgument"><boolProp name="HTTPArgument.always_encode">false</boolProp><stringProp name="Argument.value">{&quot;codigo&quot;:&quot;${codigo}&quot;}</stringProp><stringProp name="Argument.metadata">=</stringProp></elementProp>
+</collectionProp></elementProp>
+<stringProp name="HTTPSampler.path">/api/vinculo/validar</stringProp><stringProp name="HTTPSampler.method">POST</stringProp>
+<boolProp name="HTTPSampler.follow_redirects">false</boolProp><boolProp name="HTTPSampler.use_keepalive">true</boolProp>
+</HTTPSamplerProxy>
+<hashTree>
+<JSONPostProcessor guiclass="JSONPostProcessorGui" testclass="JSONPostProcessor" testname="token">
+<stringProp name="JSONPostProcessor.referenceNames">token</stringProp><stringProp name="JSONPostProcessor.jsonPathExprs">$.token</stringProp>
+<stringProp name="JSONPostProcessor.match_numbers">1</stringProp><stringProp name="JSONPostProcessor.defaultValues">NAO_ENCONTRADO</stringProp>
+</JSONPostProcessor>
+<hashTree>
+
+</hashTree>
+</hashTree>
+</hashTree>
+<ThroughputController guiclass="ThroughputControllerGui" testclass="ThroughputController" testname="Doses do dia (55%)">
+<intProp name="ThroughputController.style">1</intProp><boolProp name="ThroughputController.perThread">false</boolProp>
+<FloatProperty><name>ThroughputController.percentThroughput</name><value>55</value><savedValue>0.0</savedValue></FloatProperty>
+</ThroughputController>
+<hashTree>
+<HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="Leitura - doses do dia (paciente)">
+
+<elementProp name="HTTPsampler.Arguments" elementType="Arguments"><collectionProp name="Arguments.arguments">
+</collectionProp></elementProp>
+<stringProp name="HTTPSampler.path">/api/pacientes/me/doses</stringProp><stringProp name="HTTPSampler.method">GET</stringProp>
+<boolProp name="HTTPSampler.follow_redirects">false</boolProp><boolProp name="HTTPSampler.use_keepalive">true</boolProp>
+</HTTPSamplerProxy>
+<hashTree>
+
+</hashTree>
+</hashTree>
+<ThroughputController guiclass="ThroughputControllerGui" testclass="ThroughputController" testname="Não lidas (15%)">
+<intProp name="ThroughputController.style">1</intProp><boolProp name="ThroughputController.perThread">false</boolProp>
+<FloatProperty><name>ThroughputController.percentThroughput</name><value>15</value><savedValue>0.0</savedValue></FloatProperty>
+</ThroughputController>
+<hashTree>
+<HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="Leitura - mensagens não lidas (paciente)">
+
+<elementProp name="HTTPsampler.Arguments" elementType="Arguments"><collectionProp name="Arguments.arguments">
+</collectionProp></elementProp>
+<stringProp name="HTTPSampler.path">/api/mensagens/nao-lidas</stringProp><stringProp name="HTTPSampler.method">GET</stringProp>
+<boolProp name="HTTPSampler.follow_redirects">false</boolProp><boolProp name="HTTPSampler.use_keepalive">true</boolProp>
+</HTTPSamplerProxy>
+<hashTree>
+
+</hashTree>
+</hashTree>
+<ThroughputController guiclass="ThroughputControllerGui" testclass="ThroughputController" testname="Conversa (10%)">
+<intProp name="ThroughputController.style">1</intProp><boolProp name="ThroughputController.perThread">false</boolProp>
+<FloatProperty><name>ThroughputController.percentThroughput</name><value>10</value><savedValue>0.0</savedValue></FloatProperty>
+</ThroughputController>
+<hashTree>
+<HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="Leitura - conversa (paciente)">
+
+<elementProp name="HTTPsampler.Arguments" elementType="Arguments"><collectionProp name="Arguments.arguments">
+</collectionProp></elementProp>
+<stringProp name="HTTPSampler.path">/api/mensagens?page=0&amp;size=20</stringProp><stringProp name="HTTPSampler.method">GET</stringProp>
+<boolProp name="HTTPSampler.follow_redirects">false</boolProp><boolProp name="HTTPSampler.use_keepalive">true</boolProp>
+</HTTPSamplerProxy>
+<hashTree>
+
+</hashTree>
+</hashTree>
+<ThroughputController guiclass="ThroughputControllerGui" testclass="ThroughputController" testname="Envia mensagem (5%)">
+<intProp name="ThroughputController.style">1</intProp><boolProp name="ThroughputController.perThread">false</boolProp>
+<FloatProperty><name>ThroughputController.percentThroughput</name><value>5</value><savedValue>0.0</savedValue></FloatProperty>
+</ThroughputController>
+<hashTree>
+<HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="Escrita - envia mensagem (paciente)">
+<boolProp name="HTTPSampler.postBodyRaw">true</boolProp>
+<elementProp name="HTTPsampler.Arguments" elementType="Arguments"><collectionProp name="Arguments.arguments">
+  <elementProp name="" elementType="HTTPArgument"><boolProp name="HTTPArgument.always_encode">false</boolProp><stringProp name="Argument.value">{&quot;conteudo&quot;:&quot;Mensagem de carga do paciente&quot;}</stringProp><stringProp name="Argument.metadata">=</stringProp></elementProp>
+</collectionProp></elementProp>
+<stringProp name="HTTPSampler.path">/api/mensagens</stringProp><stringProp name="HTTPSampler.method">POST</stringProp>
+<boolProp name="HTTPSampler.follow_redirects">false</boolProp><boolProp name="HTTPSampler.use_keepalive">true</boolProp>
+</HTTPSamplerProxy>
+<hashTree>
+
+</hashTree>
+</hashTree>
+<ThroughputController guiclass="ThroughputControllerGui" testclass="ThroughputController" testname="Confirma dose (8%)">
+<intProp name="ThroughputController.style">1</intProp><boolProp name="ThroughputController.perThread">false</boolProp>
+<FloatProperty><name>ThroughputController.percentThroughput</name><value>8</value><savedValue>0.0</savedValue></FloatProperty>
+</ThroughputController>
+<hashTree>
+<HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="Leitura - doses do dia (paciente)">
+
+<elementProp name="HTTPsampler.Arguments" elementType="Arguments"><collectionProp name="Arguments.arguments">
+</collectionProp></elementProp>
+<stringProp name="HTTPSampler.path">/api/pacientes/me/doses</stringProp><stringProp name="HTTPSampler.method">GET</stringProp>
+<boolProp name="HTTPSampler.follow_redirects">false</boolProp><boolProp name="HTTPSampler.use_keepalive">true</boolProp>
+</HTTPSamplerProxy>
+<hashTree>
+<JSONPostProcessor guiclass="JSONPostProcessorGui" testclass="JSONPostProcessor" testname="doseId">
+<stringProp name="JSONPostProcessor.referenceNames">doseId</stringProp><stringProp name="JSONPostProcessor.jsonPathExprs">$[?(@.confirmabilidade == 'OK')].id</stringProp>
+<stringProp name="JSONPostProcessor.match_numbers">1</stringProp><stringProp name="JSONPostProcessor.defaultValues">NAO_ENCONTRADO</stringProp>
+</JSONPostProcessor>
+<hashTree>
+
+</hashTree>
+</hashTree>
+<IfController guiclass="IfControllerPanel" testclass="IfController" testname="Há dose para confirmar">
+<stringProp name="IfController.condition">${__jexl3(&quot;${doseId}&quot; != &quot;NAO_ENCONTRADO&quot;,)}</stringProp><boolProp name="IfController.evaluateAll">false</boolProp><boolProp name="IfController.useExpression">true</boolProp>
+</IfController>
+<hashTree>
+<HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="Escrita - confirma dose (paciente)">
+
+<elementProp name="HTTPsampler.Arguments" elementType="Arguments"><collectionProp name="Arguments.arguments">
+</collectionProp></elementProp>
+<stringProp name="HTTPSampler.path">/api/doses/${doseId}/confirmar</stringProp><stringProp name="HTTPSampler.method">PUT</stringProp>
+<boolProp name="HTTPSampler.follow_redirects">false</boolProp><boolProp name="HTTPSampler.use_keepalive">true</boolProp>
+</HTTPSamplerProxy>
+<hashTree>
+
+</hashTree>
+</hashTree>
+</hashTree>
+<ThroughputController guiclass="ThroughputControllerGui" testclass="ThroughputController" testname="Dados do paciente (3%)">
+<intProp name="ThroughputController.style">1</intProp><boolProp name="ThroughputController.perThread">false</boolProp>
+<FloatProperty><name>ThroughputController.percentThroughput</name><value>3</value><savedValue>0.0</savedValue></FloatProperty>
+</ThroughputController>
+<hashTree>
+<HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="Leitura - dados do paciente">
+
+<elementProp name="HTTPsampler.Arguments" elementType="Arguments"><collectionProp name="Arguments.arguments">
+</collectionProp></elementProp>
+<stringProp name="HTTPSampler.path">/api/pacientes/me</stringProp><stringProp name="HTTPSampler.method">GET</stringProp>
+<boolProp name="HTTPSampler.follow_redirects">false</boolProp><boolProp name="HTTPSampler.use_keepalive">true</boolProp>
+</HTTPSamplerProxy>
+<hashTree>
+
+</hashTree>
+</hashTree>
+<ThroughputController guiclass="ThroughputControllerGui" testclass="ThroughputController" testname="Novo pareamento (2%)">
+<intProp name="ThroughputController.style">1</intProp><boolProp name="ThroughputController.perThread">false</boolProp>
+<FloatProperty><name>ThroughputController.percentThroughput</name><value>2</value><savedValue>0.0</savedValue></FloatProperty>
+</ThroughputController>
+<hashTree>
+<HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="Escrita - gera código de vínculo">
+
+<elementProp name="HTTPsampler.Arguments" elementType="Arguments"><collectionProp name="Arguments.arguments">
+</collectionProp></elementProp>
+<stringProp name="HTTPSampler.path">/api/pacientes/${pacienteId}/gerar-codigo</stringProp><stringProp name="HTTPSampler.method">POST</stringProp>
+<boolProp name="HTTPSampler.follow_redirects">false</boolProp><boolProp name="HTTPSampler.use_keepalive">true</boolProp>
+</HTTPSamplerProxy>
+<hashTree>
+<JSONPostProcessor guiclass="JSONPostProcessorGui" testclass="JSONPostProcessor" testname="codigo">
+<stringProp name="JSONPostProcessor.referenceNames">codigo</stringProp><stringProp name="JSONPostProcessor.jsonPathExprs">$.codigo</stringProp>
+<stringProp name="JSONPostProcessor.match_numbers">1</stringProp><stringProp name="JSONPostProcessor.defaultValues">NAO_ENCONTRADO</stringProp>
+</JSONPostProcessor>
+<hashTree>
+
+</hashTree>
+<HeaderManager guiclass="HeaderPanel" testclass="HeaderManager" testname="Token">
+<collectionProp name="HeaderManager.headers">
+  <elementProp name="" elementType="Header"><stringProp name="Header.name">Authorization</stringProp><stringProp name="Header.value">Bearer ${tokenCuidador}</stringProp></elementProp>
+</collectionProp>
+</HeaderManager>
+<hashTree>
+
+</hashTree>
+</hashTree>
+<HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="Escrita - login do paciente por código">
+<boolProp name="HTTPSampler.postBodyRaw">true</boolProp>
+<elementProp name="HTTPsampler.Arguments" elementType="Arguments"><collectionProp name="Arguments.arguments">
+  <elementProp name="" elementType="HTTPArgument"><boolProp name="HTTPArgument.always_encode">false</boolProp><stringProp name="Argument.value">{&quot;codigo&quot;:&quot;${codigo}&quot;}</stringProp><stringProp name="Argument.metadata">=</stringProp></elementProp>
+</collectionProp></elementProp>
+<stringProp name="HTTPSampler.path">/api/vinculo/validar</stringProp><stringProp name="HTTPSampler.method">POST</stringProp>
+<boolProp name="HTTPSampler.follow_redirects">false</boolProp><boolProp name="HTTPSampler.use_keepalive">true</boolProp>
+</HTTPSamplerProxy>
+<hashTree>
+<JSONPostProcessor guiclass="JSONPostProcessorGui" testclass="JSONPostProcessor" testname="token">
+<stringProp name="JSONPostProcessor.referenceNames">token</stringProp><stringProp name="JSONPostProcessor.jsonPathExprs">$.token</stringProp>
+<stringProp name="JSONPostProcessor.match_numbers">1</stringProp><stringProp name="JSONPostProcessor.defaultValues">NAO_ENCONTRADO</stringProp>
+</JSONPostProcessor>
+<hashTree>
+
+</hashTree>
+</hashTree>
+</hashTree>
+<UniformRandomTimer guiclass="UniformRandomTimerGui" testclass="UniformRandomTimer" testname="Pausa entre ações">
+<stringProp name="ConstantTimer.delay">${__P(pausa_min_ms,500)}</stringProp><stringProp name="RandomTimer.range">${__P(pausa_var_ms,1000)}</stringProp>
+</UniformRandomTimer>
+<hashTree>
+
+</hashTree>
+</hashTree>
+</hashTree>
+</hashTree>
+</jmeterTestPlan>

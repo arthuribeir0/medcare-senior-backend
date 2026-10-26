@@ -23,12 +23,13 @@ import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
  * Relatório diário (UC-008) pela API, contra o PostgreSQL real: totais, fórmula, dia padrão no fuso da aplicação,
- * idoso alheio, papéis e parâmetros inválidos. Cada teste é desfeito com rollback.
+ * paciente alheio, papéis e parâmetros inválidos. Cada teste é desfeito com rollback.
  */
 @SpringBootTest(properties = {"app.jobs.enabled=false", "app.fcm.enabled=false", "spring.jpa.show-sql=false"})
 @AutoConfigureMockMvc
@@ -51,7 +52,7 @@ class RelatorioApiTest {
 
     private LocalDate hoje;
     private Long cuidadorId;
-    private Long idosoId;
+    private Long pacienteId;
     private Long tratamentoId;
 
     @BeforeEach
@@ -59,10 +60,10 @@ class RelatorioApiTest {
         LocalDateTime agora = LocalDateTime.now(clock).truncatedTo(ChronoUnit.MINUTES);
         hoje = agora.toLocalDate();
         cuidadorId = cuidador();
-        idosoId = jdbc.queryForObject("INSERT INTO idoso (nome, data_nascimento, cuidador_id) VALUES ('José Souza', ?, ?) "
+        pacienteId = jdbc.queryForObject("INSERT INTO paciente (nome, data_nascimento, cuidador_id) VALUES ('José Souza', ?, ?) "
                 + "RETURNING id", Long.class, LocalDate.of(1945, 3, 12), cuidadorId);
-        Long medicamentoId = jdbc.queryForObject("INSERT INTO medicamento (nome, dosagem, tipo, idoso_id) "
-                + "VALUES ('Losartana', '50mg', 'COMPRIMIDO', ?) RETURNING id", Long.class, idosoId);
+        Long medicamentoId = jdbc.queryForObject("INSERT INTO medicamento (nome, dosagem, tipo, paciente_id) "
+                + "VALUES ('Losartana', '50mg', 'COMPRIMIDO', ?) RETURNING id", Long.class, pacienteId);
         tratamentoId = jdbc.queryForObject("INSERT INTO tratamento (medicamento_id, data_inicio, horarios, dias_semana) "
                 + "VALUES (?, ?, '[\"08:00\"]'::jsonb, '[\"MONDAY\"]'::jsonb) RETURNING id", Long.class,
                 medicamentoId, hoje.minusDays(10));
@@ -75,9 +76,10 @@ class RelatorioApiTest {
     }
 
     private void dose(LocalDate dia, int hora, String status) {
-        jdbc.update("INSERT INTO dose (tratamento_id, horario_programado, hora_confirmacao, status) VALUES (?, ?, ?, ?)",
-                tratamentoId, dia.atTime(hora, 0), "PENDENTE".equals(status) || "NAO_TOMADA".equals(status)
-                        ? null : dia.atTime(hora, 10), status);
+        boolean confirmada = !"PENDENTE".equals(status) && !"NAO_TOMADA".equals(status);
+        jdbc.update("INSERT INTO dose (tratamento_id, horario_programado, hora_confirmacao, status, confirmado_por) "
+                + "VALUES (?, ?, ?, ?, ?)", tratamentoId, dia.atTime(hora, 0), confirmada ? dia.atTime(hora, 10) : null,
+                status, confirmada ? "PACIENTE" : null);
     }
 
     private MockHttpServletRequestBuilder como(MockHttpServletRequestBuilder requisicao, Long id, Role papel) {
@@ -87,21 +89,21 @@ class RelatorioApiTest {
     @Test
     void misturaDeStatusComTotaisEAderencia() throws Exception {
         LocalDate dia = hoje.minusDays(1);
-        dose(dia, 7, "TOMADA");
-        dose(dia, 9, "TOMADA");
+        dose(dia, 7, "CONFIRMADA_NO_HORARIO");
+        dose(dia, 9, "CONFIRMADA_NO_HORARIO");
         dose(dia, 12, "CONFIRMADA_COM_ATRASO");
         dose(dia, 18, "NAO_TOMADA");
         // Dose de outro dia não entra
         dose(dia.minusDays(1), 8, "NAO_TOMADA");
 
-        mvc.perform(como(get(ROTA).param("idosoId", idosoId.toString()).param("data", dia.toString()), cuidadorId,
+        mvc.perform(como(get(ROTA).param("pacienteId", pacienteId.toString()).param("data", dia.toString()), cuidadorId,
                         Role.CUIDADOR))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.idoso.id").value(idosoId))
-                .andExpect(jsonPath("$.idoso.nome").value("José Souza"))
+                .andExpect(jsonPath("$.paciente.id").value(pacienteId))
+                .andExpect(jsonPath("$.paciente.nome").value("José Souza"))
                 .andExpect(jsonPath("$.data").value(dia.toString()))
                 .andExpect(jsonPath("$.totais.total").value(4))
-                .andExpect(jsonPath("$.totais.tomadas").value(2))
+                .andExpect(jsonPath("$.totais.confirmadasNoHorario").value(2))
                 .andExpect(jsonPath("$.totais.confirmadasComAtraso").value(1))
                 .andExpect(jsonPath("$.totais.naoTomadas").value(1))
                 .andExpect(jsonPath("$.totais.pendentes").value(0))
@@ -117,7 +119,7 @@ class RelatorioApiTest {
     void semDataUsaHojeNoFusoDaAplicacaoESoPendentesNaoTemAderencia() throws Exception {
         dose(hoje, 23, "PENDENTE");
 
-        mvc.perform(como(get(ROTA).param("idosoId", idosoId.toString()), cuidadorId, Role.CUIDADOR))
+        mvc.perform(como(get(ROTA).param("pacienteId", pacienteId.toString()), cuidadorId, Role.CUIDADOR))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data").value(hoje.toString()))
                 .andExpect(jsonPath("$.totais.total").value(1))
@@ -127,7 +129,7 @@ class RelatorioApiTest {
 
     @Test
     void diaSemDosesDevolveListaVazia() throws Exception {
-        mvc.perform(como(get(ROTA).param("idosoId", idosoId.toString()).param("data", "2001-01-01"), cuidadorId,
+        mvc.perform(como(get(ROTA).param("pacienteId", pacienteId.toString()).param("data", "2001-01-01"), cuidadorId,
                         Role.CUIDADOR))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.doses", hasSize(0)))
@@ -136,10 +138,10 @@ class RelatorioApiTest {
     }
 
     @Test
-    void idosoDeOutroCuidadorEhNaoEncontrado() throws Exception {
+    void pacienteDeOutroCuidadorEhNaoEncontrado() throws Exception {
         Long outro = cuidador();
 
-        mvc.perform(como(get(ROTA).param("idosoId", idosoId.toString()), outro, Role.CUIDADOR))
+        mvc.perform(como(get(ROTA).param("pacienteId", pacienteId.toString()), outro, Role.CUIDADOR))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.codigo").value("RECURSO_NAO_ENCONTRADO"));
     }
@@ -149,26 +151,48 @@ class RelatorioApiTest {
         mvc.perform(como(get(ROTA), cuidadorId, Role.CUIDADOR))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.codigo", notNullValue()));
-        mvc.perform(como(get(ROTA).param("idosoId", idosoId.toString()).param("data", "18/10/2026"), cuidadorId,
+        mvc.perform(como(get(ROTA).param("pacienteId", pacienteId.toString()).param("data", "18/10/2026"), cuidadorId,
                         Role.CUIDADOR))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.codigo").value("VALIDACAO"))
                 .andExpect(jsonPath("$.campos[0].campo").value("data"));
-        mvc.perform(como(get(ROTA).param("idosoId", "abc"), cuidadorId, Role.CUIDADOR))
+        mvc.perform(como(get(ROTA).param("pacienteId", "abc"), cuidadorId, Role.CUIDADOR))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.codigo").value("VALIDACAO"));
     }
 
     @Test
     void papeisEContaExcluida() throws Exception {
-        mvc.perform(como(get(ROTA).param("idosoId", idosoId.toString()), idosoId, Role.IDOSO))
+        mvc.perform(como(get(ROTA).param("pacienteId", pacienteId.toString()), pacienteId, Role.PACIENTE))
                 .andExpect(status().isForbidden());
-        mvc.perform(get(ROTA).param("idosoId", idosoId.toString())).andExpect(status().isUnauthorized());
+        mvc.perform(get(ROTA).param("pacienteId", pacienteId.toString())).andExpect(status().isUnauthorized());
 
         Long excluido = cuidador();
         jdbc.update("DELETE FROM cuidador WHERE id = ?", excluido);
-        mvc.perform(como(get(ROTA).param("idosoId", idosoId.toString()), excluido, Role.CUIDADOR))
+        mvc.perform(como(get(ROTA).param("pacienteId", pacienteId.toString()), excluido, Role.CUIDADOR))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.codigo").value("SESSAO_INVALIDA"));
+    }
+
+    @Test
+    void confirmacaoDescartaORelatorioEmCacheNaHora() throws Exception {
+        // Dose de agora (dentro da janela), ainda pendente: o primeiro relatório vai para o cache
+        Long doseId = jdbc.queryForObject("INSERT INTO dose (tratamento_id, horario_programado, status) "
+                + "VALUES (?, ?, 'PENDENTE') RETURNING id", Long.class, tratamentoId, LocalDateTime.now(clock).truncatedTo(ChronoUnit.MINUTES));
+        mvc.perform(como(get(ROTA).param("pacienteId", pacienteId.toString()), cuidadorId, Role.CUIDADOR))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totais.pendentes").value(1))
+                .andExpect(jsonPath("$.doses[0].confirmadoPor").doesNotExist());
+
+        mvc.perform(como(put("/api/doses/" + doseId + "/confirmar"), cuidadorId, Role.CUIDADOR))
+                .andExpect(status().isOk());
+
+        // Bem antes dos 30 s do cache: o relatório já mostra a confirmação
+        mvc.perform(como(get(ROTA).param("pacienteId", pacienteId.toString()), cuidadorId, Role.CUIDADOR))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totais.pendentes").value(0))
+                .andExpect(jsonPath("$.totais.confirmadasNoHorario").value(1))
+                .andExpect(jsonPath("$.doses[0].status").value("CONFIRMADA_NO_HORARIO"))
+                .andExpect(jsonPath("$.doses[0].confirmadoPor").value("CUIDADOR"));
     }
 }

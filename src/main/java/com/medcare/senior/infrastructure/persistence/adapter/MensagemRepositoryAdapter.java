@@ -28,7 +28,7 @@ public class MensagemRepositoryAdapter implements MensagemRepositoryPort {
     public Mensagem salvar(Mensagem mensagem) {
         return toDomain(repository.save(MensagemEntity.builder()
                 .id(mensagem.id())
-                .idosoId(mensagem.idosoId())
+                .pacienteId(mensagem.pacienteId())
                 .remetente(mensagem.remetente())
                 .conteudo(mensagem.conteudo())
                 .criadaEm(mensagem.criadaEm())
@@ -38,46 +38,46 @@ public class MensagemRepositoryAdapter implements MensagemRepositoryPort {
 
     @Override
     @Transactional(readOnly = true)
-    public Pagina<Mensagem> findConversa(Long idosoId, int pagina, int tamanho) {
-        Page<MensagemEntity> resultado = repository.findConversa(idosoId, PageRequest.of(pagina, tamanho));
+    public Pagina<Mensagem> findConversa(Long pacienteId, int pagina, int tamanho) {
+        Page<MensagemEntity> resultado = repository.findConversa(pacienteId, PageRequest.of(pagina, tamanho));
         return new Pagina<>(resultado.getContent().stream().map(MensagemRepositoryAdapter::toDomain).toList(), pagina,
                 tamanho, resultado.getTotalElements());
     }
 
     @Override
     @Transactional
-    public int marcarComoLidas(Long idosoId, Remetente remetente, LocalDateTime agora) {
-        return repository.marcarComoLidas(idosoId, remetente, agora);
+    public int marcarComoLidas(Long pacienteId, Remetente remetente, LocalDateTime agora) {
+        return repository.marcarComoLidas(pacienteId, remetente, agora);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public long contarNaoLidas(Long idosoId, Remetente remetente) {
-        return repository.countByIdosoIdAndRemetenteAndLidaEmIsNull(idosoId, remetente);
+    public long contarNaoLidas(Long pacienteId, Remetente remetente) {
+        return repository.countByPacienteIdAndRemetenteAndLidaEmIsNull(pacienteId, remetente);
     }
 
     @Override
     @Transactional(readOnly = true)
     public long contarNaoLidasDoCuidador(Long cuidadorId) {
-        return repository.countNaoLidasDoCuidador(cuidadorId, Remetente.IDOSO);
+        return repository.countNaoLidasDoCuidador(cuidadorId, Remetente.PACIENTE);
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<ResumoConversa> findConversasDoCuidador(Long cuidadorId) {
-        // O cuidador lê o que o idoso escreveu
-        return repository.findConversasDoCuidador(cuidadorId, Remetente.IDOSO.name()).stream()
+        // O cuidador lê o que o paciente escreveu
+        return repository.findConversasDoCuidador(cuidadorId, Remetente.PACIENTE.name()).stream()
                 .map(MensagemRepositoryAdapter::toResumo)
                 .toList();
     }
 
     @Override
     @Transactional(readOnly = true)
-    public ResumoConversa findConversaDoIdoso(Long idosoId) {
-        // O idoso lê o que o cuidador escreveu. O idoso já foi conferido pelo use case
-        return repository.findConversaDoIdoso(idosoId, Remetente.CUIDADOR.name())
+    public ResumoConversa findConversaDoPaciente(Long pacienteId) {
+        // O paciente lê o que o cuidador escreveu. O paciente já foi conferido pelo use case
+        return repository.findConversaDoPaciente(pacienteId, Remetente.CUIDADOR.name())
                 .map(MensagemRepositoryAdapter::toResumo)
-                .orElseThrow(() -> new IllegalStateException("Idoso da conversa não encontrado"));
+                .orElseThrow(() -> new IllegalStateException("Paciente da conversa não encontrado"));
     }
 
     @Override
@@ -87,7 +87,7 @@ public class MensagemRepositoryAdapter implements MensagemRepositoryPort {
     }
 
     private static Mensagem toDomain(MensagemEntity entity) {
-        return new Mensagem(entity.getId(), entity.getIdosoId(), entity.getRemetente(), entity.getConteudo(),
+        return new Mensagem(entity.getId(), entity.getPacienteId(), entity.getRemetente(), entity.getConteudo(),
                 entity.getCriadaEm(), entity.getLidaEm());
     }
 
@@ -95,6 +95,6 @@ public class MensagemRepositoryAdapter implements MensagemRepositoryPort {
         ResumoConversa.UltimaMensagem ultima = linha.getCriadaEm() == null ? null
                 : new ResumoConversa.UltimaMensagem(linha.getConteudo(), Remetente.valueOf(linha.getRemetente()),
                 linha.getCriadaEm());
-        return new ResumoConversa(linha.getIdosoId(), linha.getIdosoNome(), ultima, linha.getNaoLidas());
+        return new ResumoConversa(linha.getPacienteId(), linha.getPacienteNome(), ultima, linha.getNaoLidas());
     }
 }

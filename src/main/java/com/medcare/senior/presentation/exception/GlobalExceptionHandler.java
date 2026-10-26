@@ -6,7 +6,7 @@ import com.medcare.senior.domain.exception.CodigoVinculoInvalidoException;
 import com.medcare.senior.domain.exception.ConsentimentoLgpdObrigatorioException;
 import com.medcare.senior.domain.exception.CredenciaisInvalidasException;
 import com.medcare.senior.domain.exception.EmailJaCadastradoException;
-import com.medcare.senior.domain.exception.IdosoJaCadastradoException;
+import com.medcare.senior.domain.exception.PacienteJaCadastradoException;
 import com.medcare.senior.domain.exception.RecursoNaoEncontradoException;
 import com.medcare.senior.domain.exception.SenhaFracaException;
 import com.medcare.senior.domain.configuracao.ToleranciaInvalidaException;
@@ -85,15 +85,15 @@ public class GlobalExceptionHandler {
         return construirResposta(HttpStatus.UNAUTHORIZED, CodigoErro.CREDENCIAIS_INVALIDAS, ex.getMessage(), List.of());
     }
 
-    // Token válido de usuário que não existe mais: 401 para o app descartar a sessão (idoso volta ao pareamento)
+    // Token válido de usuário que não existe mais: 401 para o app descartar a sessão (paciente volta ao pareamento)
     @ExceptionHandler(SessaoInvalidaException.class)
     public ResponseEntity<ErroResponse> handleSessaoInvalida(SessaoInvalidaException ex) {
         return construirResposta(HttpStatus.UNAUTHORIZED, CodigoErro.SESSAO_INVALIDA, ex.getMessage(), List.of());
     }
 
-    @ExceptionHandler(IdosoJaCadastradoException.class)
-    public ResponseEntity<ErroResponse> handleIdosoJaCadastrado(IdosoJaCadastradoException ex) {
-        return construirResposta(HttpStatus.CONFLICT, CodigoErro.IDOSO_DUPLICADO, ex.getMessage(), List.of());
+    @ExceptionHandler(PacienteJaCadastradoException.class)
+    public ResponseEntity<ErroResponse> handlePacienteJaCadastrado(PacienteJaCadastradoException ex) {
+        return construirResposta(HttpStatus.CONFLICT, CodigoErro.PACIENTE_DUPLICADO, ex.getMessage(), List.of());
     }
 
     @ExceptionHandler(RecursoNaoEncontradoException.class)

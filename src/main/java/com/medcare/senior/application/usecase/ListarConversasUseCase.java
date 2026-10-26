@@ -10,7 +10,7 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 
 /**
- * Lista de conversas: o cuidador vê uma por idoso seu (inclusive sem mensagens); o idoso vê a sua única conversa.
+ * Lista de conversas: o cuidador vê uma por paciente seu (inclusive sem mensagens); o paciente vê a sua única conversa.
  * Cada uma traz a última mensagem e quantas mensagens do outro lado quem chama ainda não leu.
  */
 @Service
@@ -21,12 +21,12 @@ public class ListarConversasUseCase {
     private final MensagemRepositoryPort mensagemRepository;
 
     /**
-     * @throws com.medcare.senior.domain.exception.SessaoInvalidaException se o idoso do token não existir mais
+     * @throws com.medcare.senior.domain.exception.SessaoInvalidaException se o paciente do token não existir mais
      */
     public List<ResumoConversa> executar(AuthenticatedUser usuario) {
         if (usuario.isCuidador()) {
             return mensagemRepository.findConversasDoCuidador(usuario.cuidadorId());
         }
-        return List.of(mensagemRepository.findConversaDoIdoso(acessoAConversa.exigirIdoso(usuario)));
+        return List.of(mensagemRepository.findConversaDoPaciente(acessoAConversa.exigirPaciente(usuario)));
     }
 }

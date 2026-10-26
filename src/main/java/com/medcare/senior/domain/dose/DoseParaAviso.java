@@ -8,9 +8,9 @@ import java.time.LocalDateTime;
  *
  * @param doseId            a dose ainda PENDENTE
  * @param horarioProgramado horário da dose
- * @param cuidadorId        cuidador responsável pelo idoso (destinatário do aviso)
- * @param idosoId           idoso que deveria ter tomado a dose
- * @param nomeIdoso         nome do idoso, para o texto do aviso
+ * @param cuidadorId        cuidador responsável pelo paciente (destinatário do aviso)
+ * @param pacienteId           paciente que deveria ter tomado a dose
+ * @param nomePaciente         nome do paciente, para o texto do aviso
  */
-public record DoseParaAviso(Long doseId, LocalDateTime horarioProgramado, Long cuidadorId, Long idosoId, String nomeIdoso) {
+public record DoseParaAviso(Long doseId, LocalDateTime horarioProgramado, Long cuidadorId, Long pacienteId, String nomePaciente) {
 }

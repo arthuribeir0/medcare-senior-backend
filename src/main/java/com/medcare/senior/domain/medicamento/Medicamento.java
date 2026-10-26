@@ -23,7 +23,7 @@ public class Medicamento {
     private String cor;
     private Integer quantidadeEstoque;
     private String bulaUrl;
-    private Long idosoId;
+    private Long pacienteId;
 
     /**
      * Remoção lógica: preenchido quando o cuidador remove o medicamento. Medicamento removido é invisível na API.

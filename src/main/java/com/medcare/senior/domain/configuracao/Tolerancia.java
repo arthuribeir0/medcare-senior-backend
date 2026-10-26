@@ -1,8 +1,8 @@
 package com.medcare.senior.domain.configuracao;
 
 /**
- * Limites da tolerância configurável pelo cuidador (RN-009), em minutos, inclusivos. O máximo fica abaixo do
- * encerramento da dose (180 min, fixo), invariante conferida pela PoliticaDeJanela.
+ * Limites da tolerância configurável pelo cuidador (RN-009), em minutos, inclusivos. A dose encerra sempre depois do
+ * aviso (horário + tolerância + margem pós-aviso), qualquer que seja a tolerância escolhida.
  */
 public final class Tolerancia {
 

@@ -10,40 +10,40 @@ public interface MensagemRepositoryPort {
     Mensagem salvar(Mensagem mensagem);
 
     /**
-     * Mensagens da conversa do idoso, da mais recente para a mais antiga.
+     * Mensagens da conversa do paciente, da mais recente para a mais antiga.
      */
-    Pagina<Mensagem> findConversa(Long idosoId, int pagina, int tamanho);
+    Pagina<Mensagem> findConversa(Long pacienteId, int pagina, int tamanho);
 
     /**
-     * Marca como lidas as mensagens ainda não lidas escritas por {@code remetente} na conversa do idoso (idempotente).
+     * Marca como lidas as mensagens ainda não lidas escritas por {@code remetente} na conversa do paciente (idempotente).
      *
      * @return quantas foram marcadas agora
      */
-    int marcarComoLidas(Long idosoId, Remetente remetente, LocalDateTime agora);
+    int marcarComoLidas(Long pacienteId, Remetente remetente, LocalDateTime agora);
 
     /**
-     * Mensagens ainda não lidas escritas por {@code remetente} na conversa do idoso.
+     * Mensagens ainda não lidas escritas por {@code remetente} na conversa do paciente.
      */
-    long contarNaoLidas(Long idosoId, Remetente remetente);
+    long contarNaoLidas(Long pacienteId, Remetente remetente);
 
     /**
-     * Mensagens dos idosos do cuidador ainda não lidas por ele, somando todas as conversas.
+     * Mensagens dos pacientes do cuidador ainda não lidas por ele, somando todas as conversas.
      */
     long contarNaoLidasDoCuidador(Long cuidadorId);
 
     /**
-     * Uma conversa por idoso do cuidador (inclusive sem mensagens), a de mensagem mais recente primeiro; as sem
-     * mensagens por último, em ordem de nome. Não lidas = mensagens do idoso.
+     * Uma conversa por paciente do cuidador (inclusive sem mensagens), a de mensagem mais recente primeiro; as sem
+     * mensagens por último, em ordem de nome. Não lidas = mensagens do paciente.
      */
     List<ResumoConversa> findConversasDoCuidador(Long cuidadorId);
 
     /**
-     * A conversa do idoso com o cuidador. Não lidas = mensagens do cuidador.
+     * A conversa do paciente com o cuidador. Não lidas = mensagens do cuidador.
      */
-    ResumoConversa findConversaDoIdoso(Long idosoId);
+    ResumoConversa findConversaDoPaciente(Long pacienteId);
 
     /**
-     * Apaga as mensagens de todos os idosos do cuidador (exclusão de conta, LGPD).
+     * Apaga as mensagens de todos os pacientes do cuidador (exclusão de conta, LGPD).
      */
     void deleteAllByCuidadorId(Long cuidadorId);
 }

@@ -7,7 +7,7 @@ package com.medcare.senior.domain.dose;
 public enum StatusExibicao {
     PENDENTE,
     ATRASADA,
-    TOMADA,
+    CONFIRMADA_NO_HORARIO,
     CONFIRMADA_COM_ATRASO,
     NAO_TOMADA;
 
@@ -17,7 +17,7 @@ public enum StatusExibicao {
     public static StatusExibicao de(StatusDose status) {
         return switch (status) {
             case PENDENTE -> PENDENTE;
-            case TOMADA -> TOMADA;
+            case CONFIRMADA_NO_HORARIO -> CONFIRMADA_NO_HORARIO;
             case NAO_TOMADA -> NAO_TOMADA;
             case CONFIRMADA_COM_ATRASO -> CONFIRMADA_COM_ATRASO;
         };

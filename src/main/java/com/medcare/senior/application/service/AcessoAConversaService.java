@@ -6,17 +6,17 @@ import com.medcare.senior.domain.exception.ParametroInvalidoException;
 import com.medcare.senior.domain.exception.RecursoNaoEncontradoException;
 import com.medcare.senior.domain.exception.SessaoInvalidaException;
 import com.medcare.senior.domain.mensagem.Remetente;
-import com.medcare.senior.domain.usuario.IdosoRepositoryPort;
+import com.medcare.senior.domain.usuario.PacienteRepositoryPort;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 /**
- * De quem é a conversa (UC-010) e de que lado está quem chama. A conversa é sempre de um idoso com o seu cuidador.
+ * De quem é a conversa (UC-010) e de que lado está quem chama. A conversa é sempre de um paciente com o seu cuidador.
  *
  * <ul>
- *   <li>Cuidador: informa o idoso, que precisa ser dele (idoso alheio responde 404, como inexistente). A conta
+ *   <li>Cuidador: informa o paciente, que precisa ser dele (paciente alheio responde 404, como inexistente). A conta
  *       excluída já é barrada antes, com 401 SESSAO_INVALIDA, pelo SessaoDoCuidadorInterceptor.</li>
- *   <li>Idoso: a conversa é a dele (o idoso vem do token). Informar outro idoso é 403 ACESSO_NEGADO; idoso que não
+ *   <li>Paciente: a conversa é a dele (o paciente vem do token). Informar outro paciente é 403 ACESSO_NEGADO; paciente que não
  *       existe mais é 401 SESSAO_INVALIDA.</li>
  * </ul>
  */
@@ -24,48 +24,48 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class AcessoAConversaService {
 
-    private final IdosoRepositoryPort idosoRepository;
+    private final PacienteRepositoryPort pacienteRepository;
 
     /**
-     * @param idosoId idoso informado na requisição (obrigatório para o cuidador; opcional para o idoso)
-     * @throws ParametroInvalidoException    se o cuidador não informar o idoso
-     * @throws RecursoNaoEncontradoException se o idoso não for do cuidador
-     * @throws AcessoNegadoException         se o idoso informar outro idoso
-     * @throws SessaoInvalidaException       se o idoso do token não existir mais
+     * @param pacienteId paciente informado na requisição (obrigatório para o cuidador; opcional para o paciente)
+     * @throws ParametroInvalidoException    se o cuidador não informar o paciente
+     * @throws RecursoNaoEncontradoException se o paciente não for do cuidador
+     * @throws AcessoNegadoException         se o paciente informar outro paciente
+     * @throws SessaoInvalidaException       se o paciente do token não existir mais
      */
-    public Conversa resolver(AuthenticatedUser usuario, Long idosoId) {
+    public Conversa resolver(AuthenticatedUser usuario, Long pacienteId) {
         if (usuario.isCuidador()) {
-            if (idosoId == null) {
-                throw new ParametroInvalidoException("idosoId", "Informe o idoso da conversa");
+            if (pacienteId == null) {
+                throw new ParametroInvalidoException("pacienteId", "Informe o paciente da conversa");
             }
-            if (idosoRepository.findByIdAndCuidadorId(idosoId, usuario.cuidadorId()).isEmpty()) {
-                throw new RecursoNaoEncontradoException("Idoso não encontrado");
+            if (pacienteRepository.findByIdAndCuidadorId(pacienteId, usuario.cuidadorId()).isEmpty()) {
+                throw new RecursoNaoEncontradoException("Paciente não encontrado");
             }
-            return new Conversa(idosoId, Remetente.CUIDADOR);
+            return new Conversa(pacienteId, Remetente.CUIDADOR);
         }
-        Long proprio = exigirIdoso(usuario);
-        if (idosoId != null && !idosoId.equals(proprio)) {
+        Long proprio = exigirPaciente(usuario);
+        if (pacienteId != null && !pacienteId.equals(proprio)) {
             throw new AcessoNegadoException();
         }
-        return new Conversa(proprio, Remetente.IDOSO);
+        return new Conversa(proprio, Remetente.PACIENTE);
     }
 
     /**
-     * @return o ID do idoso do token
-     * @throws SessaoInvalidaException se o idoso do token não existir mais
+     * @return o ID do paciente do token
+     * @throws SessaoInvalidaException se o paciente do token não existir mais
      */
-    public Long exigirIdoso(AuthenticatedUser usuario) {
-        Long idosoId = usuario.idosoId();
-        if (idosoRepository.findById(idosoId).isEmpty()) {
+    public Long exigirPaciente(AuthenticatedUser usuario) {
+        Long pacienteId = usuario.pacienteId();
+        if (pacienteRepository.findById(pacienteId).isEmpty()) {
             throw new SessaoInvalidaException();
         }
-        return idosoId;
+        return pacienteId;
     }
 
     /**
-     * @param idosoId idoso da conversa
+     * @param pacienteId paciente da conversa
      * @param lado    lado de quem chama (quem escreve agora, ou quem lê)
      */
-    public record Conversa(Long idosoId, Remetente lado) {
+    public record Conversa(Long pacienteId, Remetente lado) {
     }
 }

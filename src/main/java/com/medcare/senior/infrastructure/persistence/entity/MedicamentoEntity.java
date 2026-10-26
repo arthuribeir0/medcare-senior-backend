@@ -44,8 +44,8 @@ public class MedicamentoEntity {
     private String bulaUrl;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "idoso_id", nullable = false)
-    private IdosoEntity idoso;
+    @JoinColumn(name = "paciente_id", nullable = false)
+    private PacienteEntity paciente;
 
     @Column(name = "removido_em")
     private LocalDateTime removidoEm;

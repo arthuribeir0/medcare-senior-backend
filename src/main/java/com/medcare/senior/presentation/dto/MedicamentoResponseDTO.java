@@ -31,12 +31,12 @@ public record MedicamentoResponseDTO(
         String bulaUrl,
 
         @Schema(example = "10")
-        Long idosoId
+        Long pacienteId
 ) {
 
     public static MedicamentoResponseDTO from(Medicamento medicamento) {
         return new MedicamentoResponseDTO(medicamento.getId(), medicamento.getNome(), medicamento.getDosagem(),
                 medicamento.getTipo(), medicamento.getFormato(), medicamento.getCor(),
-                medicamento.getQuantidadeEstoque(), medicamento.getBulaUrl(), medicamento.getIdosoId());
+                medicamento.getQuantidadeEstoque(), medicamento.getBulaUrl(), medicamento.getPacienteId());
     }
 }

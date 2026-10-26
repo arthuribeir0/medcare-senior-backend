@@ -44,9 +44,9 @@ public record MedicamentoRequestDTO(
         @Size(max = 2048, message = "A URL da bula deve ter no máximo 2048 caracteres")
         String bulaUrl,
 
-        @Schema(description = "ID do idoso (deve pertencer ao cuidador autenticado)", example = "10")
-        @NotNull(message = "O idoso é obrigatório")
-        Long idosoId
+        @Schema(description = "ID do paciente (deve pertencer ao cuidador autenticado)", example = "10")
+        @NotNull(message = "O paciente é obrigatório")
+        Long pacienteId
 ) {
 
     // Tipos aceitos no cadastro e na edição. Sem migration: a coluna continua VARCHAR, e cadastros antigos com texto
@@ -62,7 +62,7 @@ public record MedicamentoRequestDTO(
                 .cor(cor)
                 .quantidadeEstoque(quantidadeEstoque)
                 .bulaUrl(bulaUrl)
-                .idosoId(idosoId)
+                .pacienteId(pacienteId)
                 .build();
     }
 }

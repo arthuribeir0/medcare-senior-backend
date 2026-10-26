@@ -13,7 +13,7 @@ public interface DoseParaAvisoView {
 
     Long getCuidadorId();
 
-    Long getIdosoId();
+    Long getPacienteId();
 
-    String getNomeIdoso();
+    String getNomePaciente();
 }

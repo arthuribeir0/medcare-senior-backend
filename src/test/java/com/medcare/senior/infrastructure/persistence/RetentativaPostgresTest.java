@@ -44,7 +44,7 @@ class RetentativaPostgresTest {
     @Autowired
     private JdbcTemplate jdbc;
 
-    private Long idosoId;
+    private Long pacienteId;
     private Long tratamentoId;
     private Long medicamentoId;
     private int dosesCriadas;
@@ -56,18 +56,20 @@ class RetentativaPostgresTest {
         Long cuidadorId = jdbc.queryForObject("INSERT INTO cuidador (nome, email, senha_hash, data_cadastro, "
                 + "consentimento_lgpd, data_consentimento) VALUES ('Cuidador retentativa', ?, 'hash', ?, true, ?) "
                 + "RETURNING id", Long.class, "retentativa-" + UUID.randomUUID() + "@teste.com", AGORA, AGORA);
-        idosoId = jdbc.queryForObject("INSERT INTO idoso (nome, data_nascimento, cuidador_id) VALUES ('Maria', ?, ?) "
+        pacienteId = jdbc.queryForObject("INSERT INTO paciente (nome, data_nascimento, cuidador_id) VALUES ('Maria', ?, ?) "
                 + "RETURNING id", Long.class, LocalDate.of(1945, 3, 12), cuidadorId);
-        medicamentoId = jdbc.queryForObject("INSERT INTO medicamento (nome, dosagem, tipo, idoso_id) "
-                + "VALUES ('Losartana', '50mg', 'COMPRIMIDO', ?) RETURNING id", Long.class, idosoId);
+        medicamentoId = jdbc.queryForObject("INSERT INTO medicamento (nome, dosagem, tipo, paciente_id) "
+                + "VALUES ('Losartana', '50mg', 'COMPRIMIDO', ?) RETURNING id", Long.class, pacienteId);
         tratamentoId = jdbc.queryForObject("INSERT INTO tratamento (medicamento_id, data_inicio, horarios, dias_semana) "
                 + "VALUES (?, ?, '[\"08:00\"]'::jsonb, '[\"MONDAY\"]'::jsonb) RETURNING id", Long.class,
                 medicamentoId, AGORA.toLocalDate());
     }
 
     private long dose(LocalDateTime horario, StatusDose status) {
-        return jdbc.queryForObject("INSERT INTO dose (tratamento_id, horario_programado, status) VALUES (?, ?, ?) "
-                + "RETURNING id", Long.class, tratamentoId, horario, status.name());
+        boolean confirmada = status == StatusDose.CONFIRMADA_NO_HORARIO || status == StatusDose.CONFIRMADA_COM_ATRASO;
+        return jdbc.queryForObject("INSERT INTO dose (tratamento_id, horario_programado, status, confirmado_por) "
+                + "VALUES (?, ?, ?, ?) RETURNING id", Long.class, tratamentoId, horario, status.name(),
+                confirmada ? "PACIENTE" : null);
     }
 
     /** Evento PENDENTE com {@code tentativas} feitas, a última {@code minutosAtras} minutos antes de AGORA. */
@@ -126,22 +128,22 @@ class RetentativaPostgresTest {
 
     @Test
     void trazOStatusDaDoseEQuemAvisarEMarcaDoseSemDono() {
-        long doseTomada = dose(AGORA.minusHours(1), StatusDose.TOMADA);
-        long eventoDaTomada = eventoComDose(doseTomada, 1, AGORA.minusHours(1));
+        long doseNoHorario = dose(AGORA.minusHours(1), StatusDose.CONFIRMADA_NO_HORARIO);
+        long eventoDaNoHorario = eventoComDose(doseNoHorario, 1, AGORA.minusHours(1));
         long dosePendente = dose(AGORA.minusMinutes(70), StatusDose.PENDENTE);
         long eventoDaPendente = eventoComDose(dosePendente, 2, AGORA.minusHours(1));
 
         List<EventoParaRetentativa> lista = eventoAdapter.findParaRetentativa(AGORA, MAX, BASE, 100);
 
-        EventoParaRetentativa tomada = lista.stream().filter(e -> e.eventoId() == eventoDaTomada).findFirst().orElseThrow();
-        assertThat(tomada.statusDose()).isEqualTo(StatusDose.TOMADA);
+        EventoParaRetentativa noHorario = lista.stream().filter(e -> e.eventoId() == eventoDaNoHorario).findFirst().orElseThrow();
+        assertThat(noHorario.statusDose()).isEqualTo(StatusDose.CONFIRMADA_NO_HORARIO);
         EventoParaRetentativa pendente = lista.stream().filter(e -> e.eventoId() == eventoDaPendente).findFirst().orElseThrow();
         assertThat(pendente.tentativas()).isEqualTo(2);
         assertThat(pendente.doseId()).isEqualTo(dosePendente);
         assertThat(pendente.statusDose()).isEqualTo(StatusDose.PENDENTE);
         assertThat(pendente.semDono()).isFalse();
-        assertThat(pendente.idosoId()).isEqualTo(idosoId);
-        assertThat(pendente.nomeIdoso()).isEqualTo("Maria");
+        assertThat(pendente.pacienteId()).isEqualTo(pacienteId);
+        assertThat(pendente.nomePaciente()).isEqualTo("Maria");
         assertThat(pendente.cuidadorId()).isNotNull();
         assertThat(pendente.horarioProgramado()).isEqualTo(AGORA.minusMinutes(70));
 

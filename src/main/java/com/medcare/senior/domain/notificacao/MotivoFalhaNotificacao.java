@@ -15,5 +15,8 @@ public enum MotivoFalhaNotificacao {
     DOSE_JA_REGISTRADA,
 
     /** Todas as tentativas permitidas falharam temporariamente. */
-    TENTATIVAS_ESGOTADAS
+    TENTATIVAS_ESGOTADAS,
+
+    /** O push estava desligado (FCM_ENABLED=false): o aviso ficou só no log e não foi entregue. Sem retentativa. */
+    PUSH_DESLIGADO
 }

@@ -10,11 +10,11 @@ import org.springframework.stereotype.Component;
 
 /**
  * Aviso de dose não confirmada só em log, para desenvolvimento, testes e CI. LGPD: o log leva apenas IDs (dose,
- * cuidador e idoso) e o horário, nunca nome do idoso, nome do medicamento ou contato.
+ * cuidador e paciente) e o horário, nunca nome do paciente, nome do medicamento ou contato.
  *
  * <p>Ativa enquanto o FCM estiver desligado (app.fcm.enabled=false, o padrão). Com o FCM ligado, quem atende é o
- * PushNotificadorDeDoseNaoTomadaAdapter. Devolve ENVIADO: neste modo o log é o canal de entrega, e o evento de
- * notificação não deve ficar pendente para sempre.
+ * PushNotificadorDeDoseNaoTomadaAdapter. Devolve PUSH_DESLIGADO: o aviso NÃO chegou ao cuidador, e o evento de
+ * notificação fica registrado como FALHA (motivo PUSH_DESLIGADO), sem retentativa.
  */
 @Component
 @ConditionalOnProperty(name = "app.fcm.enabled", havingValue = "false", matchIfMissing = true)
@@ -28,8 +28,9 @@ public class LogNotificadorDeDoseNaoTomadaAdapter implements NotificadorDeDoseNa
 
     @Override
     public ResultadoEnvioPush notificar(DoseNaoTomadaNotificacao notificacao) {
-        log.info("Dose {} do idoso {} não confirmada (horário {}); aviso para o cuidador {} registrado só em log",
-                notificacao.doseId(), notificacao.idosoId(), notificacao.horarioProgramado(), notificacao.cuidadorId());
-        return ResultadoEnvioPush.ENVIADO;
+        log.info("Dose {} do paciente {} não confirmada (horário {}); push desligado, aviso para o cuidador {} registrado só "
+                + "em log", notificacao.doseId(), notificacao.pacienteId(), notificacao.horarioProgramado(),
+                notificacao.cuidadorId());
+        return ResultadoEnvioPush.PUSH_DESLIGADO;
     }
 }

@@ -1,0 +1,28 @@
+# SonarQube Community local, só para a análise de qualidade (passo a passo em docs/qualidade.md). Serve aos dois
+# repositórios (backend e app). Fica só em 127.0.0.1: nada exposto na rede. Desligue ao terminar:
+#
+#   docker compose -f docker-compose.sonar.yml up -d       # sobe (o primeiro início leva cerca de 1 minuto)
+#   docker compose -f docker-compose.sonar.yml down         # derruba (mantém os volumes: projetos e token)
+#   docker compose -f docker-compose.sonar.yml down -v      # derruba e apaga tudo
+#
+# Banco embutido (H2): suficiente para análise local, não para um servidor permanente.
+name: medcare-sonar
+
+services:
+  sonarqube:
+    image: sonarqube:26.10.0.133078-community
+    ports:
+      - "127.0.0.1:9000:9000"
+    environment:
+      # O banco embutido exige o aviso explícito de que é só para avaliação
+      SONAR_ES_BOOTSTRAP_CHECKS_DISABLE: "true"
+    volumes:
+      - sonarqube_data:/opt/sonarqube/data
+      - sonarqube_extensions:/opt/sonarqube/extensions
+      - sonarqube_logs:/opt/sonarqube/logs
+    mem_limit: 3g
+
+volumes:
+  sonarqube_data:
+  sonarqube_extensions:
+  sonarqube_logs:

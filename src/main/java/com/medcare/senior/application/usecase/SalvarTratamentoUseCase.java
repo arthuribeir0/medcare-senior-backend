@@ -5,7 +5,8 @@ import com.medcare.senior.domain.exception.RecursoNaoEncontradoException;
 import com.medcare.senior.domain.medicamento.MedicamentoRepositoryPort;
 import com.medcare.senior.domain.tratamento.Tratamento;
 import com.medcare.senior.domain.tratamento.TratamentoRepositoryPort;
-import com.medcare.senior.domain.usuario.IdosoRepositoryPort;
+import com.medcare.senior.domain.usuario.PacienteRepositoryPort;
+import com.medcare.senior.domain.relatorio.CacheDeRelatorioDiarioPort;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,8 +22,9 @@ public class SalvarTratamentoUseCase {
 
     private final TratamentoRepositoryPort tratamentoRepository;
     private final MedicamentoRepositoryPort medicamentoRepository;
-    private final IdosoRepositoryPort idosoRepository;
+    private final PacienteRepositoryPort pacienteRepository;
     private final GeradorDeDosesService geradorDeDoses;
+    private final CacheDeRelatorioDiarioPort cacheDeRelatorio;
 
     /**
      * Cria um tratamento para o medicamento e gera as doses da janela inicial, na mesma transação.
@@ -36,8 +38,8 @@ public class SalvarTratamentoUseCase {
                                List<LocalTime> horarios, List<DayOfWeek> diasSemana, Long cuidadorId) {
         // Medicamento de outro cuidador, ou removido, responde igual a medicamento inexistente
         medicamentoRepository.findById(medicamentoId)
-                .filter(medicamento -> idosoRepository
-                        .findByIdAndCuidadorId(medicamento.getIdosoId(), cuidadorId).isPresent())
+                .filter(medicamento -> pacienteRepository
+                        .findByIdAndCuidadorId(medicamento.getPacienteId(), cuidadorId).isPresent())
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Medicamento não encontrado"));
 
         Tratamento tratamento = Tratamento.builder()
@@ -53,6 +55,7 @@ public class SalvarTratamentoUseCase {
 
         Tratamento salvo = tratamentoRepository.save(tratamento);
         geradorDeDoses.gerar(salvo);
+        cacheDeRelatorio.descartarDoCuidador(cuidadorId);
         return salvo;
     }
 }

@@ -6,7 +6,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.time.LocalDateTime;
 
-@Schema(description = "Mensagem da conversa de um idoso com o seu cuidador")
+@Schema(description = "Mensagem da conversa de um paciente com o seu cuidador")
 public record MensagemResponseDTO(
         @Schema(example = "301")
         Long id,

@@ -184,7 +184,7 @@ class RetentativaConcorrentePostgresTest {
     private JdbcTemplate jdbc;
 
     private Long cuidadorId;
-    private Long idosoId;
+    private Long pacienteId;
     private Long medicamentoId;
     private Long tratamentoId;
     private Long doseId;
@@ -198,10 +198,10 @@ class RetentativaConcorrentePostgresTest {
         cuidadorId = jdbc.queryForObject("INSERT INTO cuidador (nome, email, senha_hash, data_cadastro, consentimento_lgpd, "
                 + "data_consentimento, fcm_token) VALUES ('Cuidador retentativa', ?, 'hash', ?, true, ?, ?) RETURNING id",
                 Long.class, "retentativa-" + UUID.randomUUID() + "@teste.com", T0, T0, TOKEN + UUID.randomUUID());
-        idosoId = jdbc.queryForObject("INSERT INTO idoso (nome, data_nascimento, cuidador_id) VALUES ('Maria', ?, ?) "
+        pacienteId = jdbc.queryForObject("INSERT INTO paciente (nome, data_nascimento, cuidador_id) VALUES ('Maria', ?, ?) "
                 + "RETURNING id", Long.class, LocalDate.of(1945, 3, 12), cuidadorId);
-        medicamentoId = jdbc.queryForObject("INSERT INTO medicamento (nome, dosagem, tipo, idoso_id) "
-                + "VALUES ('Losartana', '50mg', 'COMPRIMIDO', ?) RETURNING id", Long.class, idosoId);
+        medicamentoId = jdbc.queryForObject("INSERT INTO medicamento (nome, dosagem, tipo, paciente_id) "
+                + "VALUES ('Losartana', '50mg', 'COMPRIMIDO', ?) RETURNING id", Long.class, pacienteId);
         tratamentoId = jdbc.queryForObject("INSERT INTO tratamento (medicamento_id, data_inicio, horarios, dias_semana) "
                 + "VALUES (?, ?, '[\"08:00\"]'::jsonb, '[\"MONDAY\"]'::jsonb) RETURNING id", Long.class,
                 medicamentoId, T0.toLocalDate());
@@ -220,7 +220,7 @@ class RetentativaConcorrentePostgresTest {
         jdbc.update("DELETE FROM dose WHERE id = ?", doseId);
         jdbc.update("DELETE FROM tratamento WHERE id = ?", tratamentoId);
         jdbc.update("DELETE FROM medicamento WHERE id = ?", medicamentoId);
-        jdbc.update("DELETE FROM idoso WHERE id = ?", idosoId);
+        jdbc.update("DELETE FROM paciente WHERE id = ?", pacienteId);
         jdbc.update("DELETE FROM cuidador WHERE id = ?", cuidadorId);
     }
 
@@ -309,7 +309,7 @@ class RetentativaConcorrentePostgresTest {
 
     @Test
     void doseConfirmadaAntesDoReenvioCancelaOAviso() {
-        jdbc.update("UPDATE dose SET status = 'CONFIRMADA_COM_ATRASO', hora_confirmacao = ? WHERE id = ?",
+        jdbc.update("UPDATE dose SET status = 'CONFIRMADA_COM_ATRASO', hora_confirmacao = ?, confirmado_por = 'PACIENTE' WHERE id = ?",
                 T0.plusMinutes(2), doseId);
         relogio.em(T0.plusMinutes(5));
 

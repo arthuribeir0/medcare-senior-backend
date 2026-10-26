@@ -41,6 +41,10 @@ public class SecurityConfig {
      *       nunca o userId solto.
      * =====================================================================================================
      */
+    // CSRF desligado de propósito (java:S4502): a API é stateless e autentica só pelo cabeçalho Authorization (Bearer
+    // JWT), que o navegador não envia sozinho; não há cookie de sessão nem formulário. Sem credencial automática, não
+    // há o que um site de terceiros possa forjar.
+    @SuppressWarnings("java:S4502")
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http, JwtTokenProvider jwtTokenProvider,
                                                    AuthenticationEntryPoint naoAutenticado,

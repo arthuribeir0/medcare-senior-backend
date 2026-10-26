@@ -36,18 +36,7 @@ public class EnvioDeAvisoService {
     }
 
     public ResultadoEnvioPush enviar(Long eventoId, DoseNaoTomadaNotificacao notificacao) {
-        ResultadoEnvioPush resultado;
-        try {
-            resultado = notificador.notificar(notificacao);
-        } catch (RuntimeException e) {
-            log.error("Erro inesperado ao avisar a dose {} (evento {}); tratado como falha temporária",
-                    notificacao.doseId(), eventoId, e);
-            resultado = ResultadoEnvioPush.FALHA_TEMPORARIA;
-        }
-        if (resultado == null) {
-            resultado = ResultadoEnvioPush.FALHA_TEMPORARIA;
-        }
-
+        ResultadoEnvioPush resultado = notificarSemFalhar(eventoId, notificacao);
         switch (resultado) {
             case ENVIADO -> eventos.marcarEnviado(eventoId);
             case TOKEN_INVALIDO -> eventos.marcarFalha(eventoId, MotivoFalhaNotificacao.TOKEN_INVALIDO);
@@ -58,5 +47,17 @@ public class EnvioDeAvisoService {
             }
         }
         return resultado;
+    }
+
+    /** Nunca nulo: exceção ou resposta vazia do notificador viram falha temporária (a retentativa tenta de novo). */
+    private ResultadoEnvioPush notificarSemFalhar(Long eventoId, DoseNaoTomadaNotificacao notificacao) {
+        try {
+            ResultadoEnvioPush resultado = notificador.notificar(notificacao);
+            return resultado == null ? ResultadoEnvioPush.FALHA_TEMPORARIA : resultado;
+        } catch (RuntimeException e) {
+            log.error("Erro inesperado ao avisar a dose {} (evento {}); tratado como falha temporária",
+                    notificacao.doseId(), eventoId, e);
+            return ResultadoEnvioPush.FALHA_TEMPORARIA;
+        }
     }
 }

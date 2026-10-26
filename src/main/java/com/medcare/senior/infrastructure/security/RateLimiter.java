@@ -1,5 +1,6 @@
 package com.medcare.senior.infrastructure.security;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.time.Clock;
@@ -25,6 +26,7 @@ public class RateLimiter {
     private final ConcurrentHashMap<String, Tentativas> tentativasPorIp = new ConcurrentHashMap<>();
     private final AtomicReference<Instant> ultimaLimpeza;
 
+    @Autowired
     public RateLimiter() {
         this(Clock.systemUTC());
     }

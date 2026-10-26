@@ -17,11 +17,13 @@ import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.EnumMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * Exporta o histórico de adesão de um paciente do cuidador em PDF (UC-012, HU10).
@@ -129,5 +131,23 @@ public class GerarRelatorioPdfUseCase {
      * @param pdf o arquivo gerado
      */
     public record Resultado(RelatorioDeAdesao relatorio, byte[] pdf) {
+
+        // O record compararia o array pela referência: dois resultados com o mesmo PDF seriam diferentes
+        @Override
+        public boolean equals(Object outro) {
+            return outro instanceof Resultado r && Objects.equals(relatorio, r.relatorio) && Arrays.equals(pdf, r.pdf);
+        }
+
+        @Override
+        public int hashCode() {
+            return 31 * Objects.hashCode(relatorio) + Arrays.hashCode(pdf);
+        }
+
+        /** Sem dados de saúde nem o nome do paciente (seguro para log): só o id do paciente e o tamanho do PDF. */
+        @Override
+        public String toString() {
+            return "Resultado[pacienteId=" + (relatorio == null ? null : relatorio.pacienteId()) + ", pdf="
+                    + (pdf == null ? "null" : pdf.length + " bytes") + "]";
+        }
     }
 }

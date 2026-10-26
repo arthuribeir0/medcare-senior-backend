@@ -162,4 +162,20 @@ class GerarRelatorioPdfUseCaseTest {
         assertThatThrownBy(() -> useCase.executar(CUIDADOR_ID, PACIENTE_ID, DE, DE)).isInstanceOf(PeriodoSemRegistrosException.class);
         verifyNoInteractions(gerador);
     }
+
+    @Test
+    void resultadoComparaOConteudoDoPdfENaoExpoeDadosNoToString() {
+        RelatorioDeAdesao relatorio = new RelatorioDeAdesao(PACIENTE_ID, "José Souza", DE, DE, LocalDateTime.of(2026, 10, 8, 9, 0),
+                TotaisDoDia.deContagens(1, 0, 0, 0), List.of());
+        GerarRelatorioPdfUseCase.Resultado resultado = new GerarRelatorioPdfUseCase.Resultado(relatorio, new byte[]{1, 2, 3});
+
+        assertThat(resultado).isEqualTo(new GerarRelatorioPdfUseCase.Resultado(relatorio, new byte[]{1, 2, 3}))
+                .hasSameHashCodeAs(new GerarRelatorioPdfUseCase.Resultado(relatorio, new byte[]{1, 2, 3}))
+                .isNotEqualTo(new GerarRelatorioPdfUseCase.Resultado(relatorio, new byte[]{9}))
+                .isNotEqualTo(new GerarRelatorioPdfUseCase.Resultado(null, new byte[]{1, 2, 3}))
+                .isNotEqualTo("outro tipo");
+        assertThat(resultado.toString()).isEqualTo("Resultado[pacienteId=" + PACIENTE_ID + ", pdf=3 bytes]")
+                .doesNotContain("José");
+        assertThat(new GerarRelatorioPdfUseCase.Resultado(null, null)).hasToString("Resultado[pacienteId=null, pdf=null]");
+    }
 }

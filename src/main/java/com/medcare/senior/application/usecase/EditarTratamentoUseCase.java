@@ -41,13 +41,15 @@ public class EditarTratamentoUseCase {
      * Altera horários, dias da semana e data de término (a data de início não muda) e regenera as doses futuras.
      *
      * <p>Só as doses PENDENTES com horário depois de agora são apagadas e geradas de novo. Doses registradas
-     * (RN-008) e doses já passadas nunca são tocadas. Tudo na mesma transação.
+     * (RN-008) e doses já passadas nunca são tocadas. Tudo na mesma transação. Horários novos ou alterados seguem a
+     * mesma antecedência mínima do cadastro; os que já existiam não bloqueiam a edição.
      *
      * @param dataFim    {@code null} para tratamento contínuo
      * @param cuidadorId ID do cuidador autenticado, extraído do JWT
+     * @return o tratamento e a primeira dose depois de agora
      */
     @Transactional
-    public Tratamento executar(Long id, LocalDate dataFim, List<LocalTime> horarios, List<DayOfWeek> diasSemana,
+    public TratamentoSalvo executar(Long id, LocalDate dataFim, List<LocalTime> horarios, List<DayOfWeek> diasSemana,
                                Long cuidadorId) {
         // Tratamento de outro cuidador, ou removido, responde igual a tratamento inexistente
         Tratamento atual = tratamentoRepository.findByIdAndCuidadorId(id, cuidadorId)
@@ -64,11 +66,14 @@ public class EditarTratamentoUseCase {
 
         // RN-007, as mesmas regras do cadastro
         editado.validar();
+        LocalDateTime agora = LocalDateTime.now(clock);
+        List<LocalTime> novos = horarios.stream().filter(h -> !atual.getHorarios().contains(h)).toList();
+        editado.validarAntecedencia(agora, novos);
 
         Tratamento salvo = tratamentoRepository.save(editado);
-        doseRepository.deletePendentesFuturasByTratamentoId(salvo.getId(), LocalDateTime.now(clock));
+        doseRepository.deletePendentesFuturasByTratamentoId(salvo.getId(), agora);
         geradorDeDoses.gerar(salvo);
         cacheDeRelatorio.descartarDoCuidador(cuidadorId);
-        return salvo;
+        return new TratamentoSalvo(salvo, salvo.primeiraDoseDepoisDe(agora).orElse(null));
     }
 }

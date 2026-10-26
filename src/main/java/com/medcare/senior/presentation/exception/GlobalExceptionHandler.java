@@ -17,6 +17,7 @@ import com.medcare.senior.domain.exception.TokenDispositivoInvalidoException;
 import com.medcare.senior.domain.medicamento.DadosObrigatoriosMedicamentoException;
 import com.medcare.senior.domain.medicamento.MedicamentoComTratamentoAtivoException;
 import com.medcare.senior.domain.tratamento.DiasSemanaObrigatoriosException;
+import com.medcare.senior.domain.tratamento.HorarioMuitoProximoException;
 import com.medcare.senior.domain.tratamento.HorariosDuplicadosException;
 import com.medcare.senior.domain.tratamento.HorariosObrigatoriosException;
 import com.medcare.senior.domain.tratamento.PeriodoTratamentoInvalidoException;
@@ -71,6 +72,13 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErroResponse> handleToleranciaInvalida(ToleranciaInvalidaException ex) {
         return construirResposta(HttpStatus.BAD_REQUEST, CodigoErro.VALIDACAO, "Um ou mais campos são inválidos",
                 List.of(new ErroResponse.CampoInvalido("toleranciaMinutos", ex.getMessage())));
+    }
+
+    // Horário do tratamento agora ou a menos de 5 minutos: a mensagem vai no topo (o app mostra no campo) e no campo
+    @ExceptionHandler(HorarioMuitoProximoException.class)
+    public ResponseEntity<ErroResponse> handleHorarioMuitoProximo(HorarioMuitoProximoException ex) {
+        return construirResposta(HttpStatus.BAD_REQUEST, CodigoErro.VALIDACAO, ex.getMessage(),
+                List.of(new ErroResponse.CampoInvalido("horarios", ex.getMessage())));
     }
 
     // Parâmetro de consulta fora da regra (ex.: período com início depois do fim): mesmo formato da validação de campo

@@ -1,11 +1,13 @@
 package com.medcare.senior.presentation.dto;
 
+import com.medcare.senior.application.usecase.TratamentoSalvo;
 import com.medcare.senior.domain.tratamento.Tratamento;
 import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
 
@@ -27,11 +29,27 @@ public record TratamentoResponseDTO(
         List<LocalTime> horarios,
 
         @ArraySchema(schema = @Schema(implementation = DayOfWeek.class, example = "MONDAY"))
-        List<DayOfWeek> diasSemana
+        List<DayOfWeek> diasSemana,
+
+        @Schema(description = "Só no cadastro e na edição: data e hora da primeira dose a partir de agora (fuso da "
+                + "aplicação). Se a data não é hoje, os horários de hoje já passaram e o app avisa o usuário. null na "
+                + "listagem ou se não houver dose até o mesmo dia da semana seguinte.",
+                example = "2026-10-09T08:00:00", nullable = true)
+        LocalDateTime primeiraDose
 ) {
 
+    /** Listagem: sem primeiraDose. */
     public static TratamentoResponseDTO from(Tratamento tratamento) {
+        return of(tratamento, null);
+    }
+
+    /** Cadastro e edição: com a primeira dose a partir de agora. */
+    public static TratamentoResponseDTO from(TratamentoSalvo salvo) {
+        return of(salvo.tratamento(), salvo.primeiraDose());
+    }
+
+    private static TratamentoResponseDTO of(Tratamento tratamento, LocalDateTime primeiraDose) {
         return new TratamentoResponseDTO(tratamento.getId(), tratamento.getMedicamentoId(), tratamento.getDataInicio(),
-                tratamento.getDataFim(), tratamento.getHorarios(), tratamento.getDiasSemana());
+                tratamento.getDataFim(), tratamento.getHorarios(), tratamento.getDiasSemana(), primeiraDose);
     }
 }

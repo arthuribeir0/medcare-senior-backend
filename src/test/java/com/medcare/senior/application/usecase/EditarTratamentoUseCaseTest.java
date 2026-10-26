@@ -5,6 +5,7 @@ import com.medcare.senior.domain.dose.DoseRepositoryPort;
 import com.medcare.senior.domain.exception.RecursoNaoEncontradoException;
 import com.medcare.senior.domain.tratamento.DiasSemanaObrigatoriosException;
 import com.medcare.senior.domain.tratamento.HorariosDuplicadosException;
+import com.medcare.senior.domain.tratamento.HorarioMuitoProximoException;
 import com.medcare.senior.domain.tratamento.HorariosObrigatoriosException;
 import com.medcare.senior.domain.tratamento.PeriodoTratamentoInvalidoException;
 import com.medcare.senior.domain.tratamento.Tratamento;
@@ -90,7 +91,7 @@ class EditarTratamentoUseCaseTest {
         when(tratamentoRepository.save(any(Tratamento.class))).thenAnswer(invocacao -> invocacao.getArgument(0));
 
         Tratamento resultado = useCase.executar(TRATAMENTO_ID, INICIO.plusDays(60), NOVOS_HORARIOS, NOVOS_DIAS,
-                CUIDADOR_ID);
+                CUIDADOR_ID).tratamento();
 
         ArgumentCaptor<Tratamento> captor = ArgumentCaptor.forClass(Tratamento.class);
         InOrder ordem = inOrder(tratamentoRepository, doseRepository, geradorDeDoses);
@@ -114,7 +115,7 @@ class EditarTratamentoUseCaseTest {
         tratamentoDoCuidador();
         when(tratamentoRepository.save(any(Tratamento.class))).thenAnswer(invocacao -> invocacao.getArgument(0));
 
-        Tratamento resultado = useCase.executar(TRATAMENTO_ID, null, NOVOS_HORARIOS, NOVOS_DIAS, CUIDADOR_ID);
+        Tratamento resultado = useCase.executar(TRATAMENTO_ID, null, NOVOS_HORARIOS, NOVOS_DIAS, CUIDADOR_ID).tratamento();
 
         assertThat(resultado.getDataFim()).isNull();
     }
@@ -169,6 +170,38 @@ class EditarTratamentoUseCaseTest {
         assertThatThrownBy(() -> useCase.executar(TRATAMENTO_ID, INICIO.minusDays(1), NOVOS_HORARIOS, NOVOS_DIAS,
                 CUIDADOR_ID))
                 .isInstanceOf(PeriodoTratamentoInvalidoException.class);
+
+        verificarNadaAlterado();
+    }
+
+    // ---- antecedência mínima (AGORA = quinta-feira, 14:30) ---------------------------------------------------------
+
+    private void tratamentoDeHojeComHorario(LocalTime horario) {
+        Tratamento atual = Tratamento.builder().id(TRATAMENTO_ID).medicamentoId(100L).dataInicio(INICIO)
+                .horarios(List.of(horario)).diasSemana(List.of(DayOfWeek.THURSDAY)).build();
+        when(tratamentoRepository.findByIdAndCuidadorId(TRATAMENTO_ID, CUIDADOR_ID)).thenReturn(Optional.of(atual));
+    }
+
+    @Test
+    void edicaoSemMudarOsHorariosNaoEhBloqueadaPorHorarioQueJaExistia() {
+        // 14:31 já existia e está a 1 minuto: mudar só a data de término é permitido
+        tratamentoDeHojeComHorario(LocalTime.of(14, 31));
+        when(tratamentoRepository.save(any(Tratamento.class))).thenAnswer(invocacao -> invocacao.getArgument(0));
+
+        TratamentoSalvo salvo = useCase.executar(TRATAMENTO_ID, INICIO.plusDays(60), List.of(LocalTime.of(14, 31)),
+                List.of(DayOfWeek.THURSDAY), CUIDADOR_ID);
+
+        assertThat(salvo.tratamento().getDataFim()).isEqualTo(INICIO.plusDays(60));
+        assertThat(salvo.primeiraDose()).isEqualTo(AGORA.withMinute(31));
+    }
+
+    @Test
+    void edicaoQueAcrescentaHorarioATresMinutosEhRecusada() {
+        tratamentoDeHojeComHorario(LocalTime.of(8, 0));
+
+        assertThatThrownBy(() -> useCase.executar(TRATAMENTO_ID, null, List.of(LocalTime.of(8, 0), LocalTime.of(14, 33)),
+                List.of(DayOfWeek.THURSDAY), CUIDADOR_ID))
+                .isInstanceOf(HorarioMuitoProximoException.class);
 
         verificarNadaAlterado();
     }

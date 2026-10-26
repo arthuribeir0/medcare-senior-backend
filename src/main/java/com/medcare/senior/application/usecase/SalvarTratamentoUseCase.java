@@ -11,8 +11,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
 
@@ -25,16 +27,20 @@ public class SalvarTratamentoUseCase {
     private final PacienteRepositoryPort pacienteRepository;
     private final GeradorDeDosesService geradorDeDoses;
     private final CacheDeRelatorioDiarioPort cacheDeRelatorio;
+    private final Clock clock;
 
     /**
-     * Cria um tratamento para o medicamento e gera as doses da janela inicial, na mesma transação.
+     * Cria um tratamento para o medicamento e gera as doses da janela inicial, na mesma transação. Se hoje tem dose do
+     * tratamento, nenhum horário pode cair de agora até daqui a menos de 5 minutos.
      *
      * @param medicamentoId medicamento ao qual o tratamento pertence
      * @param dataFim       {@code null} para tratamento contínuo
      * @param cuidadorId    ID do cuidador autenticado, extraído do JWT
+     * @return o tratamento e a primeira dose depois de agora
+     * @throws com.medcare.senior.domain.tratamento.HorarioMuitoProximoException horário de hoje a menos de 5 minutos
      */
     @Transactional
-    public Tratamento executar(Long medicamentoId, LocalDate dataInicio, LocalDate dataFim,
+    public TratamentoSalvo executar(Long medicamentoId, LocalDate dataInicio, LocalDate dataFim,
                                List<LocalTime> horarios, List<DayOfWeek> diasSemana, Long cuidadorId) {
         // Medicamento de outro cuidador, ou removido, responde igual a medicamento inexistente
         medicamentoRepository.findById(medicamentoId)
@@ -52,10 +58,12 @@ public class SalvarTratamentoUseCase {
 
         // RN-007
         tratamento.validar();
+        LocalDateTime agora = LocalDateTime.now(clock);
+        tratamento.validarAntecedencia(agora, horarios);
 
         Tratamento salvo = tratamentoRepository.save(tratamento);
         geradorDeDoses.gerar(salvo);
         cacheDeRelatorio.descartarDoCuidador(cuidadorId);
-        return salvo;
+        return new TratamentoSalvo(salvo, salvo.primeiraDoseDepoisDe(agora).orElse(null));
     }
 }

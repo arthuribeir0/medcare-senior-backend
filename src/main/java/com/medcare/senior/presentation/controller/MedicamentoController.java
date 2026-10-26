@@ -1,5 +1,7 @@
 package com.medcare.senior.presentation.controller;
 
+import com.medcare.senior.infrastructure.docs.PerfilExigido;
+import com.medcare.senior.infrastructure.docs.PerfilExigido.Perfil;
 import com.medcare.senior.application.usecase.BuscarMedicamentoUseCase;
 import com.medcare.senior.application.usecase.CadastrarMedicamentoUseCase;
 import com.medcare.senior.application.usecase.EditarMedicamentoUseCase;
@@ -40,9 +42,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/medicamentos")
 @RequiredArgsConstructor
-@Tag(name = "Medicamentos", description = "CRUD de medicamentos dos pacientes do cuidador (somente CUIDADOR)")
-@ApiResponse(responseCode = "401", description = "Token ausente ou inválido", content = @Content)
-@ApiResponse(responseCode = "403", description = "Token sem o papel CUIDADOR", content = @Content)
+@Tag(name = "Medicamentos e tratamentos")
 public class MedicamentoController {
 
     private final CadastrarMedicamentoUseCase cadastrarMedicamentoUseCase;
@@ -52,10 +52,12 @@ public class MedicamentoController {
     private final BuscarMedicamentoUseCase buscarMedicamentoUseCase;
 
     @PostMapping
+    @PerfilExigido(Perfil.CUIDADOR)
     @Operation(summary = "Cadastra um medicamento para um paciente do cuidador",
-            description = "Nome, dosagem e tipo são obrigatórios (RN-005).")
+            description = "Nome, dosagem e tipo são obrigatórios.")
     @ApiResponse(responseCode = "201", description = "Medicamento cadastrado")
-    @ApiResponse(responseCode = "400", description = "Campos inválidos",
+    @ApiResponse(responseCode = "400", description = "Campos inválidos (VALIDACAO) ou nome, dosagem e tipo ausentes "
+            + "(DADOS_OBRIGATORIOS_MEDICAMENTO)",
             content = @Content(schema = @Schema(implementation = ErroResponse.class)))
     @ApiResponse(responseCode = "404", description = "Paciente inexistente ou de outro cuidador",
             content = @Content(schema = @Schema(implementation = ErroResponse.class)))
@@ -67,6 +69,7 @@ public class MedicamentoController {
     }
 
     @GetMapping
+    @PerfilExigido(Perfil.CUIDADOR)
     @Operation(summary = "Lista os medicamentos de um paciente, em ordem alfabética")
     @ApiResponse(responseCode = "200", description = "Lista de medicamentos (pode ser vazia)")
     @ApiResponse(responseCode = "404", description = "Paciente inexistente ou de outro cuidador",
@@ -81,6 +84,7 @@ public class MedicamentoController {
     }
 
     @GetMapping("/{id}")
+    @PerfilExigido(Perfil.CUIDADOR)
     @Operation(summary = "Busca um medicamento de um paciente do cuidador")
     @ApiResponse(responseCode = "200", description = "Medicamento encontrado")
     @ApiResponse(responseCode = "404", description = "Medicamento inexistente, removido ou de outro cuidador",
@@ -92,10 +96,12 @@ public class MedicamentoController {
     }
 
     @PutMapping("/{id}")
+    @PerfilExigido(Perfil.CUIDADOR)
     @Operation(summary = "Substitui todos os dados de um medicamento",
             description = "O paciente pode ser trocado, desde que o novo paciente também pertença ao cuidador.")
     @ApiResponse(responseCode = "200", description = "Medicamento atualizado")
-    @ApiResponse(responseCode = "400", description = "Campos inválidos",
+    @ApiResponse(responseCode = "400", description = "Campos inválidos (VALIDACAO) ou nome, dosagem e tipo ausentes "
+            + "(DADOS_OBRIGATORIOS_MEDICAMENTO)",
             content = @Content(schema = @Schema(implementation = ErroResponse.class)))
     @ApiResponse(responseCode = "404", description = "Medicamento ou paciente inexistente ou de outro cuidador",
             content = @Content(schema = @Schema(implementation = ErroResponse.class)))
@@ -108,17 +114,18 @@ public class MedicamentoController {
     }
 
     @DeleteMapping("/{id}")
+    @PerfilExigido(Perfil.CUIDADOR)
     @Operation(summary = "Remove um medicamento",
             description = "Remoção lógica: o medicamento e os tratamentos dele somem da API, mas o histórico de "
-                    + "doses registradas é preservado (RN-008); as doses pendentes futuras são apagadas. "
-                    + "Medicamento com tratamento ativo só é removido com forcarRemocao=true (RN-006).")
+                    + "doses registradas é preservado; as doses pendentes futuras são apagadas. "
+                    + "Medicamento com tratamento ativo só é removido com forcarRemocao=true.")
     @ApiResponse(responseCode = "204", description = "Medicamento removido")
     @ApiResponse(responseCode = "404", description = "Medicamento inexistente, já removido ou de outro cuidador",
             content = @Content(schema = @Schema(implementation = ErroResponse.class)))
-    @ApiResponse(responseCode = "409", description = "Medicamento com tratamento ativo e sem forcarRemocao=true",
+    @ApiResponse(responseCode = "409", description = "Medicamento com tratamento ativo e sem forcarRemocao=true (TRATAMENTO_ATIVO)",
             content = @Content(schema = @Schema(implementation = ErroResponse.class)))
     public ResponseEntity<Void> remover(@Parameter(description = "ID do medicamento") @PathVariable Long id,
-                                        @Parameter(description = "Confirma a remoção mesmo com tratamento ativo (RN-006)")
+                                        @Parameter(description = "Confirma a remoção mesmo com tratamento ativo")
                                         @RequestParam(defaultValue = "false") boolean forcarRemocao,
                                         @Parameter(hidden = true)
                                         @AuthenticationPrincipal AuthenticatedUser usuario) {

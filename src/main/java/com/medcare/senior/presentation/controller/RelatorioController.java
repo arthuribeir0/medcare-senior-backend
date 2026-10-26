@@ -1,5 +1,7 @@
 package com.medcare.senior.presentation.controller;
 
+import com.medcare.senior.infrastructure.docs.PerfilExigido;
+import com.medcare.senior.infrastructure.docs.PerfilExigido.Perfil;
 import com.medcare.senior.application.usecase.GerarRelatorioDiarioUseCase;
 import com.medcare.senior.application.usecase.GerarRelatorioPdfUseCase;
 import com.medcare.senior.domain.autenticacao.AuthenticatedUser;
@@ -29,21 +31,20 @@ import java.time.LocalDate;
 @RestController
 @RequestMapping("/api/relatorios")
 @RequiredArgsConstructor
-@Tag(name = "Relatórios", description = "Relatório diário de uso dos medicamentos e histórico de adesão em PDF")
-@ApiResponse(responseCode = "401", description = "Token ausente ou inválido, ou de conta já excluída (SESSAO_INVALIDA)",
-        content = @Content)
-@ApiResponse(responseCode = "403", description = "Token sem o papel CUIDADOR", content = @Content)
+@Tag(name = "Relatórios")
 public class RelatorioController {
 
     private final GerarRelatorioDiarioUseCase gerarRelatorioDiarioUseCase;
     private final GerarRelatorioPdfUseCase gerarRelatorioPdfUseCase;
 
     @GetMapping("/diario")
-    @Operation(summary = "Relatório diário de um paciente do cuidador (UC-008)",
+    @PerfilExigido(Perfil.CUIDADOR)
+    @Operation(summary = "Relatório diário de um paciente do cuidador",
             description = "Doses do dia (com janela, statusExibicao e confirmabilidade calculados no servidor) e os "
                     + "totais pelo status gravado.")
     @ApiResponse(responseCode = "200", description = "Relatório do dia (a lista de doses pode ser vazia)")
-    @ApiResponse(responseCode = "400", description = "pacienteId ausente ou data em formato inválido",
+    @ApiResponse(responseCode = "400", description = "pacienteId ausente (REQUISICAO_INVALIDA) ou data em formato inválido "
+            + "(VALIDACAO)",
             content = @Content(schema = @Schema(implementation = ErroResponse.class)))
     @ApiResponse(responseCode = "404", description = "Paciente inexistente ou de outro cuidador",
             content = @Content(schema = @Schema(implementation = ErroResponse.class)))
@@ -57,16 +58,18 @@ public class RelatorioController {
     }
 
     @GetMapping(value = "/pdf", produces = {MediaType.APPLICATION_PDF_VALUE, MediaType.APPLICATION_JSON_VALUE})
-    @Operation(summary = "Histórico de adesão em PDF de um paciente do cuidador (UC-012, HU10)",
-            description = "RN-012: nome do paciente, período, medicamentos avaliados, cada dose (data, hora programada, "
+    @PerfilExigido(Perfil.CUIDADOR)
+    @Operation(summary = "Histórico de adesão em PDF de um paciente do cuidador",
+            description = "nome do paciente, período, medicamentos avaliados, cada dose (data, hora programada, "
                     + "status e hora da confirmação), taxa de adesão por medicamento e do período ((no horário + com "
-                    + "atraso) / (total - pendentes), 1 casa). RN-011: 'de' obrigatório e não posterior a 'ate'; sem "
+                    + "atraso) / (total - pendentes), 1 casa). 'de' obrigatório e não posterior a 'ate'; sem "
                     + "'ate', vale hoje (fuso da aplicação). Período de no máximo 12 meses (de 10/01/2025 a 10/01/2026 "
                     + "é aceito; até 11/01/2026, não). Período sem doses não gera arquivo (422).")
     @ApiResponse(responseCode = "200", description = "Arquivo PDF (Content-Disposition: attachment)",
             content = @Content(mediaType = MediaType.APPLICATION_PDF_VALUE))
     @ApiResponse(responseCode = "400", description = "pacienteId ou 'de' ausente, data em formato inválido, 'de' depois "
-            + "de 'ate' ou período maior que 12 meses (VALIDACAO; campo 'de' ou 'ate')",
+            + "de 'ate' ou período maior que 12 meses (VALIDACAO; campo 'de' ou 'ate'); pacienteId ausente "
+            + "(REQUISICAO_INVALIDA)",
             content = @Content(schema = @Schema(implementation = ErroResponse.class)))
     @ApiResponse(responseCode = "404", description = "Paciente inexistente ou de outro cuidador",
             content = @Content(schema = @Schema(implementation = ErroResponse.class)))

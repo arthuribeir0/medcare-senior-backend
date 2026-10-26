@@ -1,5 +1,7 @@
 package com.medcare.senior.presentation.controller;
 
+import com.medcare.senior.infrastructure.docs.PerfilExigido;
+import com.medcare.senior.infrastructure.docs.PerfilExigido.Perfil;
 import com.medcare.senior.application.usecase.BuscarPacienteAutenticadoUseCase;
 import com.medcare.senior.application.usecase.ListarDosesDoDiaUseCase;
 import com.medcare.senior.domain.autenticacao.AuthenticatedUser;
@@ -31,16 +33,14 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/pacientes/me")
 @RequiredArgsConstructor
-@Tag(name = "Paciente (aparelho)", description = "Leituras do paciente autenticado (somente PACIENTE)")
-@ApiResponse(responseCode = "401", description = "Token ausente ou inválido; ou paciente do token não existe mais "
-        + "(codigo SESSAO_INVALIDA)", content = @Content(schema = @Schema(implementation = ErroResponse.class)))
-@ApiResponse(responseCode = "403", description = "Token sem o papel PACIENTE", content = @Content)
+@Tag(name = "Pacientes")
 public class PacienteAutenticadoController {
 
     private final BuscarPacienteAutenticadoUseCase buscarPacienteAutenticadoUseCase;
     private final ListarDosesDoDiaUseCase listarDosesDoDiaUseCase;
 
     @GetMapping
+    @PerfilExigido(Perfil.PACIENTE)
     @Operation(summary = "Dados do paciente autenticado e o nome de quem cuida dele")
     @ApiResponse(responseCode = "200", description = "Dados do paciente")
     public ResponseEntity<PacienteAutenticadoResponseDTO> buscar(@Parameter(hidden = true)
@@ -49,6 +49,7 @@ public class PacienteAutenticadoController {
     }
 
     @GetMapping("/doses")
+    @PerfilExigido(Perfil.PACIENTE)
     @Operation(summary = "Doses do paciente autenticado em um dia",
             description = "Ordenadas por horário. Janela, statusExibicao e confirmabilidade são calculados no servidor.")
     @ApiResponse(responseCode = "200", description = "Doses do dia (pode ser vazia)")

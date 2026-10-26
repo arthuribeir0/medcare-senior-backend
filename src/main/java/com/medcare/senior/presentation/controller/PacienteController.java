@@ -1,5 +1,7 @@
 package com.medcare.senior.presentation.controller;
 
+import com.medcare.senior.infrastructure.docs.PerfilExigido;
+import com.medcare.senior.infrastructure.docs.PerfilExigido.Perfil;
 import com.medcare.senior.application.usecase.BuscarPacienteUseCase;
 import com.medcare.senior.application.usecase.CadastrarPacienteUseCase;
 import com.medcare.senior.application.usecase.GerarCodigoVinculoUseCase;
@@ -43,9 +45,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/pacientes")
 @RequiredArgsConstructor
-@Tag(name = "Pacientes", description = "Cadastro de pacientes e geração de código de vínculo (somente CUIDADOR)")
-@ApiResponse(responseCode = "401", description = "Token ausente ou inválido", content = @Content)
-@ApiResponse(responseCode = "403", description = "Token sem o papel CUIDADOR", content = @Content)
+@Tag(name = "Pacientes")
 public class PacienteController {
 
     private final CadastrarPacienteUseCase cadastrarPacienteUseCase;
@@ -55,12 +55,14 @@ public class PacienteController {
     private final ListarDosesDoDiaUseCase listarDosesDoDiaUseCase;
 
     @PostMapping
+    @PerfilExigido(Perfil.CUIDADOR)
     @Operation(summary = "Cadastra um paciente vinculado ao cuidador autenticado",
-            description = "Não pode haver dois pacientes com o mesmo nome e data de nascimento para o mesmo cuidador (RN-003).")
+            description = "Não pode haver dois pacientes com o mesmo nome e data de nascimento para o mesmo cuidador.")
     @ApiResponse(responseCode = "201", description = "Paciente cadastrado")
-    @ApiResponse(responseCode = "400", description = "Campos inválidos",
+    @ApiResponse(responseCode = "400", description = "Campos inválidos (VALIDACAO)",
             content = @Content(schema = @Schema(implementation = ErroResponse.class)))
-    @ApiResponse(responseCode = "409", description = "Paciente duplicado (RN-003)",
+    @ApiResponse(responseCode = "409", description = "Mesmo nome (sem diferenciar maiúsculas) e data de nascimento de outro paciente "
+            + "do cuidador (PACIENTE_DUPLICADO)",
             content = @Content(schema = @Schema(implementation = ErroResponse.class)))
     public ResponseEntity<PacienteResponseDTO> cadastrar(@Valid @RequestBody PacienteRequestDTO request,
                                                       @Parameter(hidden = true)
@@ -71,6 +73,7 @@ public class PacienteController {
     }
 
     @GetMapping
+    @PerfilExigido(Perfil.CUIDADOR)
     @Operation(summary = "Lista os pacientes do cuidador autenticado",
             description = "Ordem alfabética de nome, sem diferenciar maiúsculas de minúsculas.")
     @ApiResponse(responseCode = "200", description = "Lista de pacientes (pode ser vazia)")
@@ -83,17 +86,19 @@ public class PacienteController {
     }
 
     @GetMapping("/{id}")
+    @PerfilExigido(Perfil.CUIDADOR)
     @Operation(summary = "Busca um paciente do cuidador autenticado")
     @ApiResponse(responseCode = "200", description = "Paciente encontrado")
     @ApiResponse(responseCode = "404", description = "Paciente inexistente ou de outro cuidador",
             content = @Content(schema = @Schema(implementation = ErroResponse.class)))
-    public ResponseEntity<PacienteResponseDTO> buscar(@Parameter(description = "ID do paciente") @PathVariable Long id,
+    public ResponseEntity<PacienteResponseDTO> buscar(@Parameter(description = "ID do paciente", example = "1") @PathVariable Long id,
                                                    @Parameter(hidden = true)
                                                    @AuthenticationPrincipal AuthenticatedUser usuario) {
         return ResponseEntity.ok(PacienteResponseDTO.from(buscarPacienteUseCase.executar(id, usuario.cuidadorId())));
     }
 
     @GetMapping("/{id}/doses")
+    @PerfilExigido(Perfil.CUIDADOR)
     @Operation(summary = "Doses de um paciente do cuidador em um dia",
             description = "Ordenadas por horário. Janela, statusExibicao e confirmabilidade são calculados no servidor.")
     @ApiResponse(responseCode = "200", description = "Doses do dia (pode ser vazia)")
@@ -113,6 +118,7 @@ public class PacienteController {
     }
 
     @PostMapping("/{id}/gerar-codigo")
+    @PerfilExigido(Perfil.CUIDADOR)
     @Operation(summary = "Gera um código de vínculo de 6 dígitos para o paciente",
             description = "O código vale 24 horas e só pode ser usado uma vez.")
     @ApiResponse(responseCode = "201", description = "Código gerado")

@@ -1,5 +1,7 @@
 package com.medcare.senior.presentation.controller;
 
+import com.medcare.senior.infrastructure.docs.PerfilExigido;
+import com.medcare.senior.infrastructure.docs.PerfilExigido.Perfil;
 import com.medcare.senior.application.usecase.ContarMensagensNaoLidasUseCase;
 import com.medcare.senior.application.usecase.EnviarMensagemUseCase;
 import com.medcare.senior.application.usecase.ListarConversasUseCase;
@@ -40,9 +42,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/mensagens")
 @RequiredArgsConstructor
-@Tag(name = "Mensagens", description = "Conversa entre o cuidador e cada paciente (CUIDADOR e PACIENTE)")
-@ApiResponse(responseCode = "401", description = "Token ausente ou inválido; ou usuário do token não existe mais "
-        + "(codigo SESSAO_INVALIDA)", content = @Content(schema = @Schema(implementation = ErroResponse.class)))
+@Tag(name = "Mensagens")
 public class MensagemController {
 
     private final EnviarMensagemUseCase enviarMensagemUseCase;
@@ -52,9 +52,10 @@ public class MensagemController {
     private final ContarMensagensNaoLidasUseCase contarMensagensNaoLidasUseCase;
 
     @PostMapping
+    @PerfilExigido(Perfil.CUIDADOR_OU_PACIENTE)
     @Operation(summary = "Envia uma mensagem",
             description = "Cuidador informa o pacienteId (um paciente seu); o paciente escreve na própria conversa. Conteúdo de "
-                    + "1 a 500 caracteres, sem só espaços (UC-010, fluxo 3a).")
+                    + "1 a 500 caracteres, sem só espaços.")
     @ApiResponse(responseCode = "201", description = "Mensagem enviada")
     @ApiResponse(responseCode = "400", description = "Conteúdo vazio, só espaços ou maior que 500; ou cuidador sem "
             + "pacienteId (VALIDACAO com o campo)", content = @Content(schema = @Schema(implementation = ErroResponse.class)))
@@ -70,6 +71,7 @@ public class MensagemController {
     }
 
     @GetMapping("/conversas")
+    @PerfilExigido(Perfil.CUIDADOR_OU_PACIENTE)
     @Operation(summary = "Lista de conversas",
             description = "Cuidador: uma por paciente seu (inclusive sem mensagens), a de mensagem mais recente primeiro. "
                     + "Paciente: a sua única conversa, no mesmo formato. naoLidas = mensagens do outro lado ainda não lidas.")
@@ -80,6 +82,7 @@ public class MensagemController {
     }
 
     @GetMapping
+    @PerfilExigido(Perfil.CUIDADOR_OU_PACIENTE)
     @Operation(summary = "Mensagens de uma conversa, paginadas, da mais recente para a mais antiga",
             description = "Cuidador informa o pacienteId; o paciente vê a própria conversa (pacienteId opcional).")
     @ApiResponse(responseCode = "200", description = "Página da conversa (pode ser vazia)")
@@ -92,14 +95,16 @@ public class MensagemController {
     public ResponseEntity<MensagensResponseDTO> listar(
             @Parameter(description = "Paciente da conversa (obrigatório para o cuidador)") @RequestParam(required = false)
             Long pacienteId,
-            @Parameter(description = "Página, a partir de 0", example = "0") @RequestParam(required = false) Integer page,
-            @Parameter(description = "Tamanho da página (padrão 20, máximo 100)", example = "20")
+            @Parameter(description = "Página, a partir de 0", example = "0", schema = @Schema(minimum = "0")) @RequestParam(required = false) Integer page,
+            @Parameter(description = "Tamanho da página (padrão 20, máximo 100)", example = "20",
+                    schema = @Schema(minimum = "1", maximum = "100", defaultValue = "20"))
             @RequestParam(required = false) Integer size,
             @Parameter(hidden = true) @AuthenticationPrincipal AuthenticatedUser usuario) {
         return ResponseEntity.ok(MensagensResponseDTO.from(listarMensagensUseCase.executar(usuario, pacienteId, page, size)));
     }
 
     @PutMapping("/lidas")
+    @PerfilExigido(Perfil.CUIDADOR_OU_PACIENTE)
     @Operation(summary = "Marca como lidas as mensagens recebidas na conversa",
             description = "Só as mensagens do outro lado mudam; idempotente (de novo, marca 0). Cuidador informa o "
                     + "pacienteId; o paciente marca a própria conversa.")
@@ -118,6 +123,7 @@ public class MensagemController {
     }
 
     @GetMapping("/nao-lidas")
+    @PerfilExigido(Perfil.CUIDADOR_OU_PACIENTE)
     @Operation(summary = "Total de mensagens recebidas e ainda não lidas",
             description = "Cuidador: somando as conversas de todos os seus pacientes. Paciente: as do cuidador.")
     @ApiResponse(responseCode = "200", description = "Contador")

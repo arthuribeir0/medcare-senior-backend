@@ -8,7 +8,7 @@ import com.medcare.senior.domain.medicamento.MedicamentoRepositoryPort;
 import com.medcare.senior.domain.tratamento.TratamentoRepositoryPort;
 import com.medcare.senior.domain.usuario.CodigoVinculoRepositoryPort;
 import com.medcare.senior.domain.usuario.CuidadorRepositoryPort;
-import com.medcare.senior.domain.usuario.IdosoRepositoryPort;
+import com.medcare.senior.domain.usuario.PacienteRepositoryPort;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InOrder;
@@ -30,7 +30,7 @@ class ExcluirContaUseCaseTest {
     private CuidadorRepositoryPort cuidadorRepository;
 
     @Mock
-    private IdosoRepositoryPort idosoRepository;
+    private PacienteRepositoryPort pacienteRepository;
 
     @Mock
     private MedicamentoRepositoryPort medicamentoRepository;
@@ -60,7 +60,7 @@ class ExcluirContaUseCaseTest {
         useCase.executar(CUIDADOR_ID);
 
         InOrder ordem = inOrder(codigoVinculoRepository, eventoNotificacaoRepository, doseRepository,
-                tratamentoRepository, medicamentoRepository, mensagemRepository, idosoRepository, cuidadorRepository);
+                tratamentoRepository, medicamentoRepository, mensagemRepository, pacienteRepository, cuidadorRepository);
         ordem.verify(cuidadorRepository).existsById(CUIDADOR_ID);
         ordem.verify(codigoVinculoRepository).deleteAllByCuidadorId(CUIDADOR_ID);
         // Eventos de notificação antes das doses (são achados pela dose -> tratamento -> ... -> cuidador)
@@ -69,9 +69,9 @@ class ExcluirContaUseCaseTest {
         ordem.verify(doseRepository).deletePendentesByCuidadorId(CUIDADOR_ID);
         ordem.verify(tratamentoRepository).deleteAllByCuidadorId(CUIDADOR_ID);
         ordem.verify(medicamentoRepository).deleteAllByCuidadorId(CUIDADOR_ID);
-        // Mensagens antes dos idosos (FK mensagem.idoso_id)
+        // Mensagens antes dos pacientes (FK mensagem.paciente_id)
         ordem.verify(mensagemRepository).deleteAllByCuidadorId(CUIDADOR_ID);
-        ordem.verify(idosoRepository).deleteAllByCuidadorId(CUIDADOR_ID);
+        ordem.verify(pacienteRepository).deleteAllByCuidadorId(CUIDADOR_ID);
         ordem.verify(cuidadorRepository).deleteById(CUIDADOR_ID);
         ordem.verifyNoMoreInteractions();
     }
@@ -85,6 +85,6 @@ class ExcluirContaUseCaseTest {
                 .hasMessage("Sessão inválida. Entre na sua conta de novo.");
 
         verifyNoInteractions(codigoVinculoRepository, eventoNotificacaoRepository, doseRepository,
-                tratamentoRepository, medicamentoRepository, mensagemRepository, idosoRepository);
+                tratamentoRepository, medicamentoRepository, mensagemRepository, pacienteRepository);
     }
 }

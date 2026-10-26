@@ -70,7 +70,7 @@ public class CuidadorController {
 
     @DeleteMapping("/me")
     @Operation(summary = "Exclui a conta do cuidador autenticado (LGPD)",
-            description = "Remove de forma irreversível o cuidador e todos os seus idosos, medicamentos, tratamentos "
+            description = "Remove de forma irreversível o cuidador e todos os seus pacientes, medicamentos, tratamentos "
                     + "e códigos de vínculo. Somente CUIDADOR. Ver docs/lgpd.md.")
     @ApiResponse(responseCode = "204", description = "Conta excluída")
     @ApiResponse(responseCode = "401", description = "Token ausente ou inválido, ou de conta já excluída (SESSAO_INVALIDA)",

@@ -1,7 +1,7 @@
 package com.medcare.senior.infrastructure.persistence.mapper;
 
 import com.medcare.senior.domain.medicamento.Medicamento;
-import com.medcare.senior.infrastructure.persistence.entity.IdosoEntity;
+import com.medcare.senior.infrastructure.persistence.entity.PacienteEntity;
 import com.medcare.senior.infrastructure.persistence.entity.MedicamentoEntity;
 import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
@@ -11,7 +11,7 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class MedicamentoMapper {
 
-    // Usado para obter uma referência (proxy) ao idoso a partir do ID, sem consultar o banco
+    // Usado para obter uma referência (proxy) ao paciente a partir do ID, sem consultar o banco
     private final EntityManager entityManager;
 
     public Medicamento toDomain(MedicamentoEntity entity) {
@@ -24,7 +24,7 @@ public class MedicamentoMapper {
                 .cor(entity.getCor())
                 .quantidadeEstoque(entity.getQuantidadeEstoque())
                 .bulaUrl(entity.getBulaUrl())
-                .idosoId(entity.getIdoso().getId())
+                .pacienteId(entity.getPaciente().getId())
                 .removidoEm(entity.getRemovidoEm())
                 .build();
     }
@@ -39,7 +39,7 @@ public class MedicamentoMapper {
                 .cor(medicamento.getCor())
                 .quantidadeEstoque(medicamento.getQuantidadeEstoque())
                 .bulaUrl(medicamento.getBulaUrl())
-                .idoso(entityManager.getReference(IdosoEntity.class, medicamento.getIdosoId()))
+                .paciente(entityManager.getReference(PacienteEntity.class, medicamento.getPacienteId()))
                 .removidoEm(medicamento.getRemovidoEm())
                 .build();
     }

@@ -46,8 +46,8 @@ public class EventoNotificacaoRepositoryAdapter implements EventoNotificacaoRepo
                 .stream()
                 .map(linha -> new EventoParaRetentativa(linha.getEventoId(), linha.getTentativas(), linha.getDoseId(),
                         StatusDose.valueOf(linha.getStatusDose()), linha.getHorarioProgramado(),
-                        Boolean.TRUE.equals(linha.getSemDono()), linha.getCuidadorId(), linha.getIdosoId(),
-                        linha.getNomeIdoso()))
+                        Boolean.TRUE.equals(linha.getSemDono()), linha.getCuidadorId(), linha.getPacienteId(),
+                        linha.getNomePaciente()))
                 .toList();
     }
 

@@ -31,7 +31,7 @@ import java.util.List;
 
 /**
  * Acesso restrito a CUIDADOR no SecurityConfig (regras de /api/medicamentos/** e /api/tratamentos/**). O ID do
- * cuidador vem sempre do JWT, e os use cases verificam a posse pelo caminho tratamento -> medicamento -> idoso.
+ * cuidador vem sempre do JWT, e os use cases verificam a posse pelo caminho tratamento -> medicamento -> paciente.
  */
 @RestController
 @RequiredArgsConstructor

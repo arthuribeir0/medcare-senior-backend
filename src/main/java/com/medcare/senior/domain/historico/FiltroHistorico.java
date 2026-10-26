@@ -12,7 +12,7 @@ import java.time.LocalDate;
  * fim, e sem data de fim vale a data corrente. Período sem registros não bloqueia: a consulta devolve a página vazia
  * e o app avisa o usuário.
  *
- * @param idosoId       só as doses deste idoso (do cuidador); nulo = todos os idosos do cuidador
+ * @param pacienteId       só as doses deste paciente (do cuidador); nulo = todos os pacientes do cuidador
  * @param medicamentoId só as doses deste medicamento (UC-011); nulo = todos
  * @param de            primeiro dia, inclusivo; nulo = desde o início
  * @param ate           último dia, inclusivo (já com o padrão da RN-011 aplicado)
@@ -20,7 +20,7 @@ import java.time.LocalDate;
  * @param pagina        a partir de 0
  * @param tamanho       de 1 a {@link #TAMANHO_MAXIMO}
  */
-public record FiltroHistorico(Long idosoId, Long medicamentoId, LocalDate de, LocalDate ate, StatusDose status,
+public record FiltroHistorico(Long pacienteId, Long medicamentoId, LocalDate de, LocalDate ate, StatusDose status,
                               int pagina, int tamanho) {
 
     public static final int TAMANHO_PADRAO = Paginacao.TAMANHO_PADRAO;
@@ -32,13 +32,13 @@ public record FiltroHistorico(Long idosoId, Long medicamentoId, LocalDate de, Lo
      * @param hoje data corrente no fuso da aplicação
      * @throws ParametroInvalidoException se o início for depois do fim, a página negativa ou o tamanho fora de 1 a 100
      */
-    public static FiltroHistorico de(Long idosoId, Long medicamentoId, LocalDate de, LocalDate ate, StatusDose status,
+    public static FiltroHistorico de(Long pacienteId, Long medicamentoId, LocalDate de, LocalDate ate, StatusDose status,
                                      Integer pagina, Integer tamanho, LocalDate hoje) {
         LocalDate fim = ate != null ? ate : hoje;
         if (de != null && de.isAfter(fim)) {
             throw new ParametroInvalidoException("de", "A data de início não pode ser posterior à data de fim");
         }
         Paginacao paginacao = Paginacao.de(pagina, tamanho);
-        return new FiltroHistorico(idosoId, medicamentoId, de, fim, status, paginacao.pagina(), paginacao.tamanho());
+        return new FiltroHistorico(pacienteId, medicamentoId, de, fim, status, paginacao.pagina(), paginacao.tamanho());
     }
 }

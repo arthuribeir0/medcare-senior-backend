@@ -5,8 +5,8 @@ import com.medcare.senior.domain.autenticacao.TokenGeneratorPort;
 import com.medcare.senior.domain.exception.CodigoVinculoInvalidoException;
 import com.medcare.senior.domain.usuario.CodigoVinculo;
 import com.medcare.senior.domain.usuario.CodigoVinculoRepositoryPort;
-import com.medcare.senior.domain.usuario.Idoso;
-import com.medcare.senior.domain.usuario.IdosoRepositoryPort;
+import com.medcare.senior.domain.usuario.Paciente;
+import com.medcare.senior.domain.usuario.PacienteRepositoryPort;
 import com.medcare.senior.domain.usuario.Role;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -20,11 +20,11 @@ public class ValidarCodigoVinculoUseCase {
 
     private final CodigoVinculoRepositoryPort codigoVinculoRepository;
     private final TokenGeneratorPort tokenGenerator;
-    private final IdosoRepositoryPort idosoRepository;
+    private final PacienteRepositoryPort pacienteRepository;
     private final Clock clock;
 
     /**
-     * @return o JWT, o ID e o nome do idoso vinculado ao código
+     * @return o JWT, o ID e o nome do paciente vinculado ao código
      * @throws CodigoVinculoInvalidoException se o código não existir, estiver expirado ou já tiver sido usado
      */
     public SessaoAutenticada executar(String codigo) {
@@ -43,12 +43,12 @@ public class ValidarCodigoVinculoUseCase {
             throw new CodigoVinculoInvalidoException();
         }
 
-        // Uma consulta só, e só depois do código consumido (tentativas inválidas não chegam aqui). O idoso sempre
+        // Uma consulta só, e só depois do código consumido (tentativas inválidas não chegam aqui). O paciente sempre
         // existe enquanto o código existe (FK); por segurança, ausência responde como código inválido.
-        Idoso idoso = idosoRepository.findByIdAndCuidadorId(codigoVinculo.getIdosoId(), codigoVinculo.getCuidadorId())
+        Paciente paciente = pacienteRepository.findByIdAndCuidadorId(codigoVinculo.getPacienteId(), codigoVinculo.getCuidadorId())
                 .orElseThrow(CodigoVinculoInvalidoException::new);
 
-        return new SessaoAutenticada(tokenGenerator.generateToken(idoso.getId(), Role.IDOSO), idoso.getId(),
-                idoso.getNome());
+        return new SessaoAutenticada(tokenGenerator.generateToken(paciente.getId(), Role.PACIENTE), paciente.getId(),
+                paciente.getNome());
     }
 }

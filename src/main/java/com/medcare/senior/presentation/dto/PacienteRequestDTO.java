@@ -8,8 +8,8 @@ import jakarta.validation.constraints.Size;
 
 import java.time.LocalDate;
 
-@Schema(description = "Dados para cadastro de idoso")
-public record IdosoRequestDTO(
+@Schema(description = "Dados para cadastro de paciente")
+public record PacienteRequestDTO(
 
         @Schema(description = "Nome completo", example = "José Souza")
         @NotBlank(message = "O nome é obrigatório")

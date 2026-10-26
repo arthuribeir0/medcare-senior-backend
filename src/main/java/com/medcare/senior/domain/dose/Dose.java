@@ -69,7 +69,7 @@ public class Dose {
     }
 
     /**
-     * Versão confirmada desta dose, em {@code agora}, por {@code quem} (o idoso ou o cuidador dele). Não altera esta instância. O status (CONFIRMADA_NO_HORARIO ou
+     * Versão confirmada desta dose, em {@code agora}, por {@code quem} (o paciente ou o cuidador dele). Não altera esta instância. O status (CONFIRMADA_NO_HORARIO ou
      * CONFIRMADA_COM_ATRASO) vem da {@link PoliticaDeJanela}; no banco, a gravação também é um UPDATE condicionado a
      * status = 'PENDENTE' ({@link DoseRepositoryPort#registrarSePendente}).
      *

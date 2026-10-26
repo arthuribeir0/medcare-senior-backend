@@ -3,7 +3,7 @@ package com.medcare.senior.application.usecase;
 import com.medcare.senior.domain.exception.RecursoNaoEncontradoException;
 import com.medcare.senior.domain.medicamento.Medicamento;
 import com.medcare.senior.domain.medicamento.MedicamentoRepositoryPort;
-import com.medcare.senior.domain.usuario.IdosoRepositoryPort;
+import com.medcare.senior.domain.usuario.PacienteRepositoryPort;
 import com.medcare.senior.domain.relatorio.CacheDeRelatorioDiarioPort;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -13,23 +13,23 @@ import org.springframework.stereotype.Service;
 public class EditarMedicamentoUseCase {
 
     private final MedicamentoRepositoryPort medicamentoRepository;
-    private final IdosoRepositoryPort idosoRepository;
+    private final PacienteRepositoryPort pacienteRepository;
     private final CacheDeRelatorioDiarioPort cacheDeRelatorio;
 
     /**
      * Substitui todos os dados do medicamento (semântica de PUT).
      *
      * @param id         medicamento a editar
-     * @param dados      novos dados; o idosoId pode mudar, desde que o novo idoso também pertença ao cuidador
+     * @param dados      novos dados; o pacienteId pode mudar, desde que o novo paciente também pertença ao cuidador
      * @param cuidadorId ID do cuidador autenticado, extraído do JWT
      */
     public Medicamento executar(Long id, Medicamento dados, Long cuidadorId) {
         Medicamento atual = medicamentoRepository.findById(id)
-                .filter(medicamento -> pertenceAoCuidador(medicamento.getIdosoId(), cuidadorId))
+                .filter(medicamento -> pertenceAoCuidador(medicamento.getPacienteId(), cuidadorId))
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Medicamento não encontrado"));
 
-        if (!dados.getIdosoId().equals(atual.getIdosoId()) && !pertenceAoCuidador(dados.getIdosoId(), cuidadorId)) {
-            throw new RecursoNaoEncontradoException("Idoso não encontrado");
+        if (!dados.getPacienteId().equals(atual.getPacienteId()) && !pertenceAoCuidador(dados.getPacienteId(), cuidadorId)) {
+            throw new RecursoNaoEncontradoException("Paciente não encontrado");
         }
 
         // RN-005
@@ -42,7 +42,7 @@ public class EditarMedicamentoUseCase {
         return salvo;
     }
 
-    private boolean pertenceAoCuidador(Long idosoId, Long cuidadorId) {
-        return idosoRepository.findByIdAndCuidadorId(idosoId, cuidadorId).isPresent();
+    private boolean pertenceAoCuidador(Long pacienteId, Long cuidadorId) {
+        return pacienteRepository.findByIdAndCuidadorId(pacienteId, cuidadorId).isPresent();
     }
 }

@@ -33,10 +33,10 @@ public interface EventoNotificacaoRepository extends JpaRepository<EventoNotific
     @Query(value = "SELECT e.id AS eventoId, e.tentativas AS tentativas, d.id AS doseId, d.status AS statusDose, "
             + "d.horario_programado AS horarioProgramado, "
             + "(i.id IS NULL OR t.removido_em IS NOT NULL OR m.removido_em IS NOT NULL) AS semDono, "
-            + "i.cuidador_id AS cuidadorId, i.id AS idosoId, i.nome AS nomeIdoso "
+            + "i.cuidador_id AS cuidadorId, i.id AS pacienteId, i.nome AS nomePaciente "
             + "FROM evento_notificacao e JOIN dose d ON d.id = e.dose_id "
             + "LEFT JOIN tratamento t ON t.id = d.tratamento_id LEFT JOIN medicamento m ON m.id = t.medicamento_id "
-            + "LEFT JOIN idoso i ON i.id = m.idoso_id "
+            + "LEFT JOIN paciente i ON i.id = m.paciente_id "
             + "WHERE e.status = 'PENDENTE' AND (e.tentativas >= :maxTentativas OR e.ultima_tentativa IS NULL "
             + "OR e.ultima_tentativa + make_interval(mins => :intervaloBaseMinutos * CAST(power(2, e.tentativas - 1) AS integer)) "
             + "<= :agora) "
@@ -64,6 +64,6 @@ public interface EventoNotificacaoRepository extends JpaRepository<EventoNotific
 
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("DELETE FROM EventoNotificacaoEntity e WHERE e.doseId IN (SELECT d.id FROM DoseEntity d "
-            + "WHERE d.tratamento.medicamento.idoso.cuidador.id = :cuidadorId)")
+            + "WHERE d.tratamento.medicamento.paciente.cuidador.id = :cuidadorId)")
     int deleteByCuidadorId(@Param("cuidadorId") Long cuidadorId);
 }

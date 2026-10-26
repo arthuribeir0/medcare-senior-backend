@@ -16,7 +16,7 @@ public interface MedicamentoRepository extends JpaRepository<MedicamentoEntity, 
 
     Optional<MedicamentoEntity> findByIdAndRemovidoEmIsNull(Long id);
 
-    List<MedicamentoEntity> findAllByIdoso_IdAndRemovidoEmIsNullOrderByNomeAsc(Long idosoId);
+    List<MedicamentoEntity> findAllByPaciente_IdAndRemovidoEmIsNullOrderByNomeAsc(Long pacienteId);
 
     boolean existsByIdAndRemovidoEmIsNull(Long id);
 
@@ -27,6 +27,6 @@ public interface MedicamentoRepository extends JpaRepository<MedicamentoEntity, 
     // Exclusão física (LGPD): inclui os medicamentos já removidos logicamente
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("DELETE FROM MedicamentoEntity m "
-            + "WHERE m.idoso.id IN (SELECT i.id FROM IdosoEntity i WHERE i.cuidador.id = :cuidadorId)")
+            + "WHERE m.paciente.id IN (SELECT i.id FROM PacienteEntity i WHERE i.cuidador.id = :cuidadorId)")
     void deleteAllByCuidadorId(@Param("cuidadorId") Long cuidadorId);
 }

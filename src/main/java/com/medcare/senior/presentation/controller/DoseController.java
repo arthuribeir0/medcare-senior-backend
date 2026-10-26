@@ -20,28 +20,28 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * IDOSO e CUIDADOR no SecurityConfig. O ID vem sempre do JWT: o idoso só confirma as próprias doses; o cuidador, só as
- * dos idosos dele (o use case confere o dono e responde 404 para dose alheia).
+ * PACIENTE e CUIDADOR no SecurityConfig. O ID vem sempre do JWT: o paciente só confirma as próprias doses; o cuidador, só as
+ * dos pacientes dele (o use case confere o dono e responde 404 para dose alheia).
  */
 @RestController
 @RequestMapping("/api/doses")
 @RequiredArgsConstructor
-@Tag(name = "Doses", description = "Confirmação de dose pelo idoso ou pelo cuidador dele")
+@Tag(name = "Doses", description = "Confirmação de dose pelo paciente ou pelo cuidador dele")
 public class DoseController {
 
     private final ConfirmarDoseUseCase confirmarDoseUseCase;
 
     @PutMapping("/{id}/confirmar")
-    @Operation(summary = "Confirma que o idoso tomou a dose",
-            description = "Token IDOSO: só a própria dose. Token CUIDADOR: só dose de idoso dele. Dentro da janela "
+    @Operation(summary = "Confirma que o paciente tomou a dose",
+            description = "Token PACIENTE: só a própria dose. Token CUIDADOR: só dose de paciente dele. Dentro da janela "
                     + "[abreEm, limiteConfirmacao]: CONFIRMADA_NO_HORARIO até avisoEm (inclusive) e "
                     + "CONFIRMADA_COM_ATRASO depois. A hora da confirmação é a do servidor e confirmadoPor registra quem "
-                    + "confirmou (IDOSO ou CUIDADOR). Dose já registrada nunca muda (RN-008).")
+                    + "confirmou (PACIENTE ou CUIDADOR). Dose já registrada nunca muda (RN-008).")
     @ApiResponse(responseCode = "200", description = "Dose confirmada")
     @ApiResponse(responseCode = "401", description = "Token ausente ou inválido; ou conta do token não existe mais "
             + "(codigo SESSAO_INVALIDA)", content = @Content(schema = @Schema(implementation = ErroResponse.class)))
-    @ApiResponse(responseCode = "403", description = "Token sem o papel IDOSO nem CUIDADOR", content = @Content)
-    @ApiResponse(responseCode = "404", description = "Dose inexistente, de outro idoso, de idoso de outro cuidador ou de "
+    @ApiResponse(responseCode = "403", description = "Token sem o papel PACIENTE nem CUIDADOR", content = @Content)
+    @ApiResponse(responseCode = "404", description = "Dose inexistente, de outro paciente, de paciente de outro cuidador ou de "
             + "remédio removido",
             content = @Content(schema = @Schema(implementation = ErroResponse.class)))
     @ApiResponse(responseCode = "409", description = "DOSE_JA_REGISTRADA, DOSE_MUITO_CEDO ou DOSE_ENCERRADA",
@@ -51,7 +51,7 @@ public class DoseController {
                                                      @AuthenticationPrincipal AuthenticatedUser usuario) {
         DoseAvaliada confirmada = usuario.isCuidador()
                 ? confirmarDoseUseCase.executarComoCuidador(id, usuario.cuidadorId())
-                : confirmarDoseUseCase.executar(id, usuario.idosoId());
+                : confirmarDoseUseCase.executar(id, usuario.pacienteId());
         return ResponseEntity.ok(DoseResponseDTO.from(confirmada));
     }
 }

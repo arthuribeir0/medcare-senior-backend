@@ -33,32 +33,32 @@ Exposta em `DELETE /api/cuidadores/me` (somente o próprio cuidador, papel CUIDA
 | Dado | Tratamento |
 |---|---|
 | Cuidador (nome, e-mail, senha, telefone, consentimento, **token de dispositivo**) | Apagado |
-| Idosos do cuidador | Apagados |
-| Medicamentos dos idosos, **inclusive os removidos logicamente** | Apagados |
+| Pacientes do cuidador | Apagados |
+| Medicamentos dos pacientes, **inclusive os removidos logicamente** | Apagados |
 | Tratamentos dos medicamentos, **inclusive os removidos logicamente** | Apagados |
 | Códigos de vínculo | Apagados |
-| Mensagens das conversas com os idosos do cuidador | Apagadas |
+| Mensagens das conversas com os pacientes do cuidador | Apagadas |
 | Doses PENDENTES (passadas e futuras) | Apagadas |
 | Eventos de notificação (avisos de dose não confirmada) | Apagados |
 | Doses registradas (CONFIRMADA_NO_HORARIO, NAO_TOMADA, CONFIRMADA_COM_ATRASO) | **Anonimizadas**: mantidas com `tratamento_id = NULL` |
 
 Ordem de remoção (respeita as chaves estrangeiras): códigos de vínculo → eventos de notificação → doses pendentes →
-tratamentos → medicamentos → mensagens → idosos → cuidador. A chave estrangeira `mensagem.idoso_id` também tem
+tratamentos → medicamentos → mensagens → pacientes → cuidador. A chave estrangeira `mensagem.paciente_id` também tem
 `ON DELETE CASCADE`, como garantia.
 
 ## Mensagens
 
-O conteúdo das mensagens entre cuidador e idoso (`mensagem.conteudo`) é dado pessoal: nunca é escrito em log e só é
-devolvido aos dois lados da conversa (o cuidador dono do idoso e o próprio idoso). Na exclusão da conta, as mensagens
-de todos os idosos do cuidador são apagadas fisicamente (coberto por
-`MensagemPostgresTest.exclusaoDeContaApagaAsMensagensDosIdososDoCuidadorSemQuebrarPorFk`).
+O conteúdo das mensagens entre cuidador e paciente (`mensagem.conteudo`) é dado pessoal: nunca é escrito em log e só é
+devolvido aos dois lados da conversa (o cuidador dono do paciente e o próprio paciente). Na exclusão da conta, as mensagens
+de todos os pacientes do cuidador são apagadas fisicamente (coberto por
+`MensagemPostgresTest.exclusaoDeContaApagaAsMensagensDosPacientesDoCuidadorSemQuebrarPorFk`).
 
 ### Por que as doses registradas são anonimizadas, e não apagadas
 
 O histórico de doses tem valor estatístico (adesão a tratamentos), mas não precisa identificar ninguém. A coluna
 `dose.tratamento_id` tem chave estrangeira com `ON DELETE SET NULL`: quando o tratamento é apagado, o banco zera
-o vínculo. A dose restante guarda só horário programado, hora de confirmação, status e quem confirmou (`IDOSO` ou
-`CUIDADOR`, o papel, nunca a pessoa) — sem tratamento, medicamento, idoso ou cuidador. Dado anonimizado de forma irreversível deixa de ser dado pessoal (LGPD, art. 12).
+o vínculo. A dose restante guarda só horário programado, hora de confirmação, status e quem confirmou (`PACIENTE` ou
+`CUIDADOR`, o papel, nunca a pessoa) — sem tratamento, medicamento, paciente ou cuidador. Dado anonimizado de forma irreversível deixa de ser dado pessoal (LGPD, art. 12).
 
 ## Notificações push: Google (Firebase Cloud Messaging) como operador
 
@@ -71,7 +71,7 @@ o token do aparelho e o conteúdo do aviso só para entregá-lo. Os servidores d
 |---|---|
 | Dado pessoal | O **token FCM** do aparelho do cuidador (`cuidador.fcm_token`): identifica um aparelho de uma pessoa e permite enviar mensagens a ele |
 | Finalidade única | Avisar o cuidador de que uma dose não foi confirmada até o fim da tolerância (RN-009) |
-| O que vai ao Google | Título "Dose não confirmada"; texto "{nome do idoso} ainda não confirmou a dose das HH:mm" (com a data quando não é de hoje); dados para o app abrir a dose: `tipo`, `doseId`, `idosoId` e `data` |
+| O que vai ao Google | Título "Dose não confirmada"; texto "{nome do paciente} ainda não confirmou a dose das HH:mm" (com a data quando não é de hoje); dados para o app abrir a dose: `tipo`, `doseId`, `pacienteId` e `data` |
 | O que **não** vai | Nome do remédio, dosagem, cor, tipo ou qualquer outro dado de saúde; e-mail, telefone e data de nascimento |
 | Retenção do token | Enquanto a conta existir e o app estiver instalado. É trocado quando o app recebe um token novo, apagado na saída da conta no app (`DELETE /api/cuidadores/me/fcm-token`), apagado quando o FCM o recusa como inválido e apagado na exclusão da conta |
 | Retenção dos avisos | O evento de cada aviso (`evento_notificacao`: status, tentativas, motivo da falha) fica até a exclusão da conta, quando é apagado |
@@ -83,9 +83,9 @@ Outras garantias:
   `PersistenciaPostgresTest.exclusaoDeContaApagaOTokenDeDispositivo`).
 - Um aparelho pertence a **uma conta por vez**: ao registrar um token, ele é retirado de qualquer outro cuidador
   que o tenha. Sem isso, quem trocasse de conta no mesmo celular continuaria recebendo avisos da conta anterior,
-  com nomes de idosos.
-- Nunca é escrito em log; os logs de envio de aviso trazem apenas IDs (dose, idoso e cuidador).
-- O app do idoso não registra token: só o cuidador recebe push.
+  com nomes de pacientes.
+- Nunca é escrito em log; os logs de envio de aviso trazem apenas IDs (dose, paciente e cuidador).
+- O app do paciente não registra token: só o cuidador recebe push.
 
 ## Tokens emitidos antes da exclusão
 
@@ -94,11 +94,11 @@ O JWT é *stateless*: um token emitido antes da exclusão continua com assinatur
 cuidador do token, que não existe mais:
 
 - `DELETE /api/cuidadores/me` de novo → 404;
-- rotas de idosos, medicamentos e tratamentos → 404 (o recurso não é encontrado para aquele cuidador);
+- rotas de pacientes, medicamentos e tratamentos → 404 (o recurso não é encontrado para aquele cuidador);
 - os IDs são `BIGSERIAL` e nunca são reutilizados, então o token antigo nunca passa a apontar para outra conta.
 
-Tokens de **idosos** pareados com essa conta também continuam com assinatura válida até expirar (180 dias), mas as
-rotas do idoso (dados do próprio idoso, doses do dia, confirmação e mensagens) conferem se o idoso ainda existe e
+Tokens de **pacientes** pareados com essa conta também continuam com assinatura válida até expirar (180 dias), mas as
+rotas do paciente (dados do próprio paciente, doses do dia, confirmação e mensagens) conferem se o paciente ainda existe e
 respondem 401 `SESSAO_INVALIDA`; o app então volta à tela de pareamento. Tokens de cuidador de conta excluída também
 recebem 401 `SESSAO_INVALIDA` em qualquer rota.
 
@@ -113,6 +113,6 @@ produção, é preciso decidir entre exigir o aceite no próximo login ou apagar
 
 ## Quem confirmou a dose
 
-Desde a V15 a dose confirmada guarda quem confirmou (`dose.confirmado_por`: `IDOSO` ou `CUIDADOR`). É o papel, não
+Desde a V15 a dose confirmada guarda quem confirmou (`dose.confirmado_por`: `PACIENTE` ou `CUIDADOR`). É o papel, não
 a pessoa: na dose anonimizada continua sem identificar ninguém. Aparece para o cuidador na dose, no histórico, no
 relatório diário e no PDF.

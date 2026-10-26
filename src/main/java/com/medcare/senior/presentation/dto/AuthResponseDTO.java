@@ -11,10 +11,10 @@ public record AuthResponseDTO(
         @Schema(description = "Tipo do token", example = "Bearer")
         String tipo,
 
-        @Schema(description = "ID do cuidador (login) ou do idoso (pareamento)", example = "1")
+        @Schema(description = "ID do cuidador (login) ou do paciente (pareamento)", example = "1")
         Long id,
 
-        @Schema(description = "Nome do cuidador (login) ou do idoso (pareamento)", example = "Ana Souza")
+        @Schema(description = "Nome do cuidador (login) ou do paciente (pareamento)", example = "Ana Souza")
         String nome
 ) {
 

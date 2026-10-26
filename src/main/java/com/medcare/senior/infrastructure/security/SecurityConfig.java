@@ -34,11 +34,11 @@ public class SecurityConfig {
      *   [ ] Adicione aqui uma regra explícita .requestMatchers(...).hasRole(...) ou .permitAll().
      *       Não confie na regra padrão, que agora bloqueia por padrão.
      *   [ ] Declare a regra ANTES de anyRequest(): as regras são avaliadas em ordem e a primeira que casar vence.
-     *   [ ] Use hasRole(CUIDADOR) / hasRole(IDOSO) — nunca apenas authenticated(), que aceita qualquer papel. Rota
+     *   [ ] Use hasRole(CUIDADOR) / hasRole(PACIENTE) — nunca apenas authenticated(), que aceita qualquer papel. Rota
      *       dos dois papéis: hasAnyRole com os dois nomes, e o use case decide o acesso de cada papel.
      *   [ ] permitAll() só para pontos de entrada públicos (cadastro, login, pareamento). Endpoint público que
      *       aceita tentativas (códigos, senhas) deve ter rate limiting.
-     *   [ ] No controller, use @AuthenticationPrincipal AuthenticatedUser e cuidadorId()/idosoId(),
+     *   [ ] No controller, use @AuthenticationPrincipal AuthenticatedUser e cuidadorId()/pacienteId(),
      *       nunca o userId solto.
      * =====================================================================================================
      */
@@ -62,11 +62,11 @@ public class SecurityConfig {
                             .requestMatchers(HttpMethod.DELETE, "/api/cuidadores/me").hasRole(Role.CUIDADOR.name())
                             .requestMatchers(HttpMethod.PUT, "/api/cuidadores/me/fcm-token").hasRole(Role.CUIDADOR.name())
                             .requestMatchers(HttpMethod.DELETE, "/api/cuidadores/me/fcm-token").hasRole(Role.CUIDADOR.name())
-                            // Rotas do aparelho do idoso: ANTES de /api/idosos/** (a primeira regra que casa vence)
-                            .requestMatchers(HttpMethod.GET, "/api/idosos/me", "/api/idosos/me/doses").hasRole(Role.IDOSO.name())
-                            .requestMatchers("/api/idosos/**").hasRole(Role.CUIDADOR.name())
-                            // Confirmação de dose: o idoso (a própria) ou o cuidador (dos idosos dele); o dono fica no use case
-                            .requestMatchers(HttpMethod.PUT, "/api/doses/*/confirmar").hasAnyRole(Role.IDOSO.name(), Role.CUIDADOR.name())
+                            // Rotas do aparelho do paciente: ANTES de /api/pacientes/** (a primeira regra que casa vence)
+                            .requestMatchers(HttpMethod.GET, "/api/pacientes/me", "/api/pacientes/me/doses").hasRole(Role.PACIENTE.name())
+                            .requestMatchers("/api/pacientes/**").hasRole(Role.CUIDADOR.name())
+                            // Confirmação de dose: o paciente (a própria) ou o cuidador (dos pacientes dele); o dono fica no use case
+                            .requestMatchers(HttpMethod.PUT, "/api/doses/*/confirmar").hasAnyRole(Role.PACIENTE.name(), Role.CUIDADOR.name())
                             .requestMatchers("/api/medicamentos/**").hasRole(Role.CUIDADOR.name())
                             .requestMatchers("/api/tratamentos/**").hasRole(Role.CUIDADOR.name())
                             .requestMatchers(HttpMethod.GET, "/api/configuracoes/tolerancia").hasRole(Role.CUIDADOR.name())
@@ -75,10 +75,10 @@ public class SecurityConfig {
                             .requestMatchers(HttpMethod.GET, "/api/relatorios/pdf").hasRole(Role.CUIDADOR.name())
                             .requestMatchers(HttpMethod.GET, "/api/historico").hasRole(Role.CUIDADOR.name())
                             // Mensagens (UC-010): os dois papéis; de quem é a conversa fica no AcessoAConversaService
-                            .requestMatchers(HttpMethod.POST, "/api/mensagens").hasAnyRole(Role.CUIDADOR.name(), Role.IDOSO.name())
+                            .requestMatchers(HttpMethod.POST, "/api/mensagens").hasAnyRole(Role.CUIDADOR.name(), Role.PACIENTE.name())
                             .requestMatchers(HttpMethod.GET, "/api/mensagens", "/api/mensagens/conversas", "/api/mensagens/nao-lidas")
-                            .hasAnyRole(Role.CUIDADOR.name(), Role.IDOSO.name())
-                            .requestMatchers(HttpMethod.PUT, "/api/mensagens/lidas").hasAnyRole(Role.CUIDADOR.name(), Role.IDOSO.name());
+                            .hasAnyRole(Role.CUIDADOR.name(), Role.PACIENTE.name())
+                            .requestMatchers(HttpMethod.PUT, "/api/mensagens/lidas").hasAnyRole(Role.CUIDADOR.name(), Role.PACIENTE.name());
 
                     // Documentação OpenAPI/Swagger: liberada SOMENTE com app.docs.enabled=true (DOCS_ENABLED).
                     // Desligada, essas rotas caem no denyAll() abaixo, como qualquer outra rota sem regra.

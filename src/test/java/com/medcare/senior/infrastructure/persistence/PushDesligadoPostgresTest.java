@@ -80,7 +80,7 @@ class PushDesligadoPostgresTest {
     private JdbcTemplate jdbc;
 
     private Long cuidadorId;
-    private Long idosoId;
+    private Long pacienteId;
     private Long medicamentoId;
     private Long tratamentoId;
 
@@ -91,7 +91,7 @@ class PushDesligadoPostgresTest {
         jdbc.update("DELETE FROM dose WHERE tratamento_id = ?", tratamentoId);
         jdbc.update("DELETE FROM tratamento WHERE id = ?", tratamentoId);
         jdbc.update("DELETE FROM medicamento WHERE id = ?", medicamentoId);
-        jdbc.update("DELETE FROM idoso WHERE id = ?", idosoId);
+        jdbc.update("DELETE FROM paciente WHERE id = ?", pacienteId);
         jdbc.update("DELETE FROM cuidador WHERE id = ?", cuidadorId);
     }
 
@@ -99,10 +99,10 @@ class PushDesligadoPostgresTest {
         cuidadorId = jdbc.queryForObject("INSERT INTO cuidador (nome, email, senha_hash, data_cadastro, consentimento_lgpd, "
                 + "data_consentimento) VALUES ('Cuidador sem push', ?, 'hash', ?, true, ?) RETURNING id", Long.class,
                 "sem-push-" + UUID.randomUUID() + "@teste.com", AGORA, AGORA);
-        idosoId = jdbc.queryForObject("INSERT INTO idoso (nome, data_nascimento, cuidador_id) VALUES (?, ?, ?) "
-                + "RETURNING id", Long.class, "Idoso " + UUID.randomUUID(), LocalDate.of(1945, 3, 12), cuidadorId);
-        medicamentoId = jdbc.queryForObject("INSERT INTO medicamento (nome, dosagem, tipo, idoso_id) "
-                + "VALUES ('Losartana', '50mg', 'COMPRIMIDO', ?) RETURNING id", Long.class, idosoId);
+        pacienteId = jdbc.queryForObject("INSERT INTO paciente (nome, data_nascimento, cuidador_id) VALUES (?, ?, ?) "
+                + "RETURNING id", Long.class, "Paciente " + UUID.randomUUID(), LocalDate.of(1945, 3, 12), cuidadorId);
+        medicamentoId = jdbc.queryForObject("INSERT INTO medicamento (nome, dosagem, tipo, paciente_id) "
+                + "VALUES ('Losartana', '50mg', 'COMPRIMIDO', ?) RETURNING id", Long.class, pacienteId);
         tratamentoId = jdbc.queryForObject("INSERT INTO tratamento (medicamento_id, data_inicio, horarios, dias_semana) "
                 + "VALUES (?, ?, '[\"08:00\"]'::jsonb, '[\"MONDAY\"]'::jsonb) RETURNING id", Long.class,
                 medicamentoId, AGORA.toLocalDate());
@@ -131,7 +131,7 @@ class PushDesligadoPostgresTest {
         assertThat(colunaDoEvento(doseId, "status")).isEqualTo("FALHA");
         assertThat(colunaDoEvento(doseId, "motivo_falha")).isEqualTo("PUSH_DESLIGADO");
         assertThat(colunaDoEvento(doseId, "tentativas")).isEqualTo("1");
-        // A dose continua PENDENTE: o idoso (ou o cuidador) ainda pode confirmar até o encerramento
+        // A dose continua PENDENTE: o paciente (ou o cuidador) ainda pode confirmar até o encerramento
         assertThat(jdbc.queryForObject("SELECT status FROM dose WHERE id = ?", String.class, doseId)).isEqualTo("PENDENTE");
 
         // Nem a varredura seguinte nem a retentativa tentam de novo

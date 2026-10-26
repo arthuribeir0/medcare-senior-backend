@@ -29,7 +29,7 @@ import java.util.Locale;
 /**
  * PDF do histórico de adesão com OpenPDF (UC-012, RN-012). A tabela de doses é enviada ao documento a cada lote
  * (modo de tabela grande do OpenPDF): só o arquivo em bytes cresce, não a árvore de objetos. Fontes padrão do PDF
- * (Helvetica, codificação WinAnsi), que cobrem os acentos do português. Nada além do idoso pedido entra no arquivo.
+ * (Helvetica, codificação WinAnsi), que cobrem os acentos do português. Nada além do paciente pedido entra no arquivo.
  */
 @Component
 public class OpenPdfGeradorAdapter implements GeradorDePdfPort {
@@ -67,7 +67,7 @@ public class OpenPdfGeradorAdapter implements GeradorDePdfPort {
 
     private static void cabecalho(Document documento, RelatorioDeAdesao relatorio) {
         documento.add(new Paragraph("Histórico de adesão ao tratamento", TITULO));
-        documento.add(linha("Idoso: ", relatorio.idosoNome()));
+        documento.add(linha("Paciente: ", relatorio.pacienteNome()));
         documento.add(linha("Período: ", relatorio.de().format(DATA) + " a " + relatorio.ate().format(DATA)));
         documento.add(linha("Gerado em: ", relatorio.geradoEm().format(DATA_HORA) + " (horário de Brasília)"));
         documento.add(Chunk.NEWLINE);
@@ -129,7 +129,7 @@ public class OpenPdfGeradorAdapter implements GeradorDePdfPort {
     }
 
     /**
-     * Hora da confirmação (com a data quando foi em outro dia) e quem confirmou: "08:05 pelo idoso"; "—" quando não
+     * Hora da confirmação (com a data quando foi em outro dia) e quem confirmou: "08:05 pelo paciente"; "—" quando não
      * houve.
      */
     static String confirmacao(LocalDateTime programada, LocalDateTime confirmada, ConfirmadoPor quem) {
@@ -141,7 +141,7 @@ public class OpenPdfGeradorAdapter implements GeradorDePdfPort {
         if (quem == null) {
             return hora;
         }
-        return hora + (quem == ConfirmadoPor.CUIDADOR ? " pelo cuidador" : " pelo idoso");
+        return hora + (quem == ConfirmadoPor.CUIDADOR ? " pelo cuidador" : " pelo paciente");
     }
 
     /** "87,5%" com 1 casa e vírgula; sem dose encerrada no período, a taxa não existe. */

@@ -6,15 +6,15 @@ import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 
 /**
- * Mensagem da conversa entre um idoso e o seu cuidador (UC-010). O conteúdo é dado pessoal: nunca vai para o log.
+ * Mensagem da conversa entre um paciente e o seu cuidador (UC-010). O conteúdo é dado pessoal: nunca vai para o log.
  *
- * @param idosoId   idoso da conversa
+ * @param pacienteId   paciente da conversa
  * @param remetente quem escreveu
  * @param conteudo  texto de 1 a {@link #TAMANHO_MAXIMO} caracteres, sem espaços nas pontas
  * @param criadaEm  envio, no fuso da aplicação
  * @param lidaEm    quando o destinatário abriu a conversa; {@code null} = não lida
  */
-public record Mensagem(Long id, Long idosoId, Remetente remetente, String conteudo, LocalDateTime criadaEm,
+public record Mensagem(Long id, Long pacienteId, Remetente remetente, String conteudo, LocalDateTime criadaEm,
                        LocalDateTime lidaEm) {
 
     public static final int TAMANHO_MAXIMO = 500;
@@ -25,7 +25,7 @@ public record Mensagem(Long id, Long idosoId, Remetente remetente, String conteu
      *
      * @throws ParametroInvalidoException se o conteúdo for vazio, só espaços ou maior que {@link #TAMANHO_MAXIMO}
      */
-    public static Mensagem nova(Long idosoId, Remetente remetente, String conteudo, LocalDateTime agora) {
+    public static Mensagem nova(Long pacienteId, Remetente remetente, String conteudo, LocalDateTime agora) {
         String texto = conteudo == null ? "" : conteudo.strip();
         if (texto.isEmpty()) {
             throw new ParametroInvalidoException("conteudo", "A mensagem não pode ser vazia");
@@ -35,6 +35,6 @@ public record Mensagem(Long id, Long idosoId, Remetente remetente, String conteu
                     + " caracteres");
         }
         // Mesma precisão do TIMESTAMP do PostgreSQL: a resposta do envio mostra o que foi gravado
-        return new Mensagem(null, idosoId, remetente, texto, agora.truncatedTo(ChronoUnit.MICROS), null);
+        return new Mensagem(null, pacienteId, remetente, texto, agora.truncatedTo(ChronoUnit.MICROS), null);
     }
 }

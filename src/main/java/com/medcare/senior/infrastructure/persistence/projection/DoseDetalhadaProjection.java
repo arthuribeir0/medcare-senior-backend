@@ -6,7 +6,7 @@ import com.medcare.senior.domain.dose.StatusDose;
 import java.time.LocalDateTime;
 
 /**
- * Linha das consultas de doses do app (construtor JPQL): a dose, o idoso, o medicamento e a tolerância própria do
+ * Linha das consultas de doses do app (construtor JPQL): a dose, o paciente, o medicamento e a tolerância própria do
  * cuidador (nula = padrão) em uma única consulta. A cor é a do medicamento (opcional).
  */
 public record DoseDetalhadaProjection(Long doseId,
@@ -15,8 +15,8 @@ public record DoseDetalhadaProjection(Long doseId,
                                       LocalDateTime horaConfirmacao,
                                       StatusDose status,
                                       ConfirmadoPor confirmadoPor,
-                                      Long idosoId,
-                                      String idosoNome,
+                                      Long pacienteId,
+                                      String pacienteNome,
                                       Long medicamentoId,
                                       String medicamentoNome,
                                       String dosagem,

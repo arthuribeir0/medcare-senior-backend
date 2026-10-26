@@ -35,12 +35,12 @@ import java.util.List;
 
 /**
  * Acesso restrito a CUIDADOR no SecurityConfig. O ID do cuidador vem sempre do JWT, e os use cases
- * verificam que o idoso de cada medicamento pertence a esse cuidador.
+ * verificam que o paciente de cada medicamento pertence a esse cuidador.
  */
 @RestController
 @RequestMapping("/api/medicamentos")
 @RequiredArgsConstructor
-@Tag(name = "Medicamentos", description = "CRUD de medicamentos dos idosos do cuidador (somente CUIDADOR)")
+@Tag(name = "Medicamentos", description = "CRUD de medicamentos dos pacientes do cuidador (somente CUIDADOR)")
 @ApiResponse(responseCode = "401", description = "Token ausente ou inválido", content = @Content)
 @ApiResponse(responseCode = "403", description = "Token sem o papel CUIDADOR", content = @Content)
 public class MedicamentoController {
@@ -52,12 +52,12 @@ public class MedicamentoController {
     private final BuscarMedicamentoUseCase buscarMedicamentoUseCase;
 
     @PostMapping
-    @Operation(summary = "Cadastra um medicamento para um idoso do cuidador",
+    @Operation(summary = "Cadastra um medicamento para um paciente do cuidador",
             description = "Nome, dosagem e tipo são obrigatórios (RN-005).")
     @ApiResponse(responseCode = "201", description = "Medicamento cadastrado")
     @ApiResponse(responseCode = "400", description = "Campos inválidos",
             content = @Content(schema = @Schema(implementation = ErroResponse.class)))
-    @ApiResponse(responseCode = "404", description = "Idoso inexistente ou de outro cuidador",
+    @ApiResponse(responseCode = "404", description = "Paciente inexistente ou de outro cuidador",
             content = @Content(schema = @Schema(implementation = ErroResponse.class)))
     public ResponseEntity<MedicamentoResponseDTO> cadastrar(@Valid @RequestBody MedicamentoRequestDTO request,
                                                             @Parameter(hidden = true)
@@ -67,21 +67,21 @@ public class MedicamentoController {
     }
 
     @GetMapping
-    @Operation(summary = "Lista os medicamentos de um idoso, em ordem alfabética")
+    @Operation(summary = "Lista os medicamentos de um paciente, em ordem alfabética")
     @ApiResponse(responseCode = "200", description = "Lista de medicamentos (pode ser vazia)")
-    @ApiResponse(responseCode = "404", description = "Idoso inexistente ou de outro cuidador",
+    @ApiResponse(responseCode = "404", description = "Paciente inexistente ou de outro cuidador",
             content = @Content(schema = @Schema(implementation = ErroResponse.class)))
-    public ResponseEntity<List<MedicamentoResponseDTO>> listar(@Parameter(description = "ID do idoso") @RequestParam Long idosoId,
+    public ResponseEntity<List<MedicamentoResponseDTO>> listar(@Parameter(description = "ID do paciente") @RequestParam Long pacienteId,
                                                                @Parameter(hidden = true)
                                                                @AuthenticationPrincipal AuthenticatedUser usuario) {
-        List<MedicamentoResponseDTO> medicamentos = listarMedicamentosUseCase.executar(idosoId, usuario.cuidadorId()).stream()
+        List<MedicamentoResponseDTO> medicamentos = listarMedicamentosUseCase.executar(pacienteId, usuario.cuidadorId()).stream()
                 .map(MedicamentoResponseDTO::from)
                 .toList();
         return ResponseEntity.ok(medicamentos);
     }
 
     @GetMapping("/{id}")
-    @Operation(summary = "Busca um medicamento de um idoso do cuidador")
+    @Operation(summary = "Busca um medicamento de um paciente do cuidador")
     @ApiResponse(responseCode = "200", description = "Medicamento encontrado")
     @ApiResponse(responseCode = "404", description = "Medicamento inexistente, removido ou de outro cuidador",
             content = @Content(schema = @Schema(implementation = ErroResponse.class)))
@@ -93,11 +93,11 @@ public class MedicamentoController {
 
     @PutMapping("/{id}")
     @Operation(summary = "Substitui todos os dados de um medicamento",
-            description = "O idoso pode ser trocado, desde que o novo idoso também pertença ao cuidador.")
+            description = "O paciente pode ser trocado, desde que o novo paciente também pertença ao cuidador.")
     @ApiResponse(responseCode = "200", description = "Medicamento atualizado")
     @ApiResponse(responseCode = "400", description = "Campos inválidos",
             content = @Content(schema = @Schema(implementation = ErroResponse.class)))
-    @ApiResponse(responseCode = "404", description = "Medicamento ou idoso inexistente ou de outro cuidador",
+    @ApiResponse(responseCode = "404", description = "Medicamento ou paciente inexistente ou de outro cuidador",
             content = @Content(schema = @Schema(implementation = ErroResponse.class)))
     public ResponseEntity<MedicamentoResponseDTO> editar(@Parameter(description = "ID do medicamento") @PathVariable Long id,
                                                          @Valid @RequestBody MedicamentoRequestDTO request,

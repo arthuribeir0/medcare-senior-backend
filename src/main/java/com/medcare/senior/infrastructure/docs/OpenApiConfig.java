@@ -20,7 +20,7 @@ import org.springframework.context.annotation.Configuration;
         info = @Info(
                 title = "MedCare Sênior API",
                 version = "v1",
-                description = "API do MedCare Sênior: cadastro de cuidadores e idosos, vínculo por código, "
+                description = "API do MedCare Sênior: cadastro de cuidadores e pacientes, vínculo por código, "
                         + "medicamentos e tratamentos."),
         security = @SecurityRequirement(name = OpenApiConfig.BEARER_JWT))
 @SecurityScheme(
@@ -28,7 +28,7 @@ import org.springframework.context.annotation.Configuration;
         type = SecuritySchemeType.HTTP,
         scheme = "bearer",
         bearerFormat = "JWT",
-        description = "Token obtido em POST /api/auth/login (cuidador) ou POST /api/vinculo/validar (idoso)")
+        description = "Token obtido em POST /api/auth/login (cuidador) ou POST /api/vinculo/validar (paciente)")
 public class OpenApiConfig {
 
     public static final String BEARER_JWT = "bearerAuth";

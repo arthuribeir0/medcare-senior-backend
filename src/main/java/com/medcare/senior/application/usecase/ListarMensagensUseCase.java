@@ -21,12 +21,12 @@ public class ListarMensagensUseCase {
 
     /**
      * @throws com.medcare.senior.domain.exception.ParametroInvalidoException se a página for negativa, o tamanho fora
-     *                                                                        de 1 a 100 ou faltar o idoso
+     *                                                                        de 1 a 100 ou faltar o paciente
      * @see AcessoAConversaService#resolver(AuthenticatedUser, Long) demais recusas
      */
-    public Pagina<Mensagem> executar(AuthenticatedUser usuario, Long idosoId, Integer pagina, Integer tamanho) {
+    public Pagina<Mensagem> executar(AuthenticatedUser usuario, Long pacienteId, Integer pagina, Integer tamanho) {
         Paginacao paginacao = Paginacao.de(pagina, tamanho);
-        AcessoAConversaService.Conversa conversa = acessoAConversa.resolver(usuario, idosoId);
-        return mensagemRepository.findConversa(conversa.idosoId(), paginacao.pagina(), paginacao.tamanho());
+        AcessoAConversaService.Conversa conversa = acessoAConversa.resolver(usuario, pacienteId);
+        return mensagemRepository.findConversa(conversa.pacienteId(), paginacao.pagina(), paginacao.tamanho());
     }
 }

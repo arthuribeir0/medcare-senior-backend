@@ -1,8 +1,8 @@
 # MedCare Sênior — backend
 
-API do MedCare Sênior: o cuidador cadastra idosos, remédios e tratamentos; o aparelho do idoso, pareado por código,
+API do MedCare Sênior: o cuidador cadastra pacientes, remédios e tratamentos; o aparelho do paciente, pareado por código,
 mostra as doses do dia e confirma cada uma; o cuidador recebe um aviso (push) quando uma dose não é confirmada a tempo,
-acompanha o relatório do dia, o histórico e o PDF de adesão, e troca mensagens com o idoso.
+acompanha o relatório do dia, o histórico e o PDF de adesão, e troca mensagens com o paciente.
 
 Java 17, Spring Boot 4, PostgreSQL 16 (Flyway), JWT, Firebase Cloud Messaging, OpenPDF, Caffeine. Arquitetura em
 camadas: `domain` (regras puras), `application` (casos de uso), `infrastructure` (banco, push, PDF, segurança, jobs) e
@@ -40,14 +40,14 @@ atômico condicionado a `status = 'PENDENTE'`).
 **Status da dose**: `PENDENTE`, `CONFIRMADA_NO_HORARIO` ("Confirmada no horário"), `CONFIRMADA_COM_ATRASO` e
 `NAO_TOMADA` ("Não confirmada"). Dose registrada nunca muda (RN-008).
 
-**Quem confirma**: o idoso (as próprias doses) e o cuidador (doses dos idosos dele), em
-`PUT /api/doses/{id}/confirmar`, com as mesmas regras. A dose guarda `confirmadoPor` (`IDOSO` ou `CUIDADOR`). Dose de
-idoso de outro cuidador responde o mesmo 404 de dose inexistente.
+**Quem confirma**: o paciente (as próprias doses) e o cuidador (doses dos pacientes dele), em
+`PUT /api/doses/{id}/confirmar`, com as mesmas regras. A dose guarda `confirmadoPor` (`PACIENTE` ou `CUIDADOR`). Dose de
+paciente de outro cuidador responde o mesmo 404 de dose inexistente.
 
 **Aviso ao cuidador**: push pelo FCM sem o nome do remédio (LGPD), um por dose, com retentativa para falhas
 temporárias. Com `FCM_ENABLED=false` o aviso fica registrado como falha com motivo `PUSH_DESLIGADO`, sem retentativa.
 
-**Relatórios**: o relatório diário fica 30 s em cache e é descartado na hora quando uma dose do idoso é confirmada ou
+**Relatórios**: o relatório diário fica 30 s em cache e é descartado na hora quando uma dose do paciente é confirmada ou
 encerrada (ou quando o cuidador muda tolerância, remédio ou tratamento). O PDF (`GET /api/relatorios/pdf`) aceita
 período de até 12 meses (acima disso, 400 `VALIDACAO`); período sem doses é 422 `PERIODO_SEM_REGISTROS`.
 

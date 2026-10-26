@@ -85,8 +85,8 @@ public class VerificarDosesVencidasUseCase {
             List<DoseEncerrada> encerradas = doseRepository.encerrarVencidas(agora, politicaDeJanela.toleranciaPadrao(),
                     politicaDeJanela.margemPosAviso(), parametros.loteMaximo());
             contagem.encerradas = encerradas.size();
-            // Os relatórios diários desses idosos mostravam as doses como pendentes
-            encerradas.stream().map(DoseEncerrada::idosoId).distinct().forEach(cacheDeRelatorio::descartarDoIdoso);
+            // Os relatórios diários desses pacientes mostravam as doses como pendentes
+            encerradas.stream().map(DoseEncerrada::pacienteId).distinct().forEach(cacheDeRelatorio::descartarDoPaciente);
         } catch (RuntimeException e) {
             contagem.falhas++;
             log.error("Falha ao encerrar as doses vencidas; seguindo para os avisos", e);
@@ -94,7 +94,7 @@ public class VerificarDosesVencidasUseCase {
     }
 
     private void avisar(LocalDateTime agora, Contagem contagem) {
-        // A busca usa a tolerância do cuidador dono de cada idoso (ou a padrão). Mudar a tolerância só afeta avisos
+        // A busca usa a tolerância do cuidador dono de cada paciente (ou a padrão). Mudar a tolerância só afeta avisos
         // ainda não enviados: dose que já tem evento de notificação não é avisada de novo
         List<DoseParaAviso> doses = doseRepository.findPendentesParaAviso(agora, politicaDeJanela.toleranciaPadrao(),
                 politicaDeJanela.margemPosAviso(), parametros.loteMaximo());
@@ -108,7 +108,7 @@ public class VerificarDosesVencidasUseCase {
                 }
                 contagem.avisos++;
                 ResultadoEnvioPush resultado = envioDeAviso.enviar(evento.get(), new DoseNaoTomadaNotificacao(
-                        dose.doseId(), dose.cuidadorId(), dose.idosoId(), dose.nomeIdoso(), dose.horarioProgramado()));
+                        dose.doseId(), dose.cuidadorId(), dose.pacienteId(), dose.nomePaciente(), dose.horarioProgramado()));
                 if (resultado == ResultadoEnvioPush.ENVIADO) {
                     contagem.enviados++;
                 }

@@ -28,9 +28,9 @@ import java.util.Optional;
  *       que não existe mais. O app registra um token novo no próximo login.</li>
  *   <li>Falha temporária: devolvida para o evento continuar PENDENTE e a retentativa tentar de novo.</li>
  * </ul>
- * Nunca lança exceção por falha de entrega. Logs só com IDs, sem nome de idoso, medicamento ou token.
+ * Nunca lança exceção por falha de entrega. Logs só com IDs, sem nome de paciente, medicamento ou token.
  *
- * <p>Conteúdo (LGPD): o texto leva o nome do idoso e o horário, mas NUNCA o medicamento (dado de saúde que passaria
+ * <p>Conteúdo (LGPD): o texto leva o nome do paciente e o horário, mas NUNCA o medicamento (dado de saúde que passaria
  * pelos servidores do Google). O payload de dados leva só o tipo, IDs e a data, para o app abrir a dose.
  */
 @Component
@@ -96,18 +96,18 @@ public class PushNotificadorDeDoseNaoTomadaAdapter implements NotificadorDeDoseN
         if (!horario.toLocalDate().equals(LocalDate.now(clock))) {
             quando += " de " + DIA.format(horario);
         }
-        return notificacao.nomeIdoso() + " ainda não confirmou a dose " + quando;
+        return notificacao.nomePaciente() + " ainda não confirmou a dose " + quando;
     }
 
     /**
-     * Payload para o app abrir a dose ao tocar na notificação: tipo, doseId, idosoId e data (yyyy-MM-dd, no fuso da
+     * Payload para o app abrir a dose ao tocar na notificação: tipo, doseId, pacienteId e data (yyyy-MM-dd, no fuso da
      * aplicação). Tudo como texto, como o FCM exige.
      */
     static Map<String, String> dados(DoseNaoTomadaNotificacao notificacao) {
         return Map.of(
                 "tipo", TIPO,
                 "doseId", String.valueOf(notificacao.doseId()),
-                "idosoId", String.valueOf(notificacao.idosoId()),
+                "pacienteId", String.valueOf(notificacao.pacienteId()),
                 "data", notificacao.horarioProgramado().toLocalDate().toString());
     }
 }

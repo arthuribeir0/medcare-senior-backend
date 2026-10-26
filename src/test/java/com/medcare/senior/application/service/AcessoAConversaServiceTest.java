@@ -6,8 +6,8 @@ import com.medcare.senior.domain.exception.ParametroInvalidoException;
 import com.medcare.senior.domain.exception.RecursoNaoEncontradoException;
 import com.medcare.senior.domain.exception.SessaoInvalidaException;
 import com.medcare.senior.domain.mensagem.Remetente;
-import com.medcare.senior.domain.usuario.Idoso;
-import com.medcare.senior.domain.usuario.IdosoRepositoryPort;
+import com.medcare.senior.domain.usuario.Paciente;
+import com.medcare.senior.domain.usuario.PacienteRepositoryPort;
 import com.medcare.senior.domain.usuario.Role;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -26,61 +26,61 @@ import static org.mockito.Mockito.when;
 class AcessoAConversaServiceTest {
 
     private static final AuthenticatedUser CUIDADOR = new AuthenticatedUser(1L, Role.CUIDADOR);
-    private static final AuthenticatedUser IDOSO = new AuthenticatedUser(10L, Role.IDOSO);
+    private static final AuthenticatedUser PACIENTE = new AuthenticatedUser(10L, Role.PACIENTE);
 
     @Mock
-    private IdosoRepositoryPort idosoRepository;
+    private PacienteRepositoryPort pacienteRepository;
 
     @InjectMocks
     private AcessoAConversaService acesso;
 
-    private static Idoso idoso(Long id) {
-        return Idoso.builder().id(id).cuidadorId(1L).nome("Maria").build();
+    private static Paciente paciente(Long id) {
+        return Paciente.builder().id(id).cuidadorId(1L).nome("Maria").build();
     }
 
     @Test
-    void cuidadorAcessaAConversaDeUmIdosoSeu() {
-        when(idosoRepository.findByIdAndCuidadorId(10L, 1L)).thenReturn(Optional.of(idoso(10L)));
+    void cuidadorAcessaAConversaDeUmPacienteSeu() {
+        when(pacienteRepository.findByIdAndCuidadorId(10L, 1L)).thenReturn(Optional.of(paciente(10L)));
 
         assertThat(acesso.resolver(CUIDADOR, 10L)).isEqualTo(new AcessoAConversaService.Conversa(10L, Remetente.CUIDADOR));
     }
 
     @Test
-    void cuidadorPrecisaInformarOIdoso() {
+    void cuidadorPrecisaInformarOPaciente() {
         assertThatThrownBy(() -> acesso.resolver(CUIDADOR, null))
                 .isInstanceOf(ParametroInvalidoException.class)
-                .extracting("campo").isEqualTo("idosoId");
-        verifyNoInteractions(idosoRepository);
+                .extracting("campo").isEqualTo("pacienteId");
+        verifyNoInteractions(pacienteRepository);
     }
 
     @Test
-    void idosoDeOutroCuidadorEhNaoEncontrado() {
-        when(idosoRepository.findByIdAndCuidadorId(99L, 1L)).thenReturn(Optional.empty());
+    void pacienteDeOutroCuidadorEhNaoEncontrado() {
+        when(pacienteRepository.findByIdAndCuidadorId(99L, 1L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> acesso.resolver(CUIDADOR, 99L)).isInstanceOf(RecursoNaoEncontradoException.class);
     }
 
     @Test
-    void idosoAcessaAPropriaConversaComOuSemInformarOId() {
-        when(idosoRepository.findById(10L)).thenReturn(Optional.of(idoso(10L)));
+    void pacienteAcessaAPropriaConversaComOuSemInformarOId() {
+        when(pacienteRepository.findById(10L)).thenReturn(Optional.of(paciente(10L)));
 
-        AcessoAConversaService.Conversa esperada = new AcessoAConversaService.Conversa(10L, Remetente.IDOSO);
-        assertThat(acesso.resolver(IDOSO, null)).isEqualTo(esperada);
-        assertThat(acesso.resolver(IDOSO, 10L)).isEqualTo(esperada);
+        AcessoAConversaService.Conversa esperada = new AcessoAConversaService.Conversa(10L, Remetente.PACIENTE);
+        assertThat(acesso.resolver(PACIENTE, null)).isEqualTo(esperada);
+        assertThat(acesso.resolver(PACIENTE, 10L)).isEqualTo(esperada);
     }
 
     @Test
-    void idosoInformandoOutroIdosoEhAcessoNegado() {
-        when(idosoRepository.findById(10L)).thenReturn(Optional.of(idoso(10L)));
+    void pacienteInformandoOutroPacienteEhAcessoNegado() {
+        when(pacienteRepository.findById(10L)).thenReturn(Optional.of(paciente(10L)));
 
-        assertThatThrownBy(() -> acesso.resolver(IDOSO, 11L)).isInstanceOf(AcessoNegadoException.class);
+        assertThatThrownBy(() -> acesso.resolver(PACIENTE, 11L)).isInstanceOf(AcessoNegadoException.class);
     }
 
     @Test
-    void idosoQueNaoExisteMaisTemSessaoInvalidaAntesDeQualquerOutraRecusa() {
-        when(idosoRepository.findById(10L)).thenReturn(Optional.empty());
+    void pacienteQueNaoExisteMaisTemSessaoInvalidaAntesDeQualquerOutraRecusa() {
+        when(pacienteRepository.findById(10L)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> acesso.resolver(IDOSO, 11L)).isInstanceOf(SessaoInvalidaException.class);
-        assertThatThrownBy(() -> acesso.exigirIdoso(IDOSO)).isInstanceOf(SessaoInvalidaException.class);
+        assertThatThrownBy(() -> acesso.resolver(PACIENTE, 11L)).isInstanceOf(SessaoInvalidaException.class);
+        assertThatThrownBy(() -> acesso.exigirPaciente(PACIENTE)).isInstanceOf(SessaoInvalidaException.class);
     }
 }

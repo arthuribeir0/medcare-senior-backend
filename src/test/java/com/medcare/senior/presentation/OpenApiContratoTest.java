@@ -31,7 +31,7 @@ class OpenApiContratoTest {
                 .andExpect(jsonPath("$.components.schemas.DoseResponseDTO.properties.limiteConfirmacao.format")
                         .value("date-time"))
                 .andExpect(jsonPath("$.components.schemas.DoseResponseDTO.properties.confirmadoPor.enum",
-                        containsInAnyOrder("IDOSO", "CUIDADOR")))
+                        containsInAnyOrder("PACIENTE", "CUIDADOR")))
                 .andExpect(jsonPath("$.components.schemas.DoseResponseDTO.properties.status.enum",
                         containsInAnyOrder("PENDENTE", "CONFIRMADA_NO_HORARIO", "NAO_TOMADA", "CONFIRMADA_COM_ATRASO")))
                 .andExpect(jsonPath("$.components.schemas.DoseResponseDTO.properties.statusExibicao.enum",

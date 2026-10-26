@@ -38,7 +38,7 @@ class MensagemUseCasesTest {
     private static final ZoneId FUSO = ZoneId.of("America/Sao_Paulo");
     private static final LocalDateTime AGORA = LocalDateTime.of(2026, 10, 20, 9, 30);
     private static final AuthenticatedUser CUIDADOR = new AuthenticatedUser(1L, Role.CUIDADOR);
-    private static final AuthenticatedUser IDOSO = new AuthenticatedUser(10L, Role.IDOSO);
+    private static final AuthenticatedUser PACIENTE = new AuthenticatedUser(10L, Role.PACIENTE);
 
     @Mock
     private AcessoAConversaService acesso;
@@ -58,13 +58,13 @@ class MensagemUseCasesTest {
         when(acesso.resolver(CUIDADOR, 10L)).thenReturn(new AcessoAConversaService.Conversa(10L, Remetente.CUIDADOR));
         when(repositorio.salvar(any())).thenAnswer(i -> {
             Mensagem m = i.getArgument(0);
-            return new Mensagem(301L, m.idosoId(), m.remetente(), m.conteudo(), m.criadaEm(), m.lidaEm());
+            return new Mensagem(301L, m.pacienteId(), m.remetente(), m.conteudo(), m.criadaEm(), m.lidaEm());
         });
 
         Mensagem enviada = new EnviarMensagemUseCase(acesso, repositorio, clock).executar(CUIDADOR, 10L, " Bom dia ");
 
         assertThat(enviada.id()).isEqualTo(301L);
-        assertThat(enviada.idosoId()).isEqualTo(10L);
+        assertThat(enviada.pacienteId()).isEqualTo(10L);
         assertThat(enviada.remetente()).isEqualTo(Remetente.CUIDADOR);
         assertThat(enviada.conteudo()).isEqualTo("Bom dia");
         assertThat(enviada.criadaEm()).isEqualTo(AGORA);
@@ -73,9 +73,9 @@ class MensagemUseCasesTest {
 
     @Test
     void enviarVazioNaoGrava() {
-        when(acesso.resolver(IDOSO, null)).thenReturn(new AcessoAConversaService.Conversa(10L, Remetente.IDOSO));
+        when(acesso.resolver(PACIENTE, null)).thenReturn(new AcessoAConversaService.Conversa(10L, Remetente.PACIENTE));
 
-        assertThatThrownBy(() -> new EnviarMensagemUseCase(acesso, repositorio, clock).executar(IDOSO, null, "   "))
+        assertThatThrownBy(() -> new EnviarMensagemUseCase(acesso, repositorio, clock).executar(PACIENTE, null, "   "))
                 .isInstanceOf(ParametroInvalidoException.class);
         verifyNoInteractions(repositorio);
     }
@@ -83,51 +83,51 @@ class MensagemUseCasesTest {
     @Test
     void listarValidaAPaginaAntesDeConsultarEUsaOPadrao() {
         ListarMensagensUseCase listar = new ListarMensagensUseCase(acesso, repositorio);
-        assertThatThrownBy(() -> listar.executar(IDOSO, null, 0, 101)).isInstanceOf(ParametroInvalidoException.class);
+        assertThatThrownBy(() -> listar.executar(PACIENTE, null, 0, 101)).isInstanceOf(ParametroInvalidoException.class);
         verifyNoInteractions(acesso, repositorio);
 
-        when(acesso.resolver(IDOSO, null)).thenReturn(new AcessoAConversaService.Conversa(10L, Remetente.IDOSO));
+        when(acesso.resolver(PACIENTE, null)).thenReturn(new AcessoAConversaService.Conversa(10L, Remetente.PACIENTE));
         Pagina<Mensagem> pagina = new Pagina<>(List.of(), 0, 20, 0);
         when(repositorio.findConversa(10L, 0, 20)).thenReturn(pagina);
 
-        assertThat(listar.executar(IDOSO, null, null, null)).isSameAs(pagina);
+        assertThat(listar.executar(PACIENTE, null, null, null)).isSameAs(pagina);
     }
 
     @Test
     void marcarComoLidasMarcaSoAsDoOutroLadoComAHoraDoServidor() {
         when(acesso.resolver(CUIDADOR, 10L)).thenReturn(new AcessoAConversaService.Conversa(10L, Remetente.CUIDADOR));
-        when(acesso.resolver(IDOSO, null)).thenReturn(new AcessoAConversaService.Conversa(10L, Remetente.IDOSO));
-        when(repositorio.marcarComoLidas(10L, Remetente.IDOSO, AGORA)).thenReturn(3);
+        when(acesso.resolver(PACIENTE, null)).thenReturn(new AcessoAConversaService.Conversa(10L, Remetente.PACIENTE));
+        when(repositorio.marcarComoLidas(10L, Remetente.PACIENTE, AGORA)).thenReturn(3);
         when(repositorio.marcarComoLidas(10L, Remetente.CUIDADOR, AGORA)).thenReturn(0);
         MarcarMensagensComoLidasUseCase marcar = new MarcarMensagensComoLidasUseCase(acesso, repositorio, clock);
 
-        // O cuidador lê as do idoso; o idoso, as do cuidador
+        // O cuidador lê as do paciente; o paciente, as do cuidador
         assertThat(marcar.executar(CUIDADOR, 10L)).isEqualTo(3);
-        assertThat(marcar.executar(IDOSO, null)).isZero();
+        assertThat(marcar.executar(PACIENTE, null)).isZero();
     }
 
     @Test
-    void conversasDoCuidadorEDoIdoso() {
-        ResumoConversa doIdoso = new ResumoConversa(10L, "Maria", null, 0);
-        when(repositorio.findConversasDoCuidador(1L)).thenReturn(List.of(doIdoso));
-        when(acesso.exigirIdoso(IDOSO)).thenReturn(10L);
-        when(repositorio.findConversaDoIdoso(10L)).thenReturn(doIdoso);
+    void conversasDoCuidadorEDoPaciente() {
+        ResumoConversa doPaciente = new ResumoConversa(10L, "Maria", null, 0);
+        when(repositorio.findConversasDoCuidador(1L)).thenReturn(List.of(doPaciente));
+        when(acesso.exigirPaciente(PACIENTE)).thenReturn(10L);
+        when(repositorio.findConversaDoPaciente(10L)).thenReturn(doPaciente);
         ListarConversasUseCase listar = new ListarConversasUseCase(acesso, repositorio);
 
-        assertThat(listar.executar(CUIDADOR)).containsExactly(doIdoso);
-        assertThat(listar.executar(IDOSO)).containsExactly(doIdoso);
-        verify(acesso).exigirIdoso(IDOSO);
+        assertThat(listar.executar(CUIDADOR)).containsExactly(doPaciente);
+        assertThat(listar.executar(PACIENTE)).containsExactly(doPaciente);
+        verify(acesso).exigirPaciente(PACIENTE);
     }
 
     @Test
-    void naoLidasDoCuidadorSomamTodasAsConversasEAsDoIdosoSaoAsDoCuidador() {
+    void naoLidasDoCuidadorSomamTodasAsConversasEAsDoPacienteSaoAsDoCuidador() {
         when(repositorio.contarNaoLidasDoCuidador(1L)).thenReturn(4L);
-        when(acesso.exigirIdoso(IDOSO)).thenReturn(10L);
+        when(acesso.exigirPaciente(PACIENTE)).thenReturn(10L);
         when(repositorio.contarNaoLidas(10L, Remetente.CUIDADOR)).thenReturn(2L);
         ContarMensagensNaoLidasUseCase contar = new ContarMensagensNaoLidasUseCase(acesso, repositorio);
 
         assertThat(contar.executar(CUIDADOR)).isEqualTo(4L);
-        assertThat(contar.executar(IDOSO)).isEqualTo(2L);
+        assertThat(contar.executar(PACIENTE)).isEqualTo(2L);
         ArgumentCaptor<Remetente> lado = ArgumentCaptor.forClass(Remetente.class);
         verify(repositorio).contarNaoLidas(any(), lado.capture());
         assertThat(lado.getValue()).isEqualTo(Remetente.CUIDADOR);

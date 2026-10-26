@@ -58,7 +58,7 @@ public class DoseRepositoryAdapter implements DoseRepositoryPort {
                         limite)
                 .stream()
                 .map(linha -> new DoseParaAviso(linha.getDoseId(), linha.getHorarioProgramado(), linha.getCuidadorId(),
-                        linha.getIdosoId(), linha.getNomeIdoso()))
+                        linha.getPacienteId(), linha.getNomePaciente()))
                 .toList();
     }
 
@@ -71,7 +71,7 @@ public class DoseRepositoryAdapter implements DoseRepositoryPort {
         return doseRepository.encerrarVencidas(agora, minutos(toleranciaPadrao), minutos(margemPosAviso), horarioMaximo,
                         limite)
                 .stream()
-                .map(linha -> new DoseEncerrada(linha.getDoseId(), linha.getIdosoId()))
+                .map(linha -> new DoseEncerrada(linha.getDoseId(), linha.getPacienteId()))
                 .toList();
     }
 
@@ -91,8 +91,8 @@ public class DoseRepositoryAdapter implements DoseRepositoryPort {
     }
 
     @Override
-    public List<DoseDetalhada> findDetalhadasDoIdosoEntre(Long idosoId, LocalDateTime inicio, LocalDateTime fim) {
-        return doseRepository.findDetalhadasDoIdosoEntre(idosoId, inicio, fim).stream()
+    public List<DoseDetalhada> findDetalhadasDoPacienteEntre(Long pacienteId, LocalDateTime inicio, LocalDateTime fim) {
+        return doseRepository.findDetalhadasDoPacienteEntre(pacienteId, inicio, fim).stream()
                 .map(DoseRepositoryAdapter::toDetalhada)
                 .toList();
     }
@@ -102,26 +102,26 @@ public class DoseRepositoryAdapter implements DoseRepositoryPort {
         // Sem "de": desde o início (data anterior a qualquer dose do sistema). "ate" é inclusivo: até o dia seguinte
         LocalDateTime inicio = filtro.de() != null ? filtro.de().atStartOfDay() : SEM_INICIO;
         LocalDateTime fim = filtro.ate().plusDays(1).atStartOfDay();
-        Page<DoseDetalhadaProjection> pagina = doseRepository.findHistorico(cuidadorId, filtro.idosoId(),
+        Page<DoseDetalhadaProjection> pagina = doseRepository.findHistorico(cuidadorId, filtro.pacienteId(),
                 filtro.medicamentoId(), filtro.status(), inicio, fim, PageRequest.of(filtro.pagina(), filtro.tamanho()));
         return new Pagina<>(pagina.getContent().stream().map(DoseRepositoryAdapter::toDetalhada).toList(),
                 filtro.pagina(), filtro.tamanho(), pagina.getTotalElements());
     }
 
     @Override
-    public List<ContagemDeDoses> contarPorMedicamentoEStatus(Long idosoId, LocalDateTime inicio, LocalDateTime fim) {
-        return doseRepository.contarPorMedicamentoEStatus(idosoId, inicio, fim);
+    public List<ContagemDeDoses> contarPorMedicamentoEStatus(Long pacienteId, LocalDateTime inicio, LocalDateTime fim) {
+        return doseRepository.contarPorMedicamentoEStatus(pacienteId, inicio, fim);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public void percorrerDoIdoso(Long idosoId, LocalDateTime inicio, LocalDateTime fim, int tamanhoDoLote,
+    public void percorrerDoPaciente(Long pacienteId, LocalDateTime inicio, LocalDateTime fim, int tamanhoDoLote,
                                  Consumer<List<DoseDetalhada>> lote) {
         // Uma transação só leitura para todo o percurso: os lotes enxergam o mesmo estado do banco
         int pagina = 0;
         List<DoseDetalhadaProjection> linhas;
         do {
-            linhas = doseRepository.findDoIdosoParaRelatorio(idosoId, inicio, fim, PageRequest.of(pagina++, tamanhoDoLote));
+            linhas = doseRepository.findDoPacienteParaRelatorio(pacienteId, inicio, fim, PageRequest.of(pagina++, tamanhoDoLote));
             if (!linhas.isEmpty()) {
                 lote.accept(linhas.stream().map(DoseRepositoryAdapter::toDetalhada).toList());
             }
@@ -129,8 +129,8 @@ public class DoseRepositoryAdapter implements DoseRepositoryPort {
     }
 
     @Override
-    public Optional<DoseDetalhada> findDetalhadaByIdAndIdosoId(Long doseId, Long idosoId) {
-        return doseRepository.findDetalhadaByIdAndIdosoId(doseId, idosoId).map(DoseRepositoryAdapter::toDetalhada);
+    public Optional<DoseDetalhada> findDetalhadaByIdAndPacienteId(Long doseId, Long pacienteId) {
+        return doseRepository.findDetalhadaByIdAndPacienteId(doseId, pacienteId).map(DoseRepositoryAdapter::toDetalhada);
     }
 
     @Override
@@ -147,7 +147,7 @@ public class DoseRepositoryAdapter implements DoseRepositoryPort {
                 .status(linha.status())
                 .confirmadoPor(linha.confirmadoPor())
                 .build();
-        return new DoseDetalhada(dose, linha.idosoId(), linha.idosoNome(), linha.medicamentoId(), linha.medicamentoNome(),
+        return new DoseDetalhada(dose, linha.pacienteId(), linha.pacienteNome(), linha.medicamentoId(), linha.medicamentoNome(),
                 linha.dosagem(), linha.tipo(), linha.toleranciaMinutosDoCuidador(), linha.cor());
     }
 

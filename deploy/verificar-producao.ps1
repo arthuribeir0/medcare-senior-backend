@@ -6,7 +6,7 @@
   1. Saúde: GET <Url>/actuator/health precisa responder {"status":"UP"} e só isso.
   2. HTTPS: http:// redireciona para https:// (pule com -SemRedirecionamento no túnel).
   3. Cabeçalhos de segurança do nginx e rotas internas fechadas (Swagger e actuator).
-  4. Fluxo real pelo smoke do app (repositório do front): cadastro, login, idoso, remédio, dose, confirmação,
+  4. Fluxo real pelo smoke do app (repositório do front): cadastro, login, paciente, remédio, dose, confirmação,
      histórico, mensagens e exclusão da conta. O smoke cria uma conta de teste e a exclui no fim.
   Não imprime nem pede segredo. Os logs dos jobs ficam na VM (ver docs/implantacao.md, seção 10).
 
@@ -74,7 +74,7 @@ Passo 'saúde UP sem detalhes (/actuator/health)' {
 
 if (-not $SemRedirecionamento) {
     Passo 'http:// redireciona para https://' {
-        $r = Get-Resposta (($base -replace '^https://', 'http://') + '/api/idosos')
+        $r = Get-Resposta (($base -replace '^https://', 'http://') + '/api/pacientes')
         if ($r.Status -ne 301 -or $r.Headers['Location'] -notmatch '^https://') { throw "esperava 301 para https://, veio $($r.Status)" }
     }
 }
@@ -97,7 +97,7 @@ Passo 'rotas internas fechadas (Swagger e demais endpoints do actuator)' {
 }
 
 Passo 'rota da API sem token responde 401' {
-    $s = (Get-Resposta "$base/api/idosos").Status
+    $s = (Get-Resposta "$base/api/pacientes").Status
     if ($s -ne 401) { throw "esperava 401, veio $s" }
 }
 

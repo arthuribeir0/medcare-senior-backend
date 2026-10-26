@@ -17,10 +17,10 @@ public record DoseResponseDTO(
         Long id,
 
         @Schema(example = "10")
-        Long idosoId,
+        Long pacienteId,
 
         @Schema(example = "José Souza")
-        String idosoNome,
+        String pacienteNome,
 
         @Schema(example = "100")
         Long medicamentoId,
@@ -49,7 +49,7 @@ public record DoseResponseDTO(
         @Schema(description = "Status gravado no banco", example = "PENDENTE")
         StatusDose status,
 
-        @Schema(description = "Quem confirmou a dose (null se não foi confirmada)", example = "IDOSO", nullable = true)
+        @Schema(description = "Quem confirmou a dose (null se não foi confirmada)", example = "PACIENTE", nullable = true)
         ConfirmadoPor confirmadoPor,
 
         @Schema(description = "Status a exibir: para dose PENDENTE, ATRASADA depois da tolerância e NAO_TOMADA depois "
@@ -87,7 +87,7 @@ public record DoseResponseDTO(
     public static DoseResponseDTO from(DoseAvaliada avaliada) {
         DoseDetalhada detalhe = avaliada.detalhe();
         JanelaDose janela = avaliada.janela();
-        return new DoseResponseDTO(detalhe.dose().getId(), detalhe.idosoId(), detalhe.idosoNome(), detalhe.medicamentoId(),
+        return new DoseResponseDTO(detalhe.dose().getId(), detalhe.pacienteId(), detalhe.pacienteNome(), detalhe.medicamentoId(),
                 detalhe.medicamentoNome(), detalhe.dosagem(), detalhe.tipo(), detalhe.cor(), detalhe.dose().getTratamentoId(),
                 detalhe.dose().getHorarioProgramado(), detalhe.dose().getHoraConfirmacao(), detalhe.dose().getStatus(),
                 detalhe.dose().getConfirmadoPor(),

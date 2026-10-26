@@ -23,13 +23,13 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Ponto de entrada do idoso: troca um código de vínculo válido por um JWT com role IDOSO.
+ * Ponto de entrada do paciente: troca um código de vínculo válido por um JWT com role PACIENTE.
  * Público (sem JWT) e protegido por rate limiting por IP.
  */
 @RestController
 @RequestMapping("/api/vinculo")
 @RequiredArgsConstructor
-@Tag(name = "Vínculo", description = "Pareamento do aparelho do idoso por código")
+@Tag(name = "Vínculo", description = "Pareamento do aparelho do paciente por código")
 public class VinculoController {
 
     private final ValidarCodigoVinculoUseCase validarCodigoVinculoUseCase;
@@ -37,9 +37,9 @@ public class VinculoController {
 
     @PostMapping("/validar")
     @SecurityRequirements
-    @Operation(summary = "Troca um código de vínculo por um JWT do idoso",
+    @Operation(summary = "Troca um código de vínculo por um JWT do paciente",
             description = "Endpoint público, com limite de tentativas inválidas por IP.")
-    @ApiResponse(responseCode = "200", description = "Código válido; devolve o token e o id e o nome do idoso")
+    @ApiResponse(responseCode = "200", description = "Código válido; devolve o token e o id e o nome do paciente")
     @ApiResponse(responseCode = "400", description = "Código inválido, expirado ou já usado",
             content = @Content(schema = @Schema(implementation = ErroResponse.class)))
     @ApiResponse(responseCode = "429", description = "Muitas tentativas inválidas (header Retry-After)",

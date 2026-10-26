@@ -7,8 +7,8 @@ import com.medcare.senior.domain.medicamento.MedicamentoComTratamentoAtivoExcept
 import com.medcare.senior.domain.medicamento.MedicamentoRepositoryPort;
 import com.medcare.senior.domain.tratamento.Tratamento;
 import com.medcare.senior.domain.tratamento.TratamentoRepositoryPort;
-import com.medcare.senior.domain.usuario.Idoso;
-import com.medcare.senior.domain.usuario.IdosoRepositoryPort;
+import com.medcare.senior.domain.usuario.Paciente;
+import com.medcare.senior.domain.usuario.PacienteRepositoryPort;
 import com.medcare.senior.domain.relatorio.CacheDeRelatorioDiarioPort;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -37,7 +37,7 @@ import static org.mockito.Mockito.when;
 class RemoverMedicamentoUseCaseTest {
 
     private static final Long CUIDADOR_ID = 1L;
-    private static final Long IDOSO_ID = 10L;
+    private static final Long PACIENTE_ID = 10L;
     private static final Long MEDICAMENTO_ID = 100L;
     private static final ZoneId FUSO = ZoneId.of("America/Sao_Paulo");
     private static final LocalDateTime AGORA = LocalDateTime.of(2026, 10, 8, 14, 30);
@@ -50,7 +50,7 @@ class RemoverMedicamentoUseCaseTest {
     private MedicamentoRepositoryPort medicamentoRepository;
 
     @Mock
-    private IdosoRepositoryPort idosoRepository;
+    private PacienteRepositoryPort pacienteRepository;
 
     @Mock
     private TratamentoRepositoryPort tratamentoRepository;
@@ -63,15 +63,15 @@ class RemoverMedicamentoUseCaseTest {
     @BeforeEach
     void setUp() {
         Clock clock = Clock.fixed(AGORA.atZone(FUSO).toInstant(), FUSO);
-        useCase = new RemoverMedicamentoUseCase(medicamentoRepository, idosoRepository, tratamentoRepository,
+        useCase = new RemoverMedicamentoUseCase(medicamentoRepository, pacienteRepository, tratamentoRepository,
                 doseRepository, cacheDeRelatorio, clock);
     }
 
     private void medicamentoDoCuidador() {
         when(medicamentoRepository.findById(MEDICAMENTO_ID))
-                .thenReturn(Optional.of(Medicamento.builder().id(MEDICAMENTO_ID).idosoId(IDOSO_ID).build()));
-        when(idosoRepository.findByIdAndCuidadorId(IDOSO_ID, CUIDADOR_ID))
-                .thenReturn(Optional.of(Idoso.builder().id(IDOSO_ID).cuidadorId(CUIDADOR_ID).build()));
+                .thenReturn(Optional.of(Medicamento.builder().id(MEDICAMENTO_ID).pacienteId(PACIENTE_ID).build()));
+        when(pacienteRepository.findByIdAndCuidadorId(PACIENTE_ID, CUIDADOR_ID))
+                .thenReturn(Optional.of(Paciente.builder().id(PACIENTE_ID).cuidadorId(CUIDADOR_ID).build()));
     }
 
     private void tratamentos(Tratamento... tratamentos) {
@@ -164,8 +164,8 @@ class RemoverMedicamentoUseCaseTest {
     @Test
     void deveRejeitarMedicamentoDeOutroCuidador() {
         when(medicamentoRepository.findById(MEDICAMENTO_ID))
-                .thenReturn(Optional.of(Medicamento.builder().id(MEDICAMENTO_ID).idosoId(IDOSO_ID).build()));
-        when(idosoRepository.findByIdAndCuidadorId(IDOSO_ID, CUIDADOR_ID)).thenReturn(Optional.empty());
+                .thenReturn(Optional.of(Medicamento.builder().id(MEDICAMENTO_ID).pacienteId(PACIENTE_ID).build()));
+        when(pacienteRepository.findByIdAndCuidadorId(PACIENTE_ID, CUIDADOR_ID)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> useCase.executar(MEDICAMENTO_ID, CUIDADOR_ID, true))
                 .isInstanceOf(RecursoNaoEncontradoException.class)

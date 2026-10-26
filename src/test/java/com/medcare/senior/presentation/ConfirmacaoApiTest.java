@@ -48,7 +48,7 @@ class ConfirmacaoApiTest {
 
     private LocalDateTime agora;
     private Long cuidadorId;
-    private Long idosoId;
+    private Long pacienteId;
     private Long medicamentoId;
     private Long tratamentoId;
 
@@ -58,10 +58,10 @@ class ConfirmacaoApiTest {
         cuidadorId = jdbc.queryForObject("INSERT INTO cuidador (nome, email, senha_hash, data_cadastro, "
                 + "consentimento_lgpd, data_consentimento) VALUES ('Cuidador confirmação', ?, 'hash', ?, true, ?) "
                 + "RETURNING id", Long.class, "confirmacao-" + UUID.randomUUID() + "@teste.com", agora, agora);
-        idosoId = jdbc.queryForObject("INSERT INTO idoso (nome, data_nascimento, cuidador_id) VALUES ('Maria', ?, ?) "
+        pacienteId = jdbc.queryForObject("INSERT INTO paciente (nome, data_nascimento, cuidador_id) VALUES ('Maria', ?, ?) "
                 + "RETURNING id", Long.class, LocalDate.of(1945, 3, 12), cuidadorId);
-        medicamentoId = jdbc.queryForObject("INSERT INTO medicamento (nome, dosagem, tipo, idoso_id) "
-                + "VALUES ('Losartana', '50mg', 'COMPRIMIDO', ?) RETURNING id", Long.class, idosoId);
+        medicamentoId = jdbc.queryForObject("INSERT INTO medicamento (nome, dosagem, tipo, paciente_id) "
+                + "VALUES ('Losartana', '50mg', 'COMPRIMIDO', ?) RETURNING id", Long.class, pacienteId);
         tratamentoId = jdbc.queryForObject("INSERT INTO tratamento (medicamento_id, data_inicio, horarios, dias_semana) "
                 + "VALUES (?, ?, '[\"08:00\"]'::jsonb, '[\"MONDAY\"]'::jsonb) RETURNING id", Long.class,
                 medicamentoId, agora.toLocalDate().minusDays(2));
@@ -74,7 +74,7 @@ class ConfirmacaoApiTest {
 
     private ResultActions confirmar(Long doseId) throws Exception {
         return mvc.perform(put("/api/doses/" + doseId + "/confirmar")
-                .header(HttpHeaders.AUTHORIZATION, "Bearer " + tokens.generateToken(idosoId, Role.IDOSO)));
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + tokens.generateToken(pacienteId, Role.PACIENTE)));
     }
 
     private ResultActions confirmarComoCuidador(Long doseId, Long cuidador) throws Exception {
@@ -125,10 +125,10 @@ class ConfirmacaoApiTest {
                 .andExpect(jsonPath("$.status").value("CONFIRMADA_COM_ATRASO"))
                 .andExpect(jsonPath("$.statusExibicao").value("CONFIRMADA_COM_ATRASO"))
                 .andExpect(jsonPath("$.confirmabilidade").value("JA_REGISTRADA"))
-                .andExpect(jsonPath("$.confirmadoPor").value("IDOSO"))
+                .andExpect(jsonPath("$.confirmadoPor").value("PACIENTE"))
                 .andExpect(jsonPath("$.horaConfirmacao").exists());
         assertThat(statusGravado(dose)).isEqualTo("CONFIRMADA_COM_ATRASO");
-        assertThat(confirmadoPor(dose)).isEqualTo("IDOSO");
+        assertThat(confirmadoPor(dose)).isEqualTo("PACIENTE");
         // Já registrada: a segunda tentativa não muda nada
         confirmar(dose)
                 .andExpect(status().isConflict())
@@ -152,7 +152,7 @@ class ConfirmacaoApiTest {
     // ---- confirmação pelo cuidador --------------------------------------------------------------------------------
 
     @Test
-    void cuidadorConfirmaDoseDoIdosoDeleEGravaQuemConfirmou() throws Exception {
+    void cuidadorConfirmaDoseDoPacienteDeleEGravaQuemConfirmou() throws Exception {
         Long dose = dosePendente(agora);
 
         confirmarComoCuidador(dose, cuidadorId)
@@ -165,7 +165,7 @@ class ConfirmacaoApiTest {
         assertThat(statusGravado(dose)).isEqualTo("CONFIRMADA_NO_HORARIO");
         assertThat(confirmadoPor(dose)).isEqualTo("CUIDADOR");
 
-        // Já confirmada pelo cuidador: o idoso (e o próprio cuidador) recebem 409, nada muda
+        // Já confirmada pelo cuidador: o paciente (e o próprio cuidador) recebem 409, nada muda
         confirmar(dose)
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.codigo").value("DOSE_JA_REGISTRADA"));
@@ -190,7 +190,7 @@ class ConfirmacaoApiTest {
     }
 
     @Test
-    void cuidadorDeOutroIdosoRecebeOMesmo404DeDoseInexistente() throws Exception {
+    void cuidadorDeOutroPacienteRecebeOMesmo404DeDoseInexistente() throws Exception {
         Long dose = dosePendente(agora);
         Long outro = outroCuidador();
 

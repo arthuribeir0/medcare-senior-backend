@@ -8,8 +8,8 @@ import com.medcare.senior.domain.relatorio.ContagemDeDoses;
 import com.medcare.senior.domain.relatorio.GeradorDePdfPort;
 import com.medcare.senior.domain.relatorio.RelatorioDeAdesao;
 import com.medcare.senior.domain.relatorio.TotaisDoDia;
-import com.medcare.senior.domain.usuario.Idoso;
-import com.medcare.senior.domain.usuario.IdosoRepositoryPort;
+import com.medcare.senior.domain.usuario.Paciente;
+import com.medcare.senior.domain.usuario.PacienteRepositoryPort;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -42,11 +42,11 @@ class GerarRelatorioPdfUseCaseTest {
     private static final ZoneId FUSO = ZoneId.of("America/Sao_Paulo");
     private static final LocalDateTime AGORA = LocalDateTime.of(2026, 10, 20, 9, 30);
     private static final Long CUIDADOR_ID = 1L;
-    private static final Long IDOSO_ID = 10L;
+    private static final Long PACIENTE_ID = 10L;
     private static final LocalDate DE = LocalDate.of(2026, 10, 1);
 
     @Mock
-    private IdosoRepositoryPort idosoRepository;
+    private PacienteRepositoryPort pacienteRepository;
 
     @Mock
     private DoseRepositoryPort doseRepository;
@@ -58,19 +58,19 @@ class GerarRelatorioPdfUseCaseTest {
 
     @BeforeEach
     void setUp() {
-        useCase = new GerarRelatorioPdfUseCase(idosoRepository, doseRepository, gerador,
+        useCase = new GerarRelatorioPdfUseCase(pacienteRepository, doseRepository, gerador,
                 Clock.fixed(AGORA.atZone(FUSO).toInstant(), FUSO));
     }
 
-    private void idosoDoCuidador() {
-        when(idosoRepository.findByIdAndCuidadorId(IDOSO_ID, CUIDADOR_ID))
-                .thenReturn(Optional.of(Idoso.builder().id(IDOSO_ID).cuidadorId(CUIDADOR_ID).nome("Maria da Silva").build()));
+    private void pacienteDoCuidador() {
+        when(pacienteRepository.findByIdAndCuidadorId(PACIENTE_ID, CUIDADOR_ID))
+                .thenReturn(Optional.of(Paciente.builder().id(PACIENTE_ID).cuidadorId(CUIDADOR_ID).nome("Maria da Silva").build()));
     }
 
     @Test
     void montaTotaisDoPeriodoEPorMedicamentoEmOrdemDeNomeEPassaAsDosesEmLotes() {
-        idosoDoCuidador();
-        when(doseRepository.contarPorMedicamentoEStatus(IDOSO_ID, DE.atStartOfDay(), LocalDate.of(2026, 10, 11).atStartOfDay()))
+        pacienteDoCuidador();
+        when(doseRepository.contarPorMedicamentoEStatus(PACIENTE_ID, DE.atStartOfDay(), LocalDate.of(2026, 10, 11).atStartOfDay()))
                 .thenReturn(List.of(
                         new ContagemDeDoses(200L, "metformina", "500mg", CONFIRMADA_NO_HORARIO, 3),
                         new ContagemDeDoses(100L, "Losartana", "50mg", CONFIRMADA_NO_HORARIO, 6),
@@ -79,11 +79,11 @@ class GerarRelatorioPdfUseCaseTest {
                         new ContagemDeDoses(200L, "metformina", "500mg", PENDENTE, 2)));
         when(gerador.gerar(any(), any())).thenReturn(new byte[]{1, 2, 3});
 
-        GerarRelatorioPdfUseCase.Resultado resultado = useCase.executar(CUIDADOR_ID, IDOSO_ID, DE, LocalDate.of(2026, 10, 10));
+        GerarRelatorioPdfUseCase.Resultado resultado = useCase.executar(CUIDADOR_ID, PACIENTE_ID, DE, LocalDate.of(2026, 10, 10));
 
         RelatorioDeAdesao relatorio = resultado.relatorio();
         assertThat(resultado.pdf()).containsExactly(1, 2, 3);
-        assertThat(relatorio.idosoNome()).isEqualTo("Maria da Silva");
+        assertThat(relatorio.pacienteNome()).isEqualTo("Maria da Silva");
         assertThat(relatorio.de()).isEqualTo(DE);
         assertThat(relatorio.ate()).isEqualTo(LocalDate.of(2026, 10, 10));
         assertThat(relatorio.geradoEm()).isEqualTo(AGORA);
@@ -98,68 +98,68 @@ class GerarRelatorioPdfUseCaseTest {
         ArgumentCaptor<GeradorDePdfPort.FonteDeDoses> fonte = ArgumentCaptor.forClass(GeradorDePdfPort.FonteDeDoses.class);
         verify(gerador).gerar(eq(relatorio), fonte.capture());
         fonte.getValue().percorrer(lote -> { });
-        verify(doseRepository).percorrerDoIdoso(eq(IDOSO_ID), eq(DE.atStartOfDay()), eq(LocalDate.of(2026, 10, 11).atStartOfDay()),
+        verify(doseRepository).percorrerDoPaciente(eq(PACIENTE_ID), eq(DE.atStartOfDay()), eq(LocalDate.of(2026, 10, 11).atStartOfDay()),
                 eq(GerarRelatorioPdfUseCase.TAMANHO_DO_LOTE), any());
     }
 
     @Test
     void semDataDeFimValeHoje() {
-        idosoDoCuidador();
-        when(doseRepository.contarPorMedicamentoEStatus(eq(IDOSO_ID), any(), eq(LocalDate.of(2026, 10, 21).atStartOfDay())))
+        pacienteDoCuidador();
+        when(doseRepository.contarPorMedicamentoEStatus(eq(PACIENTE_ID), any(), eq(LocalDate.of(2026, 10, 21).atStartOfDay())))
                 .thenReturn(List.of(new ContagemDeDoses(100L, "Losartana", "50mg", CONFIRMADA_NO_HORARIO, 1)));
         when(gerador.gerar(any(), any())).thenReturn(new byte[0]);
 
-        assertThat(useCase.executar(CUIDADOR_ID, IDOSO_ID, DE, null).relatorio().ate()).isEqualTo(AGORA.toLocalDate());
+        assertThat(useCase.executar(CUIDADOR_ID, PACIENTE_ID, DE, null).relatorio().ate()).isEqualTo(AGORA.toLocalDate());
     }
 
     @Test
     void inicioAusenteOuDepoisDoFimEhRecusadoAntesDeConsultar() {
-        assertThatThrownBy(() -> useCase.executar(CUIDADOR_ID, IDOSO_ID, null, null))
+        assertThatThrownBy(() -> useCase.executar(CUIDADOR_ID, PACIENTE_ID, null, null))
                 .isInstanceOf(ParametroInvalidoException.class).extracting("campo").isEqualTo("de");
-        assertThatThrownBy(() -> useCase.executar(CUIDADOR_ID, IDOSO_ID, DE, DE.minusDays(1)))
+        assertThatThrownBy(() -> useCase.executar(CUIDADOR_ID, PACIENTE_ID, DE, DE.minusDays(1)))
                 .isInstanceOf(ParametroInvalidoException.class)
                 .hasMessage("A data de início não pode ser posterior à data de fim");
-        verifyNoInteractions(idosoRepository, doseRepository, gerador);
+        verifyNoInteractions(pacienteRepository, doseRepository, gerador);
     }
 
     @Test
     void periodoDeExatamente12MesesEhAceito() {
         LocalDate de = LocalDate.of(2025, 10, 10);
         LocalDate ate = LocalDate.of(2026, 10, 10);
-        idosoDoCuidador();
-        when(doseRepository.contarPorMedicamentoEStatus(eq(IDOSO_ID), any(), any()))
+        pacienteDoCuidador();
+        when(doseRepository.contarPorMedicamentoEStatus(eq(PACIENTE_ID), any(), any()))
                 .thenReturn(List.of(new ContagemDeDoses(100L, "Losartana", "50mg", CONFIRMADA_NO_HORARIO, 1)));
         when(gerador.gerar(any(), any())).thenReturn(new byte[0]);
 
-        assertThat(useCase.executar(CUIDADOR_ID, IDOSO_ID, de, ate).relatorio().ate()).isEqualTo(ate);
+        assertThat(useCase.executar(CUIDADOR_ID, PACIENTE_ID, de, ate).relatorio().ate()).isEqualTo(ate);
     }
 
     @Test
     void periodoDe12MesesMaisUmDiaEhRecusadoAntesDeConsultar() {
-        assertThatThrownBy(() -> useCase.executar(CUIDADOR_ID, IDOSO_ID, LocalDate.of(2025, 10, 10), LocalDate.of(2026, 10, 11)))
+        assertThatThrownBy(() -> useCase.executar(CUIDADOR_ID, PACIENTE_ID, LocalDate.of(2025, 10, 10), LocalDate.of(2026, 10, 11)))
                 .isInstanceOf(ParametroInvalidoException.class)
                 .hasMessage("O período do relatório pode ter no máximo 12 meses. Escolha uma data de fim até 10/10/2026.")
                 .extracting("campo").isEqualTo("ate");
         // Sem data de fim vale hoje (20/10/2026): início há mais de 12 meses também é recusado
-        assertThatThrownBy(() -> useCase.executar(CUIDADOR_ID, IDOSO_ID, LocalDate.of(2025, 10, 19), null))
+        assertThatThrownBy(() -> useCase.executar(CUIDADOR_ID, PACIENTE_ID, LocalDate.of(2025, 10, 19), null))
                 .isInstanceOf(ParametroInvalidoException.class);
-        verifyNoInteractions(idosoRepository, doseRepository, gerador);
+        verifyNoInteractions(pacienteRepository, doseRepository, gerador);
     }
 
     @Test
-    void idosoDeOutroCuidadorEhNaoEncontrado() {
-        when(idosoRepository.findByIdAndCuidadorId(IDOSO_ID, CUIDADOR_ID)).thenReturn(Optional.empty());
+    void pacienteDeOutroCuidadorEhNaoEncontrado() {
+        when(pacienteRepository.findByIdAndCuidadorId(PACIENTE_ID, CUIDADOR_ID)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> useCase.executar(CUIDADOR_ID, IDOSO_ID, DE, DE)).isInstanceOf(RecursoNaoEncontradoException.class);
+        assertThatThrownBy(() -> useCase.executar(CUIDADOR_ID, PACIENTE_ID, DE, DE)).isInstanceOf(RecursoNaoEncontradoException.class);
         verifyNoInteractions(doseRepository, gerador);
     }
 
     @Test
     void periodoSemDosesNaoGeraArquivo() {
-        idosoDoCuidador();
-        when(doseRepository.contarPorMedicamentoEStatus(eq(IDOSO_ID), any(), any())).thenReturn(List.of());
+        pacienteDoCuidador();
+        when(doseRepository.contarPorMedicamentoEStatus(eq(PACIENTE_ID), any(), any())).thenReturn(List.of());
 
-        assertThatThrownBy(() -> useCase.executar(CUIDADOR_ID, IDOSO_ID, DE, DE)).isInstanceOf(PeriodoSemRegistrosException.class);
+        assertThatThrownBy(() -> useCase.executar(CUIDADOR_ID, PACIENTE_ID, DE, DE)).isInstanceOf(PeriodoSemRegistrosException.class);
         verifyNoInteractions(gerador);
     }
 }

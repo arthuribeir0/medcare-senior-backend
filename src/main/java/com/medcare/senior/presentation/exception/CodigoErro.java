@@ -16,12 +16,13 @@ package com.medcare.senior.presentation.exception;
  *  DADOS_OBRIGATORIOS_MEDICAMENTO  400   RN-005
  *  TRATAMENTO_INVALIDO             400   RN-007 (horários, dias da semana, período)
  *  CREDENCIAIS_INVALIDAS           401   login com e-mail inexistente ou senha errada (mesma mensagem)
+ *  NAO_AUTENTICADO                 401   sem token, ou token inválido ou expirado (Spring Security, antes do controller)
  *  SESSAO_INVALIDA                 401   token válido de usuário que não existe mais (o app volta ao pareamento)
- *  ACESSO_NEGADO                   403   papel diferente do exigido pela operação
+ *  ACESSO_NEGADO                   403   papel diferente do exigido pela operação ou rota fora da lista do SecurityConfig
  *  RECURSO_NAO_ENCONTRADO          404   recurso inexistente, removido ou de outro dono
  *  METODO_NAO_PERMITIDO            405   método HTTP não suportado pela rota
  *  EMAIL_DUPLICADO                 409   RN-001
- *  PACIENTE_DUPLICADO                 409   RN-003
+ *  PACIENTE_DUPLICADO              409   RN-003
  *  TRATAMENTO_ATIVO                409   RN-006 (remoção sem forcarRemocao=true)
  *  DOSE_JA_REGISTRADA              409   confirmação de dose que já tem status registrado (RN-008), inclusive corrida
  *  DOSE_MUITO_CEDO                 409   confirmação antes da abertura da janela
@@ -43,6 +44,7 @@ public enum CodigoErro {
     TRATAMENTO_INVALIDO,
     CREDENCIAIS_INVALIDAS,
     SESSAO_INVALIDA,
+    NAO_AUTENTICADO,
     ACESSO_NEGADO,
     RECURSO_NAO_ENCONTRADO,
     METODO_NAO_PERMITIDO,

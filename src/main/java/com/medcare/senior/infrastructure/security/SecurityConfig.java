@@ -1,18 +1,17 @@
 package com.medcare.senior.infrastructure.security;
 
 import com.medcare.senior.domain.usuario.Role;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
-import org.springframework.http.HttpStatus;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.authentication.HttpStatusEntryPoint;
+import org.springframework.security.web.AuthenticationEntryPoint;
+import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @Configuration
@@ -44,7 +43,8 @@ public class SecurityConfig {
      */
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http, JwtTokenProvider jwtTokenProvider,
-                                                   @Value("${app.docs.enabled:false}") boolean docsEnabled) throws Exception {
+                                                   AuthenticationEntryPoint naoAutenticado,
+                                                   AccessDeniedHandler acessoNegado) throws Exception {
         http
                 .csrf(AbstractHttpConfigurer::disable)
                 .formLogin(AbstractHttpConfigurer::disable)
@@ -80,17 +80,17 @@ public class SecurityConfig {
                             .hasAnyRole(Role.CUIDADOR.name(), Role.PACIENTE.name())
                             .requestMatchers(HttpMethod.PUT, "/api/mensagens/lidas").hasAnyRole(Role.CUIDADOR.name(), Role.PACIENTE.name());
 
-                    // Documentação OpenAPI/Swagger: liberada SOMENTE com app.docs.enabled=true (DOCS_ENABLED).
-                    // Desligada, essas rotas caem no denyAll() abaixo, como qualquer outra rota sem regra.
-                    if (docsEnabled) {
-                        auth.requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll();
-                    }
+                    // Documentação OpenAPI/Swagger (app.docs.enabled, variável SWAGGER_ENABLED): ligada, é pública, sem
+                    // token. Desligada, o springdoc não registra as rotas e a liberação abaixo só faz a resposta ser
+                    // 404 (não há o que servir) em vez de 401, sem indicar que a documentação existe.
+                    auth.requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll();
 
                     // Fail closed: qualquer rota sem regra explícita acima é bloqueada (ver checklist)
                     auth.anyRequest().denyAll();
                 })
-                // Sem token (ou token inválido) -> 401; token válido sem o papel exigido -> 403
-                .exceptionHandling(ex -> ex.authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
+                // Sem token (ou token inválido) -> 401 NAO_AUTENTICADO; token válido sem o papel exigido -> 403
+                // ACESSO_NEGADO, os dois no corpo de erro padrão da API
+                .exceptionHandling(ex -> ex.authenticationEntryPoint(naoAutenticado).accessDeniedHandler(acessoNegado))
                 .addFilterBefore(new JwtAuthenticationFilter(jwtTokenProvider), UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }

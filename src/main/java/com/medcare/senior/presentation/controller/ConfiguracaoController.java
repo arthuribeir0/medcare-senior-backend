@@ -1,5 +1,7 @@
 package com.medcare.senior.presentation.controller;
 
+import com.medcare.senior.infrastructure.docs.PerfilExigido;
+import com.medcare.senior.infrastructure.docs.PerfilExigido.Perfil;
 import com.medcare.senior.application.usecase.AtualizarToleranciaUseCase;
 import com.medcare.senior.application.usecase.BuscarToleranciaUseCase;
 import com.medcare.senior.domain.autenticacao.AuthenticatedUser;
@@ -25,16 +27,14 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/configuracoes")
 @RequiredArgsConstructor
-@Tag(name = "Configurações", description = "Tolerância do aviso de dose não confirmada, por cuidador")
-@ApiResponse(responseCode = "401", description = "Token ausente ou inválido, ou de conta já excluída (SESSAO_INVALIDA)",
-        content = @Content)
-@ApiResponse(responseCode = "403", description = "Token sem o papel CUIDADOR", content = @Content)
+@Tag(name = "Configurações")
 public class ConfiguracaoController {
 
     private final BuscarToleranciaUseCase buscarToleranciaUseCase;
     private final AtualizarToleranciaUseCase atualizarToleranciaUseCase;
 
     @GetMapping("/tolerancia")
+    @PerfilExigido(Perfil.CUIDADOR)
     @Operation(summary = "Tolerância efetiva do cuidador autenticado",
             description = "A própria, se configurada; senão, a padrão da aplicação (30 minutos).")
     @ApiResponse(responseCode = "200", description = "Tolerância em minutos")
@@ -44,9 +44,12 @@ public class ConfiguracaoController {
     }
 
     @PutMapping("/tolerancia")
-    @Operation(summary = "Grava a tolerância do cuidador autenticado (RN-009)",
-            description = "De 5 a 120 minutos, inclusive. Vale para os avisos ainda não enviados e para a janela das "
-                    + "doses listadas a partir de agora; um aviso já enviado não é reenviado.")
+    @PerfilExigido(Perfil.CUIDADOR)
+    @Operation(summary = "Grava a tolerância do cuidador autenticado",
+            description = "De 5 a 120 minutos, inclusive. A tolerância define quando sai o aviso ao cuidador (horário "
+                    + "programado + tolerância) e até quando a dose ainda pode ser confirmada (aviso + 30 minutos); a "
+                    + "janela abre sempre 60 minutos antes do horário. Vale para os avisos ainda não enviados e para a "
+                    + "janela das doses listadas a partir de agora; um aviso já enviado não é reenviado.")
     @ApiResponse(responseCode = "200", description = "Tolerância gravada")
     @ApiResponse(responseCode = "400", description = "Fora de 5 a 120 (VALIDACAO) ou corpo ausente/inválido "
             + "(CORPO_INVALIDO)", content = @Content(schema = @Schema(implementation = ErroResponse.class)))

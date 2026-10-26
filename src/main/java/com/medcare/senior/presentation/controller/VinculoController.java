@@ -1,5 +1,7 @@
 package com.medcare.senior.presentation.controller;
 
+import com.medcare.senior.infrastructure.docs.PerfilExigido;
+import com.medcare.senior.infrastructure.docs.PerfilExigido.Perfil;
 import com.medcare.senior.application.usecase.ValidarCodigoVinculoUseCase;
 import com.medcare.senior.domain.exception.CodigoVinculoInvalidoException;
 import com.medcare.senior.infrastructure.security.RateLimiter;
@@ -11,7 +13,6 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import io.swagger.v3.oas.annotations.security.SecurityRequirements;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -29,20 +30,23 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/vinculo")
 @RequiredArgsConstructor
-@Tag(name = "Vínculo", description = "Pareamento do aparelho do paciente por código")
+@Tag(name = "Vínculo")
 public class VinculoController {
 
     private final ValidarCodigoVinculoUseCase validarCodigoVinculoUseCase;
     private final RateLimiter rateLimiter;
 
     @PostMapping("/validar")
-    @SecurityRequirements
+    @PerfilExigido(Perfil.PUBLICO)
     @Operation(summary = "Troca um código de vínculo por um JWT do paciente",
-            description = "Endpoint público, com limite de tentativas inválidas por IP.")
+            description = "Código de 6 dígitos gerado pelo cuidador, válido por 24 horas e de uso único. Depois de 5 "
+                    + "tentativas inválidas em 15 minutos, o IP fica bloqueado até o fim desses 15 minutos (429 com "
+                    + "Retry-After). Um acerto não zera o contador.")
     @ApiResponse(responseCode = "200", description = "Código válido; devolve o token e o id e o nome do paciente")
-    @ApiResponse(responseCode = "400", description = "Código inválido, expirado ou já usado",
+    @ApiResponse(responseCode = "400", description = "Código inexistente, expirado ou já usado, com a mesma resposta nos três casos "
+            + "(CODIGO_INVALIDO); ou campo ausente ou fora do formato (VALIDACAO)",
             content = @Content(schema = @Schema(implementation = ErroResponse.class)))
-    @ApiResponse(responseCode = "429", description = "Muitas tentativas inválidas (header Retry-After)",
+    @ApiResponse(responseCode = "429", description = "Muitas tentativas inválidas (LIMITE_TENTATIVAS, cabeçalho Retry-After)",
             content = @Content(schema = @Schema(implementation = ErroResponse.class)))
     public ResponseEntity<AuthResponseDTO> validar(@Valid @RequestBody ValidarCodigoRequestDTO request,
                                                    HttpServletRequest httpRequest) {

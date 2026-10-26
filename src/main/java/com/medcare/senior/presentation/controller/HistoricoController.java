@@ -1,5 +1,7 @@
 package com.medcare.senior.presentation.controller;
 
+import com.medcare.senior.infrastructure.docs.PerfilExigido;
+import com.medcare.senior.infrastructure.docs.PerfilExigido.Perfil;
 import com.medcare.senior.application.usecase.ConsultarHistoricoUseCase;
 import com.medcare.senior.domain.autenticacao.AuthenticatedUser;
 import com.medcare.senior.domain.dose.StatusDose;
@@ -25,17 +27,15 @@ import java.time.LocalDate;
 @RestController
 @RequestMapping("/api/historico")
 @RequiredArgsConstructor
-@Tag(name = "Histórico", description = "Histórico de doses dos pacientes do cuidador")
-@ApiResponse(responseCode = "401", description = "Token ausente ou inválido, ou de conta já excluída (SESSAO_INVALIDA)",
-        content = @Content)
-@ApiResponse(responseCode = "403", description = "Token sem o papel CUIDADOR", content = @Content)
+@Tag(name = "Histórico")
 public class HistoricoController {
 
     private final ConsultarHistoricoUseCase consultarHistoricoUseCase;
 
     @GetMapping
-    @Operation(summary = "Histórico de doses (UC-011), paginado, da mais recente para a mais antiga",
-            description = "Sempre restrito aos pacientes do cuidador. Filtros opcionais e combináveis. RN-011: 'de' não "
+    @PerfilExigido(Perfil.CUIDADOR)
+    @Operation(summary = "Histórico de doses, paginado, da mais recente para a mais antiga",
+            description = "Sempre restrito aos pacientes do cuidador. Filtros opcionais e combináveis. 'de' não "
                     + "pode ser depois de 'ate'; sem 'ate', vale hoje (fuso da aplicação). Período sem registros "
                     + "devolve página vazia (não é erro). Inclui doses de remédio removido (histórico preservado).")
     @ApiResponse(responseCode = "200", description = "Página do histórico (pode ser vazia)")
@@ -46,15 +46,16 @@ public class HistoricoController {
             content = @Content(schema = @Schema(implementation = ErroResponse.class)))
     public ResponseEntity<HistoricoResponseDTO> listar(
             @Parameter(description = "Só as doses deste paciente") @RequestParam(required = false) Long pacienteId,
-            @Parameter(description = "Só as doses deste medicamento (UC-011)") @RequestParam(required = false)
+            @Parameter(description = "Só as doses deste medicamento") @RequestParam(required = false)
             Long medicamentoId,
             @Parameter(description = "Primeiro dia (AAAA-MM-DD), inclusivo", example = "2026-10-01")
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate de,
             @Parameter(description = "Último dia (AAAA-MM-DD), inclusivo; padrão: hoje", example = "2026-10-18")
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate ate,
             @Parameter(description = "Só este status gravado") @RequestParam(required = false) StatusDose status,
-            @Parameter(description = "Página, a partir de 0", example = "0") @RequestParam(required = false) Integer page,
-            @Parameter(description = "Tamanho da página (padrão 20, máximo 100)", example = "20")
+            @Parameter(description = "Página, a partir de 0", example = "0", schema = @Schema(minimum = "0")) @RequestParam(required = false) Integer page,
+            @Parameter(description = "Tamanho da página (padrão 20, máximo 100)", example = "20",
+                    schema = @Schema(minimum = "1", maximum = "100", defaultValue = "20"))
             @RequestParam(required = false) Integer size,
             @Parameter(hidden = true) @AuthenticationPrincipal AuthenticatedUser usuario) {
         return ResponseEntity.ok(HistoricoResponseDTO.from(consultarHistoricoUseCase.executar(usuario.cuidadorId(),

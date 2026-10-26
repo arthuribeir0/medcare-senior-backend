@@ -1,5 +1,7 @@
 package com.medcare.senior.presentation.controller;
 
+import com.medcare.senior.infrastructure.docs.PerfilExigido;
+import com.medcare.senior.infrastructure.docs.PerfilExigido.Perfil;
 import com.medcare.senior.application.usecase.BuscarCuidadorUseCase;
 import com.medcare.senior.application.usecase.CadastrarCuidadorUseCase;
 import com.medcare.senior.application.usecase.ExcluirContaUseCase;
@@ -16,7 +18,6 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import io.swagger.v3.oas.annotations.security.SecurityRequirements;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -34,7 +35,6 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/cuidadores")
 @RequiredArgsConstructor
-@Tag(name = "Cuidadores", description = "Cadastro, exclusão de conta e token de dispositivo de cuidadores")
 public class CuidadorController {
 
     private final CadastrarCuidadorUseCase cadastrarCuidadorUseCase;
@@ -44,13 +44,15 @@ public class CuidadorController {
     private final RemoverTokenDispositivoUseCase removerTokenDispositivoUseCase;
 
     @PostMapping
-    @SecurityRequirements
-    @Operation(summary = "Cadastra um cuidador", description = "Endpoint público. O e-mail deve ser único (RN-001), "
-            + "a senha forte (RN-002) e o termo de consentimento LGPD aceito (consentimentoLgpd=true).")
+    @Tag(name = "Cuidador")
+    @PerfilExigido(Perfil.PUBLICO)
+    @Operation(summary = "Cadastra um cuidador", description = "O e-mail deve ser único, a senha forte (no mínimo 8 caracteres, com maiúscula, "
+            + "minúscula e número) e o termo de consentimento LGPD aceito (consentimentoLgpd=true).")
     @ApiResponse(responseCode = "201", description = "Cuidador cadastrado")
-    @ApiResponse(responseCode = "400", description = "Campos inválidos, senha fraca ou consentimento LGPD não aceito",
+    @ApiResponse(responseCode = "400", description = "Campos inválidos (VALIDACAO), senha fraca (SENHA_FRACA) ou termo LGPD não "
+            + "aceito (CONSENTIMENTO_OBRIGATORIO)",
             content = @Content(schema = @Schema(implementation = ErroResponse.class)))
-    @ApiResponse(responseCode = "409", description = "E-mail já cadastrado",
+    @ApiResponse(responseCode = "409", description = "E-mail já cadastrado (EMAIL_DUPLICADO)",
             content = @Content(schema = @Schema(implementation = ErroResponse.class)))
     public ResponseEntity<CuidadorResponseDTO> cadastrar(@Valid @RequestBody CuidadorRequestDTO request) {
         Cuidador cuidador = cadastrarCuidadorUseCase.executar(
@@ -59,39 +61,36 @@ public class CuidadorController {
     }
 
     @GetMapping("/me")
-    @Operation(summary = "Dados do cuidador autenticado", description = "Somente CUIDADOR.")
+    @Tag(name = "Cuidador")
+    @PerfilExigido(Perfil.CUIDADOR)
+    @Operation(summary = "Dados do cuidador autenticado", description = "Nome, e-mail e telefone da conta do token.")
     @ApiResponse(responseCode = "200", description = "Dados do cuidador")
-    @ApiResponse(responseCode = "401", description = "Token ausente ou inválido, ou de conta já excluída (SESSAO_INVALIDA)",
-            content = @Content)
-    @ApiResponse(responseCode = "403", description = "Token sem o papel CUIDADOR", content = @Content)
     public ResponseEntity<CuidadorResponseDTO> buscarMe(@Parameter(hidden = true) @AuthenticationPrincipal AuthenticatedUser usuario) {
         return ResponseEntity.ok(CuidadorResponseDTO.from(buscarCuidadorUseCase.executar(usuario.cuidadorId())));
     }
 
     @DeleteMapping("/me")
+    @Tag(name = "Cuidador")
+    @PerfilExigido(Perfil.CUIDADOR)
     @Operation(summary = "Exclui a conta do cuidador autenticado (LGPD)",
             description = "Remove de forma irreversível o cuidador e todos os seus pacientes, medicamentos, tratamentos "
-                    + "e códigos de vínculo. Somente CUIDADOR. Ver docs/lgpd.md.")
+                    + "e códigos de vínculo. O histórico de doses fica só de forma anônima. Ver docs/lgpd.md.")
     @ApiResponse(responseCode = "204", description = "Conta excluída")
-    @ApiResponse(responseCode = "401", description = "Token ausente ou inválido, ou de conta já excluída (SESSAO_INVALIDA)",
-            content = @Content)
-    @ApiResponse(responseCode = "403", description = "Token sem o papel CUIDADOR", content = @Content)
     public ResponseEntity<Void> excluirConta(@Parameter(hidden = true) @AuthenticationPrincipal AuthenticatedUser usuario) {
         excluirContaUseCase.executar(usuario.cuidadorId());
         return ResponseEntity.noContent().build();
     }
 
     @PutMapping("/me/fcm-token")
+    @Tag(name = "Push/Token")
+    @PerfilExigido(Perfil.CUIDADOR)
     @Operation(summary = "Registra o token de dispositivo do cuidador autenticado",
             description = "Grava (ou troca) o token FCM do aparelho do cuidador, usado para avisos push de dose não "
                     + "confirmada. Um aparelho pertence a uma conta por vez: o mesmo token é retirado de qualquer "
-                    + "outra conta. O token é dado pessoal e é apagado na exclusão de conta. Somente CUIDADOR.")
+                    + "outra conta. O token é dado pessoal e é apagado na exclusão de conta.")
     @ApiResponse(responseCode = "204", description = "Token registrado")
-    @ApiResponse(responseCode = "400", description = "Token ausente, vazio ou maior que 512 caracteres",
+    @ApiResponse(responseCode = "400", description = "Token ausente, vazio ou maior que 512 caracteres (TOKEN_DISPOSITIVO_INVALIDO)",
             content = @Content(schema = @Schema(implementation = ErroResponse.class)))
-    @ApiResponse(responseCode = "401",
-            description = "Token de acesso ausente ou inválido, ou de conta já excluída (SESSAO_INVALIDA)", content = @Content)
-    @ApiResponse(responseCode = "403", description = "Token de acesso sem o papel CUIDADOR", content = @Content)
     public ResponseEntity<Void> registrarTokenDispositivo(
             @Parameter(hidden = true) @AuthenticationPrincipal AuthenticatedUser usuario,
             @Valid @RequestBody TokenDispositivoRequestDTO request) {
@@ -100,13 +99,12 @@ public class CuidadorController {
     }
 
     @DeleteMapping("/me/fcm-token")
+    @Tag(name = "Push/Token")
+    @PerfilExigido(Perfil.CUIDADOR)
     @Operation(summary = "Apaga o token de dispositivo do cuidador autenticado",
             description = "Usado no logout: o aparelho deixa de receber avisos push desta conta. Idempotente: responde "
-                    + "204 mesmo se não houver token gravado. Somente CUIDADOR.")
+                    + "204 mesmo se não houver token gravado.")
     @ApiResponse(responseCode = "204", description = "Token apagado (ou já não havia token)")
-    @ApiResponse(responseCode = "401",
-            description = "Token de acesso ausente ou inválido, ou de conta já excluída (SESSAO_INVALIDA)", content = @Content)
-    @ApiResponse(responseCode = "403", description = "Token de acesso sem o papel CUIDADOR", content = @Content)
     public ResponseEntity<Void> removerTokenDispositivo(
             @Parameter(hidden = true) @AuthenticationPrincipal AuthenticatedUser usuario) {
         removerTokenDispositivoUseCase.executar(usuario.cuidadorId());

@@ -1,5 +1,7 @@
 package com.medcare.senior.presentation.controller;
 
+import com.medcare.senior.infrastructure.docs.PerfilExigido;
+import com.medcare.senior.infrastructure.docs.PerfilExigido.Perfil;
 import com.medcare.senior.application.usecase.EditarTratamentoUseCase;
 import com.medcare.senior.application.usecase.ListarTratamentosUseCase;
 import com.medcare.senior.application.usecase.SalvarTratamentoUseCase;
@@ -35,9 +37,7 @@ import java.util.List;
  */
 @RestController
 @RequiredArgsConstructor
-@Tag(name = "Tratamentos", description = "Períodos e horários de cada medicamento (somente CUIDADOR)")
-@ApiResponse(responseCode = "401", description = "Token ausente ou inválido", content = @Content)
-@ApiResponse(responseCode = "403", description = "Token sem o papel CUIDADOR", content = @Content)
+@Tag(name = "Medicamentos e tratamentos")
 public class TratamentoController {
 
     private final SalvarTratamentoUseCase salvarTratamentoUseCase;
@@ -45,11 +45,13 @@ public class TratamentoController {
     private final EditarTratamentoUseCase editarTratamentoUseCase;
 
     @PostMapping("/api/medicamentos/{medicamentoId}/tratamentos")
-    @Operation(summary = "Cadastra um tratamento para o medicamento e gera as doses dos próximos 30 dias",
-            description = "RN-007: ao menos um horário, sem horários repetidos; ao menos um dia da semana; "
+    @PerfilExigido(Perfil.CUIDADOR)
+    @Operation(summary = "Cadastra um tratamento para o medicamento e gera as doses do horizonte (padrão de 30 dias)",
+            description = "Ao menos um horário, sem horários repetidos; ao menos um dia da semana; "
                     + "dataFim (opcional) igual ou posterior a dataInicio.")
     @ApiResponse(responseCode = "201", description = "Tratamento cadastrado")
-    @ApiResponse(responseCode = "400", description = "Campos inválidos ou violação da RN-007",
+    @ApiResponse(responseCode = "400", description = "Campos inválidos (VALIDACAO) ou horários, dias da semana ou período "
+            + "inválidos (TRATAMENTO_INVALIDO)",
             content = @Content(schema = @Schema(implementation = ErroResponse.class)))
     @ApiResponse(responseCode = "404", description = "Medicamento inexistente, removido ou de outro cuidador",
             content = @Content(schema = @Schema(implementation = ErroResponse.class)))
@@ -64,6 +66,7 @@ public class TratamentoController {
     }
 
     @GetMapping("/api/medicamentos/{medicamentoId}/tratamentos")
+    @PerfilExigido(Perfil.CUIDADOR)
     @Operation(summary = "Lista os tratamentos do medicamento, do mais antigo para o mais recente")
     @ApiResponse(responseCode = "200", description = "Lista de tratamentos (pode ser vazia)")
     @ApiResponse(responseCode = "404", description = "Medicamento inexistente, removido ou de outro cuidador",
@@ -80,12 +83,14 @@ public class TratamentoController {
     }
 
     @PutMapping("/api/tratamentos/{id}")
+    @PerfilExigido(Perfil.CUIDADOR)
     @Operation(summary = "Edita horários, dias da semana e data de término de um tratamento",
             description = "A data de início não muda. As doses PENDENTES futuras são apagadas e geradas de novo "
                     + "conforme a nova configuração; doses já registradas e doses passadas não são alteradas. "
-                    + "Mesmas regras do cadastro (RN-007).")
+                    + "Mesmas regras do cadastro.")
     @ApiResponse(responseCode = "200", description = "Tratamento atualizado")
-    @ApiResponse(responseCode = "400", description = "Campos inválidos ou violação da RN-007",
+    @ApiResponse(responseCode = "400", description = "Campos inválidos (VALIDACAO) ou horários, dias da semana ou período "
+            + "inválidos (TRATAMENTO_INVALIDO)",
             content = @Content(schema = @Schema(implementation = ErroResponse.class)))
     @ApiResponse(responseCode = "404", description = "Tratamento inexistente, removido ou de outro cuidador",
             content = @Content(schema = @Schema(implementation = ErroResponse.class)))

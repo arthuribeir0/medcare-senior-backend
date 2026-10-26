@@ -41,7 +41,7 @@ public class EditarTratamentoUseCase {
      * Altera horários, dias da semana e data de término (a data de início não muda) e regenera as doses futuras.
      *
      * <p>Só as doses PENDENTES com horário depois de agora são apagadas e geradas de novo. Doses registradas
-     * (RN-008) e doses já passadas nunca são tocadas. Tudo na mesma transação. Horários novos ou alterados seguem a
+     * e doses já passadas nunca são tocadas. Tudo na mesma transação. Horários novos ou alterados seguem a
      * mesma antecedência mínima do cadastro; os que já existiam não bloqueiam a edição.
      *
      * @param dataFim    {@code null} para tratamento contínuo

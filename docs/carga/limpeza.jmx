@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jmeterTestPlan version="1.2" properties="5.0" jmeter="5.6.3">
+<hashTree>
+<TestPlan guiclass="TestPlanGui" testclass="TestPlan" testname="MedCare - limpeza da massa de carga">
+<stringProp name="TestPlan.comments">Exclui as contas prefixo+N@exemplo.invalid pela API. Use -Jcuidadores com o maior valor já preparado.</stringProp>
+<boolProp name="TestPlan.functional_mode">false</boolProp>
+<boolProp name="TestPlan.serialize_threadgroups">false</boolProp>
+<elementProp name="TestPlan.user_defined_variables" elementType="Arguments" guiclass="ArgumentsPanel" testclass="Arguments">
+<collectionProp name="Arguments.arguments">
+  <elementProp name="protocolo" elementType="Argument"><stringProp name="Argument.name">protocolo</stringProp><stringProp name="Argument.value">${__P(protocolo,http)}</stringProp><stringProp name="Argument.metadata">=</stringProp></elementProp>
+  <elementProp name="host" elementType="Argument"><stringProp name="Argument.name">host</stringProp><stringProp name="Argument.value">${__P(host,localhost)}</stringProp><stringProp name="Argument.metadata">=</stringProp></elementProp>
+  <elementProp name="porta" elementType="Argument"><stringProp name="Argument.name">porta</stringProp><stringProp name="Argument.value">${__P(porta,8080)}</stringProp><stringProp name="Argument.metadata">=</stringProp></elementProp>
+  <elementProp name="prefixo" elementType="Argument"><stringProp name="Argument.name">prefixo</stringProp><stringProp name="Argument.value">${__P(prefixo,carga)}</stringProp><stringProp name="Argument.metadata">=</stringProp></elementProp>
+  <elementProp name="senha" elementType="Argument"><stringProp name="Argument.name">senha</stringProp><stringProp name="Argument.value">${__P(senha,CargaSomente1)}</stringProp><stringProp name="Argument.metadata">=</stringProp></elementProp>
+</collectionProp>
+</elementProp>
+</TestPlan>
+<hashTree>
+<ConfigTestElement guiclass="HttpDefaultsGui" testclass="ConfigTestElement" testname="Servidor">
+<elementProp name="HTTPsampler.Arguments" elementType="Arguments"><collectionProp name="Arguments.arguments">
+</collectionProp></elementProp>
+<stringProp name="HTTPSampler.protocol">${protocolo}</stringProp><stringProp name="HTTPSampler.domain">${host}</stringProp><stringProp name="HTTPSampler.port">${porta}</stringProp>
+<stringProp name="HTTPSampler.contentEncoding">UTF-8</stringProp><stringProp name="HTTPSampler.connect_timeout">5000</stringProp><stringProp name="HTTPSampler.response_timeout">30000</stringProp>
+<stringProp name="HTTPSampler.implementation">HttpClient4</stringProp>
+</ConfigTestElement>
+<hashTree>
+
+</hashTree>
+<HeaderManager guiclass="HeaderPanel" testclass="HeaderManager" testname="JSON">
+<collectionProp name="HeaderManager.headers">
+  <elementProp name="" elementType="Header"><stringProp name="Header.name">Content-Type</stringProp><stringProp name="Header.value">application/json</stringProp></elementProp>
+  <elementProp name="" elementType="Header"><stringProp name="Header.name">Accept</stringProp><stringProp name="Header.value">application/json</stringProp></elementProp>
+</collectionProp>
+</HeaderManager>
+<hashTree>
+
+</hashTree>
+<ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup" testname="Exclui usuários">
+<stringProp name="ThreadGroup.on_sample_error">continue</stringProp>
+<elementProp name="ThreadGroup.main_controller" elementType="LoopController" guiclass="LoopControlPanel" testclass="LoopController">
+<boolProp name="LoopController.continue_forever">false</boolProp><stringProp name="LoopController.loops">1</stringProp>
+</elementProp>
+<stringProp name="ThreadGroup.num_threads">${__P(cuidadores,25)}</stringProp><stringProp name="ThreadGroup.ramp_time">1</stringProp>
+<boolProp name="ThreadGroup.scheduler">false</boolProp><stringProp name="ThreadGroup.duration"></stringProp><stringProp name="ThreadGroup.delay"></stringProp>
+<boolProp name="ThreadGroup.same_user_on_next_iteration">true</boolProp>
+</ThreadGroup>
+<hashTree>
+<HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="Login do cuidador">
+<boolProp name="HTTPSampler.postBodyRaw">true</boolProp>
+<elementProp name="HTTPsampler.Arguments" elementType="Arguments"><collectionProp name="Arguments.arguments">
+  <elementProp name="" elementType="HTTPArgument"><boolProp name="HTTPArgument.always_encode">false</boolProp><stringProp name="Argument.value">{&quot;email&quot;:&quot;${prefixo}+${__threadNum}@exemplo.invalid&quot;,&quot;senha&quot;:&quot;${senha}&quot;}</stringProp><stringProp name="Argument.metadata">=</stringProp></elementProp>
+</collectionProp></elementProp>
+<stringProp name="HTTPSampler.path">/api/auth/login</stringProp><stringProp name="HTTPSampler.method">POST</stringProp>
+<boolProp name="HTTPSampler.follow_redirects">false</boolProp><boolProp name="HTTPSampler.use_keepalive">true</boolProp>
+</HTTPSamplerProxy>
+<hashTree>
+<JSONPostProcessor guiclass="JSONPostProcessorGui" testclass="JSONPostProcessor" testname="token">
+<stringProp name="JSONPostProcessor.referenceNames">token</stringProp><stringProp name="JSONPostProcessor.jsonPathExprs">$.token</stringProp>
+<stringProp name="JSONPostProcessor.match_numbers">1</stringProp><stringProp name="JSONPostProcessor.defaultValues">NAO_ENCONTRADO</stringProp>
+</JSONPostProcessor>
+<hashTree>
+
+</hashTree>
+<ResponseAssertion guiclass="AssertionGui" testclass="ResponseAssertion" testname="Aceita 200|401">
+<collectionProp name="Asserion.test_strings"><stringProp name="codigos">200|401</stringProp></collectionProp>
+<stringProp name="Assertion.test_field">Assertion.response_code</stringProp><boolProp name="Assertion.assume_success">true</boolProp>
+<intProp name="Assertion.test_type">1</intProp>
+</ResponseAssertion>
+<hashTree>
+
+</hashTree>
+</hashTree>
+<IfController guiclass="IfControllerPanel" testclass="IfController" testname="Conta existe">
+<stringProp name="IfController.condition">${__jexl3(&quot;${token}&quot; != &quot;NAO_ENCONTRADO&quot;,)}</stringProp><boolProp name="IfController.evaluateAll">false</boolProp><boolProp name="IfController.useExpression">true</boolProp>
+</IfController>
+<hashTree>
+<HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="Exclui a conta">
+
+<elementProp name="HTTPsampler.Arguments" elementType="Arguments"><collectionProp name="Arguments.arguments">
+</collectionProp></elementProp>
+<stringProp name="HTTPSampler.path">/api/cuidadores/me</stringProp><stringProp name="HTTPSampler.method">DELETE</stringProp>
+<boolProp name="HTTPSampler.follow_redirects">false</boolProp><boolProp name="HTTPSampler.use_keepalive">true</boolProp>
+</HTTPSamplerProxy>
+<hashTree>
+<HeaderManager guiclass="HeaderPanel" testclass="HeaderManager" testname="Token">
+<collectionProp name="HeaderManager.headers">
+  <elementProp name="" elementType="Header"><stringProp name="Header.name">Authorization</stringProp><stringProp name="Header.value">Bearer ${token}</stringProp></elementProp>
+</collectionProp>
+</HeaderManager>
+<hashTree>
+
+</hashTree>
+</hashTree>
+</hashTree>
+</hashTree>
+</hashTree>
+</hashTree>
+</jmeterTestPlan>

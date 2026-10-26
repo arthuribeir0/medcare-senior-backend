@@ -1,7 +1,8 @@
 # Capacidade no plano gratuito e plano B
 
-> **Tudo aqui é ESTIMATIVA**, feita com contas e premissas explícitas. Não houve teste de carga (JMeter fica para
-> um bloco seguinte). Os números servem para escolher a VM e saber onde está o limite, não como garantia.
+> As contas abaixo são **estimativas**, feitas com premissas explícitas, para escolher a VM e saber onde está o limite.
+> A medição real, com JMeter na máquina local (50 e 150 usuários, e o teto sem pausa), está em
+> [carga/resultados.md](carga/resultados.md); na VM, repita o teste depois da implantação ([carga/README.md](carga/README.md)).
 
 ## Premissas
 

@@ -10,7 +10,8 @@ spring:
   datasource:
     # Host e porta do banco: localhost:5432 no desenvolvimento; no conteiner de producao, o servico "postgres"
     # connectTimeout (s): abrir conexao com o banco inacessivel falha rapido em vez de esperar o TCP
-    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB:medcare_db}?connectTimeout=5
+    # reWriteBatchedInserts: o driver junta os INSERTs de um lote JDBC em poucos comandos (geracao de doses)
+    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB:medcare_db}?connectTimeout=5&reWriteBatchedInserts=true
     username: ${POSTGRES_USER:medcare_admin}
     password: ${POSTGRES_PASSWORD:medcare_pass}
     driver-class-name: org.postgresql.Driver

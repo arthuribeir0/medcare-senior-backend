@@ -16,6 +16,7 @@ import com.medcare.senior.infrastructure.persistence.repository.DoseRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,16 +33,23 @@ import java.util.function.Consumer;
 public class DoseRepositoryAdapter implements DoseRepositoryPort {
 
     private static final LocalDateTime SEM_INICIO = LocalDateTime.of(1900, 1, 1, 0, 0);
+    private static final int LOTE_INSERCAO = 500;
+    // Lote JDBC em vez do saveAll do JPA: com o id IDENTITY o Hibernate grava uma linha por ida ao banco (um tratamento
+    // gera centenas de doses e prendia a conexão por segundos; o teste de carga esgotou o pool assim)
+    private static final String INSERIR_PENDENTE = "INSERT INTO dose (tratamento_id, horario_programado, status) "
+            + "VALUES (?, ?, 'PENDENTE') ON CONFLICT (tratamento_id, horario_programado) DO NOTHING";
 
     private final DoseRepository doseRepository;
     private final DoseMapper doseMapper;
+    private final JdbcTemplate jdbcTemplate;
 
     @Override
     @Transactional
-    public List<Dose> saveAll(List<Dose> doses) {
-        return doseRepository.saveAll(doses.stream().map(doseMapper::toEntity).toList()).stream()
-                .map(doseMapper::toDomain)
-                .toList();
+    public void inserirPendentes(List<Dose> doses) {
+        jdbcTemplate.batchUpdate(INSERIR_PENDENTE, doses, LOTE_INSERCAO, (comando, dose) -> {
+            comando.setLong(1, dose.getTratamentoId());
+            comando.setObject(2, dose.getHorarioProgramado());
+        });
     }
 
     @Override

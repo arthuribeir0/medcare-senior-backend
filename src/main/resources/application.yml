@@ -107,9 +107,10 @@ app:
     # true = o Firebase valida a mensagem (validateOnly) mas nao entrega ao aparelho; para testar credenciais e tokens
     dry-run: ${FCM_DRY_RUN:false}
   docs:
-    # Swagger UI e /v3/api-docs. Desligado por padrao (fail closed); para ligar, defina DOCS_ENABLED=true.
-    # Quando false, as rotas tambem continuam negadas no SecurityConfig.
-    enabled: ${DOCS_ENABLED:false}
+    # Swagger UI e /v3/api-docs, publicos (sem token) quando ligados. Ligado por padrao fora do perfil prod; no prod,
+    # desligado salvo SWAGGER_ENABLED=true (ver application-prod.yml e docs/api/README.md). Desligado, as rotas
+    # respondem 404. DOCS_ENABLED e o nome antigo da variavel, ainda aceito fora do prod.
+    enabled: ${SWAGGER_ENABLED:${DOCS_ENABLED:true}}
 management:
   # Fail closed: nenhum endpoint do actuator, exceto a saude, so leitura e sem detalhes ({"status":"UP"} ou 503 se o
   # banco cair). Usada pelo HEALTHCHECK do conteiner; liberada sem token so em GET /actuator/health no SecurityConfig.

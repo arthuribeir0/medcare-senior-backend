@@ -16,13 +16,14 @@ jobs:
 
     # Os testes de use case são unitários (Mockito), mas o SeniorApplicationTests (@SpringBootTest) sobe o
     # contexto completo, roda as migrations do Flyway e valida o mapeamento JPA; para isso precisa de um Postgres.
-    # As credenciais são as mesmas dos valores padrão do application.yml.
+    # Senha diferente da padrão do application.yml: o teste do perfil prod (Swagger desligado) sobe o contexto com a
+    # ValidacaoDeProducao, que recusa a senha padrão. É um banco descartável do próprio job, não um segredo.
     services:
       postgres:
         image: postgres:16-alpine
         env:
           POSTGRES_USER: medcare_admin
-          POSTGRES_PASSWORD: medcare_pass
+          POSTGRES_PASSWORD: medcare_ci_descartavel
           POSTGRES_DB: medcare_db
         ports:
           - 5432:5432
@@ -48,6 +49,7 @@ jobs:
       - name: Build e testes
         env:
           FCM_ENABLED: 'false'
+          POSTGRES_PASSWORD: medcare_ci_descartavel
         run: mvn -B verify
 
       - name: Publicar relatório de cobertura

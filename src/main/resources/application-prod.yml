@@ -8,5 +8,6 @@ spring:
     show-sql: false
 app:
   docs:
-    # Swagger desligado em producao, mesmo se DOCS_ENABLED vier ligado por engano
-    enabled: false
+    # Swagger desligado em producao por padrao (DOCS_ENABLED e ignorado aqui). Para expor de proposito, defina
+    # SWAGGER_ENABLED=true: a documentacao fica publica, sem token (ver docs/api/README.md).
+    enabled: ${SWAGGER_ENABLED:false}

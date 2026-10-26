@@ -1,21 +1,21 @@
 package com.medcare.senior.infrastructure.persistence.mapper;
 
-import com.medcare.senior.domain.usuario.Idoso;
+import com.medcare.senior.domain.usuario.Paciente;
 import com.medcare.senior.infrastructure.persistence.entity.CuidadorEntity;
-import com.medcare.senior.infrastructure.persistence.entity.IdosoEntity;
+import com.medcare.senior.infrastructure.persistence.entity.PacienteEntity;
 import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 @Component
 @RequiredArgsConstructor
-public class IdosoMapper {
+public class PacienteMapper {
 
     // Usado para obter uma referência (proxy) ao cuidador a partir do ID, sem consultar o banco
     private final EntityManager entityManager;
 
-    public Idoso toDomain(IdosoEntity entity) {
-        return Idoso.builder()
+    public Paciente toDomain(PacienteEntity entity) {
+        return Paciente.builder()
                 .id(entity.getId())
                 .nome(entity.getNome())
                 .dataNascimento(entity.getDataNascimento())
@@ -24,13 +24,13 @@ public class IdosoMapper {
                 .build();
     }
 
-    public IdosoEntity toEntity(Idoso idoso) {
-        return IdosoEntity.builder()
-                .id(idoso.getId())
-                .nome(idoso.getNome())
-                .dataNascimento(idoso.getDataNascimento())
-                .telefone(idoso.getTelefone())
-                .cuidador(entityManager.getReference(CuidadorEntity.class, idoso.getCuidadorId()))
+    public PacienteEntity toEntity(Paciente paciente) {
+        return PacienteEntity.builder()
+                .id(paciente.getId())
+                .nome(paciente.getNome())
+                .dataNascimento(paciente.getDataNascimento())
+                .telefone(paciente.getTelefone())
+                .cuidador(entityManager.getReference(CuidadorEntity.class, paciente.getCuidadorId()))
                 .build();
     }
 }

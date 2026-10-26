@@ -3,8 +3,8 @@ package com.medcare.senior.application.usecase;
 import com.medcare.senior.domain.exception.SessaoInvalidaException;
 import com.medcare.senior.domain.usuario.Cuidador;
 import com.medcare.senior.domain.usuario.CuidadorRepositoryPort;
-import com.medcare.senior.domain.usuario.Idoso;
-import com.medcare.senior.domain.usuario.IdosoRepositoryPort;
+import com.medcare.senior.domain.usuario.Paciente;
+import com.medcare.senior.domain.usuario.PacienteRepositoryPort;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -19,38 +19,38 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-class BuscarIdosoAutenticadoUseCaseTest {
+class BuscarPacienteAutenticadoUseCaseTest {
 
     private static final Long CUIDADOR_ID = 1L;
-    private static final Long IDOSO_ID = 10L;
+    private static final Long PACIENTE_ID = 10L;
 
     @Mock
-    private IdosoRepositoryPort idosoRepository;
+    private PacienteRepositoryPort pacienteRepository;
 
     @Mock
     private CuidadorRepositoryPort cuidadorRepository;
 
     @InjectMocks
-    private BuscarIdosoAutenticadoUseCase useCase;
+    private BuscarPacienteAutenticadoUseCase useCase;
 
     @Test
-    void devolveOIdosoEONomeDeQuemCuida() {
-        Idoso idoso = Idoso.builder().id(IDOSO_ID).nome("José Souza").cuidadorId(CUIDADOR_ID).build();
-        when(idosoRepository.findById(IDOSO_ID)).thenReturn(Optional.of(idoso));
+    void devolveOPacienteEONomeDeQuemCuida() {
+        Paciente paciente = Paciente.builder().id(PACIENTE_ID).nome("José Souza").cuidadorId(CUIDADOR_ID).build();
+        when(pacienteRepository.findById(PACIENTE_ID)).thenReturn(Optional.of(paciente));
         when(cuidadorRepository.findById(CUIDADOR_ID))
                 .thenReturn(Optional.of(Cuidador.builder().id(CUIDADOR_ID).nome("Ana Souza").build()));
 
-        BuscarIdosoAutenticadoUseCase.Resultado resultado = useCase.executar(IDOSO_ID);
+        BuscarPacienteAutenticadoUseCase.Resultado resultado = useCase.executar(PACIENTE_ID);
 
-        assertThat(resultado.idoso()).isSameAs(idoso);
+        assertThat(resultado.paciente()).isSameAs(paciente);
         assertThat(resultado.cuidadorNome()).isEqualTo("Ana Souza");
     }
 
     @Test
-    void idosoQueNaoExisteMaisTemSessaoInvalida() {
-        when(idosoRepository.findById(IDOSO_ID)).thenReturn(Optional.empty());
+    void pacienteQueNaoExisteMaisTemSessaoInvalida() {
+        when(pacienteRepository.findById(PACIENTE_ID)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> useCase.executar(IDOSO_ID)).isInstanceOf(SessaoInvalidaException.class);
+        assertThatThrownBy(() -> useCase.executar(PACIENTE_ID)).isInstanceOf(SessaoInvalidaException.class);
         verifyNoInteractions(cuidadorRepository);
     }
 }

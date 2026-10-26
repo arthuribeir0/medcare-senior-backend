@@ -9,13 +9,13 @@ import java.time.LocalDateTime;
  *
  * @param doseId            dose não confirmada (payload do push, para o app abrir a dose)
  * @param cuidadorId        destinatário do aviso
- * @param idosoId           idoso da dose (payload do push)
- * @param nomeIdoso         nome mostrado no texto do aviso
+ * @param pacienteId           paciente da dose (payload do push)
+ * @param nomePaciente         nome mostrado no texto do aviso
  * @param horarioProgramado horário da dose, no fuso da aplicação
  */
 public record DoseNaoTomadaNotificacao(Long doseId,
                                        Long cuidadorId,
-                                       Long idosoId,
-                                       String nomeIdoso,
+                                       Long pacienteId,
+                                       String nomePaciente,
                                        LocalDateTime horarioProgramado) {
 }

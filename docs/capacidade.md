@@ -19,10 +19,10 @@
 
 | Tela | Requisições | Por segundo |
 |---|---|---|
-| Painel do cuidador (1 idoso) | 2 GET por minuto (doses do dia + alertas; repetidas em 3 s viram uma) | ~0,03 |
-| Painel do cuidador (3 idosos, "Todos") | ~4 GET por minuto | ~0,07 |
-| Mensagens abertas (cuidador ou idoso) | 6 GET por minuto (atualização a cada 10 s) | 0,10 |
-| Tela inicial do idoso | 1 GET por minuto | ~0,02 |
+| Painel do cuidador (1 paciente) | 2 GET por minuto (doses do dia + alertas; repetidas em 3 s viram uma) | ~0,03 |
+| Painel do cuidador (3 pacientes, "Todos") | ~4 GET por minuto | ~0,07 |
+| Mensagens abertas (cuidador ou paciente) | 6 GET por minuto (atualização a cada 10 s) | 0,10 |
+| Tela inicial do paciente | 1 GET por minuto | ~0,02 |
 | Escritas (confirmar dose, enviar mensagem) | raras | desprezível |
 
 Média adotada para um usuário **ativo**: **0,1 requisição por segundo** (pior caso comum: mensagens abertas).
@@ -67,27 +67,27 @@ conexão (métrica `hikaricp.connections.pending`).
 ## Consultas e índices (EXPLAIN)
 
 Plano das consultas dos caminhos mais usados com volume sintético, num PostgreSQL 16 local: 200 cuidadores (um terço
-com tolerância própria), 600 idosos, 1.800 tratamentos e **1.425.600 doses** (2 por dia, 13 meses). Os dados foram
+com tolerância própria), 600 pacientes, 1.800 tratamentos e **1.425.600 doses** (2 por dia, 13 meses). Os dados foram
 criados numa transação desfeita no fim (`EXPLAIN (ANALYZE, BUFFERS)`, com `ANALYZE` das tabelas antes).
 
 | Consulta | Caminho no plano | Tempo |
 |---|---|---|
 | Varredura: doses para aviso (lote de 500) | `idx_dose_status_horario` (status, horário) na faixa de horário; tolerância do cuidador pela chave de `configuracao_alerta` | 3,6 ms |
 | Varredura: encerramento atômico (500 doses) | mesmo índice, ordem pronta (incremental sort) e UPDATE pela chave da dose | 13 ms |
-| Doses do dia de um idoso (lista e relatório diário) | `idx_medicamento_idoso_id` → `idx_tratamento_medicamento_id` → `uk_dose_tratamento_horario` | 0,2 ms |
-| Histórico, página de 20 (30 dias) e contagem | `idx_idoso_cuidador_id` → mesmos índices acima | 0,4 ms + 0,3 ms |
+| Doses do dia de um paciente (lista e relatório diário) | `idx_medicamento_paciente_id` → `idx_tratamento_medicamento_id` → `uk_dose_tratamento_horario` | 0,2 ms |
+| Histórico, página de 20 (30 dias) e contagem | `idx_paciente_cuidador_id` → mesmos índices acima | 0,4 ms + 0,3 ms |
 | Histórico sem data de início, filtrado por status | idem | 2,5 ms |
 | PDF de 12 meses: contagem por remédio e status | idem | 0,9 ms |
 | PDF de 12 meses: lote de 500 linhas (o último) | idem | 1,8 ms |
 
 Conclusão: todas as junções usam índice (inclusive `configuracao_alerta`, pela chave primária `cuidador_id`), não há
 varredura completa de `dose` e nenhuma consulta passou de 13 ms. **Nenhum índice novo foi necessário.** As consultas
-das telas são uma só por tela, com projeção (sem N+1): dose, idoso, remédio e tolerância vêm juntos.
+das telas são uma só por tela, com projeção (sem N+1): dose, paciente, remédio e tolerância vêm juntos.
 
 ## Cache do relatório diário
 
-O relatório diário fica em memória por 30 s (`CACHE_RELATORIO_DIARIO_SEGUNDOS`, 0 desliga), por cuidador, idoso e
-dia, no máximo 10.000 relatórios. A confirmação ou o encerramento de uma dose descartam os relatórios do idoso na
+O relatório diário fica em memória por 30 s (`CACHE_RELATORIO_DIARIO_SEGUNDOS`, 0 desliga), por cuidador, paciente e
+dia, no máximo 10.000 relatórios. A confirmação ou o encerramento de uma dose descartam os relatórios do paciente na
 hora, e as alterações do cuidador (tolerância, remédio, tratamento) descartam os dele: o relatório nunca fica atrasado
 depois de uma ação. O cache é de cada instância do backend (a implantação atual tem uma só).
 

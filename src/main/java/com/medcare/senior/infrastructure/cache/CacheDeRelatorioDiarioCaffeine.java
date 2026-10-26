@@ -54,8 +54,8 @@ public class CacheDeRelatorioDiarioCaffeine implements CacheDeRelatorioDiarioPor
     }
 
     @Override
-    public void descartarDoIdoso(Long idosoId) {
-        descartar(chave -> chave.idosoId().equals(idosoId));
+    public void descartarDoPaciente(Long pacienteId) {
+        descartar(chave -> chave.pacienteId().equals(pacienteId));
     }
 
     @Override

@@ -92,7 +92,7 @@ public class ReenviarAvisosPendentesUseCase {
             // Outro job (o do aviso ou outra instância) pegou esta tentativa: quem reivindicou envia
             return;
         }
-        // Releitura depois da reivindicação: o idoso pode ter confirmado entre a busca e agora
+        // Releitura depois da reivindicação: o paciente pode ter confirmado entre a busca e agora
         Optional<StatusDose> statusAtual = doseRepository.findStatusById(evento.doseId());
         if (statusAtual.filter(StatusDose.PENDENTE::equals).isEmpty()) {
             eventos.marcarFalha(evento.eventoId(), MotivoFalhaNotificacao.DOSE_JA_REGISTRADA);
@@ -102,7 +102,7 @@ public class ReenviarAvisosPendentesUseCase {
 
         contagem.tentativas++;
         ResultadoEnvioPush resultado = envioDeAviso.enviar(evento.eventoId(), new DoseNaoTomadaNotificacao(
-                evento.doseId(), evento.cuidadorId(), evento.idosoId(), evento.nomeIdoso(), evento.horarioProgramado()));
+                evento.doseId(), evento.cuidadorId(), evento.pacienteId(), evento.nomePaciente(), evento.horarioProgramado()));
         if (resultado == ResultadoEnvioPush.ENVIADO) {
             contagem.enviadas++;
         } else if (resultado == ResultadoEnvioPush.FALHA_TEMPORARIA

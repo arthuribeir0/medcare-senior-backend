@@ -20,7 +20,7 @@ class MensagemTest {
         Mensagem mensagem = Mensagem.nova(10L, Remetente.CUIDADOR, "  Bom dia!\n ", AGORA);
 
         assertThat(mensagem.id()).isNull();
-        assertThat(mensagem.idosoId()).isEqualTo(10L);
+        assertThat(mensagem.pacienteId()).isEqualTo(10L);
         assertThat(mensagem.remetente()).isEqualTo(Remetente.CUIDADOR);
         assertThat(mensagem.conteudo()).isEqualTo("Bom dia!");
         assertThat(mensagem.lidaEm()).isNull();
@@ -28,7 +28,7 @@ class MensagemTest {
 
     @Test
     void horaDoEnvioEhTruncadaEmMicrossegundosComoNoPostgres() {
-        assertThat(Mensagem.nova(10L, Remetente.IDOSO, "Oi", AGORA).criadaEm())
+        assertThat(Mensagem.nova(10L, Remetente.PACIENTE, "Oi", AGORA).criadaEm())
                 .isEqualTo(LocalDateTime.of(2026, 10, 20, 8, 0, 0, 123_456_000));
     }
 
@@ -59,14 +59,14 @@ class MensagemTest {
         // Cada emoji ocupa 2 unidades UTF-16, mas é 1 caractere (char_length do PostgreSQL)
         String quinhentosEmojis = "😀".repeat(500);
 
-        assertThat(Mensagem.nova(10L, Remetente.IDOSO, quinhentosEmojis, AGORA).conteudo()).isEqualTo(quinhentosEmojis);
-        assertThatThrownBy(() -> Mensagem.nova(10L, Remetente.IDOSO, quinhentosEmojis + "a", AGORA))
+        assertThat(Mensagem.nova(10L, Remetente.PACIENTE, quinhentosEmojis, AGORA).conteudo()).isEqualTo(quinhentosEmojis);
+        assertThatThrownBy(() -> Mensagem.nova(10L, Remetente.PACIENTE, quinhentosEmojis + "a", AGORA))
                 .isInstanceOf(ParametroInvalidoException.class);
     }
 
     @Test
     void outroLadoDaConversa() {
-        assertThat(Remetente.CUIDADOR.outroLado()).isEqualTo(Remetente.IDOSO);
-        assertThat(Remetente.IDOSO.outroLado()).isEqualTo(Remetente.CUIDADOR);
+        assertThat(Remetente.CUIDADOR.outroLado()).isEqualTo(Remetente.PACIENTE);
+        assertThat(Remetente.PACIENTE.outroLado()).isEqualTo(Remetente.CUIDADOR);
     }
 }

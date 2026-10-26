@@ -174,7 +174,7 @@ docker compose -f docker-compose.prod.yml --env-file .env.prod --profile certbot
 nano .env.prod
 docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --force-recreate nginx
 curl -s https://SEU_SUBDOMINIO.duckdns.org/actuator/health                 # {"status":"UP"}
-curl -sI http://SEU_SUBDOMINIO.duckdns.org/api/idosos | head -n 1           # 301 para https
+curl -sI http://SEU_SUBDOMINIO.duckdns.org/api/pacientes | head -n 1           # 301 para https
 ```
 
 Renovação automática (o certificado vale 90 dias):

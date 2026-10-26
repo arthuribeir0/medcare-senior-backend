@@ -5,9 +5,9 @@ package com.medcare.senior.domain.dose;
  */
 public enum ConfirmadoPor {
 
-    /** O próprio idoso, no aparelho dele. */
-    IDOSO,
+    /** O próprio paciente, no aparelho dele. */
+    PACIENTE,
 
-    /** O cuidador responsável pelo idoso, na tela da dose. */
+    /** O cuidador responsável pelo paciente, na tela da dose. */
     CUIDADOR
 }

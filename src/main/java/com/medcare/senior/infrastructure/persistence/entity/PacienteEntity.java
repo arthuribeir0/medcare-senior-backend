@@ -10,13 +10,13 @@ import lombok.Setter;
 import java.time.LocalDate;
 
 @Entity
-@Table(name = "idoso")
+@Table(name = "paciente")
 @Getter
 @Setter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class IdosoEntity {
+public class PacienteEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

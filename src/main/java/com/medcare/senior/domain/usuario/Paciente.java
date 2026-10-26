@@ -13,7 +13,7 @@ import java.time.LocalDate;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class Idoso {
+public class Paciente {
 
     private Long id;
     private String nome;

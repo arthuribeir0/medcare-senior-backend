@@ -28,9 +28,9 @@ class OpenPdfGeradorAdapterTest {
 
     private static DoseDetalhada dose(long id, LocalDateTime horario, StatusDose status, LocalDateTime confirmacao,
                                       String medicamento) {
-        // Confirmadas pelo idoso, como até agora; a linha confirmada pelo cuidador é montada à parte
+        // Confirmadas pelo paciente, como até agora; a linha confirmada pelo cuidador é montada à parte
         Dose dose = Dose.builder().id(id).tratamentoId(1L).horarioProgramado(horario).horaConfirmacao(confirmacao)
-                .status(status).confirmadoPor(confirmacao == null ? null : ConfirmadoPor.IDOSO).build();
+                .status(status).confirmadoPor(confirmacao == null ? null : ConfirmadoPor.PACIENTE).build();
         return new DoseDetalhada(dose, 10L, "Maria", 100L, medicamento, "50mg", "COMPRIMIDO");
     }
 
@@ -58,16 +58,16 @@ class OpenPdfGeradorAdapterTest {
 
         assertThat(new String(pdf, 0, 5)).isEqualTo("%PDF-");
         String texto = semEspacos(texto(pdf));
-        for (String esperado : List.of("Histórico de adesão ao tratamento", "Idoso: José Ângelo Conceição",
+        for (String esperado : List.of("Histórico de adesão ao tratamento", "Paciente: José Ângelo Conceição",
                 "Período: 01/10/2026 a 10/10/2026", "Gerado em: 20/10/2026 09:30", "Taxa de adesão: 87,5%",
                 "10 6 1 1 2",
                 "Adesão por medicamento", "Losartana 50mg 8 6 1 1 0 87,5%", "Metformina 500mg 2 0 0 0 2 sem doses encerradas",
                 "Registro das doses",
-                "01/10/2026 08:00 Losartana 50mg Confirmada no horário 08:05 pelo idoso",
-                "01/10/2026 20:00 Losartana 50mg Confirmada com atraso 21:00 pelo idoso",
+                "01/10/2026 08:00 Losartana 50mg Confirmada no horário 08:05 pelo paciente",
+                "01/10/2026 20:00 Losartana 50mg Confirmada com atraso 21:00 pelo paciente",
                 "02/10/2026 08:00 Metformina 50mg Não confirmada —",
                 // Confirmação no dia seguinte leva a data
-                "03/10/2026 23:30 Losartana 50mg Confirmada no horário 04/10/2026 00:10 pelo idoso",
+                "03/10/2026 23:30 Losartana 50mg Confirmada no horário 04/10/2026 00:10 pelo paciente",
                 "10/10/2026 08:00 Metformina 50mg Pendente",
                 // Confirmada pelo cuidador na tela da dose
                 "10/10/2026 20:00 Losartana 50mg Confirmada no horário 20:15 pelo cuidador",
@@ -94,8 +94,8 @@ class OpenPdfGeradorAdapterTest {
         assertThat(paginas).isGreaterThan(10);
         String texto = semEspacos(texto(pdf));
         // Primeira e última dose, e o cabeçalho da tabela repetido nas páginas seguintes
-        assertThat(texto).contains(semEspacos("01/10/2026 06:00 Losartana 50mg Confirmada no horário 06:01 pelo idoso"))
-                .contains(semEspacos("19/11/2026 21:00 Losartana 50mg Confirmada no horário 21:01 pelo idoso"))
+        assertThat(texto).contains(semEspacos("01/10/2026 06:00 Losartana 50mg Confirmada no horário 06:01 pelo paciente"))
+                .contains(semEspacos("19/11/2026 21:00 Losartana 50mg Confirmada no horário 21:01 pelo paciente"))
                 .contains(semEspacos("Página " + paginas));
         assertThat(texto.indexOf("01/10/202606:00")).isLessThan(texto.indexOf("19/11/202621:00"));
         assertThat(texto.split("Horaprogramada", -1).length - 1).isGreaterThan(paginas - 2);
@@ -109,8 +109,8 @@ class OpenPdfGeradorAdapterTest {
         assertThat(OpenPdfGeradorAdapter.taxa(null)).isEqualTo("sem doses encerradas");
         LocalDateTime programada = LocalDateTime.of(2026, 10, 1, 8, 0);
         assertThat(OpenPdfGeradorAdapter.confirmacao(programada, null, null)).isEqualTo("—");
-        assertThat(OpenPdfGeradorAdapter.confirmacao(programada, programada.plusMinutes(3), ConfirmadoPor.IDOSO))
-                .isEqualTo("08:03 pelo idoso");
+        assertThat(OpenPdfGeradorAdapter.confirmacao(programada, programada.plusMinutes(3), ConfirmadoPor.PACIENTE))
+                .isEqualTo("08:03 pelo paciente");
         assertThat(OpenPdfGeradorAdapter.confirmacao(programada, programada.plusMinutes(3), ConfirmadoPor.CUIDADOR))
                 .isEqualTo("08:03 pelo cuidador");
         // Sem quem confirmou (não acontece com o CHECK da V15), só a hora

@@ -7,9 +7,9 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.LocalDate;
 import java.util.List;
 
-@Schema(description = "Relatório diário de uso dos medicamentos de um idoso (UC-008)")
+@Schema(description = "Relatório diário de uso dos medicamentos de um paciente (UC-008)")
 public record RelatorioDiarioResponseDTO(
-        IdosoResumoDTO idoso,
+        PacienteResumoDTO paciente,
         @Schema(example = "2026-10-18")
         LocalDate data,
         TotaisDTO totais,
@@ -17,7 +17,7 @@ public record RelatorioDiarioResponseDTO(
         List<DoseResponseDTO> doses
 ) {
 
-    public record IdosoResumoDTO(@Schema(example = "10") Long id, @Schema(example = "José Souza") String nome) {
+    public record PacienteResumoDTO(@Schema(example = "10") Long id, @Schema(example = "José Souza") String nome) {
     }
 
     public record TotaisDTO(
@@ -37,7 +37,7 @@ public record RelatorioDiarioResponseDTO(
     }
 
     public static RelatorioDiarioResponseDTO from(RelatorioDiario relatorio) {
-        return new RelatorioDiarioResponseDTO(new IdosoResumoDTO(relatorio.idosoId(), relatorio.idosoNome()),
+        return new RelatorioDiarioResponseDTO(new PacienteResumoDTO(relatorio.pacienteId(), relatorio.pacienteNome()),
                 relatorio.data(), TotaisDTO.from(relatorio.totais()),
                 relatorio.doses().stream().map(DoseResponseDTO::from).toList());
     }

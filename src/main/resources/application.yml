@@ -51,9 +51,10 @@ jwt:
   secret: ${JWT_SECRET:medcare-senior-dev-secret-key-trocar-em-producao-123456}
   # Validade do token do CUIDADOR (padrao: 24 horas)
   expiration-ms: ${JWT_EXPIRATION_MS:86400000}
-  # Validade do token do IDOSO (padrao: 180 dias). Mais longa porque o pareamento usa codigo de uso unico
-  # e o idoso nao deve precisar parear de novo com frequencia (RNF-02/RNF-06).
-  expiration-idoso-ms: ${JWT_EXPIRATION_IDOSO_MS:15552000000}
+  # Validade do token do PACIENTE (padrao: 180 dias). Mais longa porque o pareamento usa codigo de uso unico
+  # e o paciente nao deve precisar parear de novo com frequencia (RNF-02/RNF-06).
+  # JWT_EXPIRATION_IDOSO_MS e o nome antigo da variavel, aceito para nao quebrar ambientes ja configurados.
+  expiration-paciente-ms: ${JWT_EXPIRATION_PACIENTE_MS:${JWT_EXPIRATION_IDOSO_MS:15552000000}}
 app:
   # Fuso usado pelo Clock da aplicacao para "hoje" e "agora" (geracao de doses, remocao logica etc.)
   timezone: ${APP_TIMEZONE:America/Sao_Paulo}
@@ -93,7 +94,7 @@ app:
       # Maximo de eventos reprocessados por execucao
       lote-maximo: ${ALERTAS_RETENTATIVA_LOTE_MAXIMO:200}
   cache:
-    # Relatorio diario em memoria por cuidador, idoso e dia, por N segundos. Confirmacao e encerramento de dose e as
+    # Relatorio diario em memoria por cuidador, paciente e dia, por N segundos. Confirmacao e encerramento de dose e as
     # alteracoes do cuidador (tolerancia, medicamento, tratamento) descartam a entrada na hora. 0 = sem cache.
     relatorio-diario-segundos: ${CACHE_RELATORIO_DIARIO_SEGUNDOS:30}
   fcm:

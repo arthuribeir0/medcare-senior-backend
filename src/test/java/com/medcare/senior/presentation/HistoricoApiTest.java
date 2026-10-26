@@ -30,7 +30,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 /**
  * Histórico de doses (UC-011, RN-011) pela API, contra o PostgreSQL real: filtros, paginação, ordem, restrição aos
- * idosos do cuidador, parâmetros inválidos e papéis; e tokens inválidos nas rotas novas (tolerância, relatório,
+ * pacientes do cuidador, parâmetros inválidos e papéis; e tokens inválidos nas rotas novas (tolerância, relatório,
  * histórico). Cada teste é desfeito com rollback.
  */
 @SpringBootTest(properties = {"app.jobs.enabled=false", "app.fcm.enabled=false", "spring.jpa.show-sql=false"})
@@ -60,8 +60,8 @@ class HistoricoApiTest {
     private String segredo;
 
     private Long cuidadorId;
-    private Long idosoA;
-    private Long idosoB;
+    private Long pacienteA;
+    private Long pacienteB;
     private Long losartana;
     private Long tratamentoLosartana;
     private Long tratamentoMetformina;
@@ -70,12 +70,12 @@ class HistoricoApiTest {
     @BeforeEach
     void criarDados() {
         cuidadorId = cuidador();
-        idosoA = idoso(cuidadorId, "Ana");
-        idosoB = idoso(cuidadorId, "Bruno");
-        losartana = medicamento(idosoA, "Losartana");
+        pacienteA = paciente(cuidadorId, "Ana");
+        pacienteB = paciente(cuidadorId, "Bruno");
+        losartana = medicamento(pacienteA, "Losartana");
         tratamentoLosartana = tratamento(losartana);
-        tratamentoMetformina = tratamento(medicamento(idosoB, "Metformina"));
-        tratamentoDoOutro = tratamento(medicamento(idoso(cuidador(), "Outro"), "Outro"));
+        tratamentoMetformina = tratamento(medicamento(pacienteB, "Metformina"));
+        tratamentoDoOutro = tratamento(medicamento(paciente(cuidador(), "Outro"), "Outro"));
 
         dose(tratamentoLosartana, D1.atTime(8, 0), "CONFIRMADA_NO_HORARIO");
         dose(tratamentoLosartana, D2.atTime(8, 0), "NAO_TOMADA");
@@ -94,14 +94,14 @@ class HistoricoApiTest {
                 Long.class, "historico-" + UUID.randomUUID() + "@teste.com");
     }
 
-    private Long idoso(Long cuidador, String nome) {
-        return jdbc.queryForObject("INSERT INTO idoso (nome, data_nascimento, cuidador_id) VALUES (?, ?, ?) RETURNING id",
+    private Long paciente(Long cuidador, String nome) {
+        return jdbc.queryForObject("INSERT INTO paciente (nome, data_nascimento, cuidador_id) VALUES (?, ?, ?) RETURNING id",
                 Long.class, nome + " " + UUID.randomUUID(), LocalDate.of(1945, 3, 12), cuidador);
     }
 
-    private Long medicamento(Long idoso, String nome) {
-        return jdbc.queryForObject("INSERT INTO medicamento (nome, dosagem, tipo, idoso_id) VALUES (?, '50mg', "
-                + "'COMPRIMIDO', ?) RETURNING id", Long.class, nome, idoso);
+    private Long medicamento(Long paciente, String nome) {
+        return jdbc.queryForObject("INSERT INTO medicamento (nome, dosagem, tipo, paciente_id) VALUES (?, '50mg', "
+                + "'COMPRIMIDO', ?) RETURNING id", Long.class, nome, paciente);
     }
 
     private Long tratamento(Long medicamento) {
@@ -113,7 +113,7 @@ class HistoricoApiTest {
         boolean confirmada = "CONFIRMADA_NO_HORARIO".equals(status) || "CONFIRMADA_COM_ATRASO".equals(status);
         jdbc.update("INSERT INTO dose (tratamento_id, horario_programado, hora_confirmacao, status, confirmado_por) "
                 + "VALUES (?, ?, ?, ?, ?)", tratamento, horario, confirmada ? horario.plusMinutes(5) : null, status,
-                confirmada ? "IDOSO" : null);
+                confirmada ? "PACIENTE" : null);
     }
 
     private MockHttpServletRequestBuilder historico() {
@@ -126,7 +126,7 @@ class HistoricoApiTest {
     }
 
     @Test
-    void semFiltrosTrazSoOsIdososDoCuidadorDoMaisRecenteParaOMaisAntigo() throws Exception {
+    void semFiltrosTrazSoOsPacientesDoCuidadorDoMaisRecenteParaOMaisAntigo() throws Exception {
         mvc.perform(historico())
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.totalElementos").value(5))
@@ -142,8 +142,8 @@ class HistoricoApiTest {
     }
 
     @Test
-    void filtraPorIdosoMedicamentoStatusEPeriodoInclusivo() throws Exception {
-        mvc.perform(historico().param("idosoId", idosoB.toString()))
+    void filtraPorPacienteMedicamentoStatusEPeriodoInclusivo() throws Exception {
+        mvc.perform(historico().param("pacienteId", pacienteB.toString()))
                 .andExpect(jsonPath("$.totalElementos").value(2))
                 .andExpect(jsonPath("$.conteudo[*].medicamentoNome", contains("Metformina", "Metformina")));
         mvc.perform(historico().param("medicamentoId", losartana.toString()))
@@ -151,7 +151,7 @@ class HistoricoApiTest {
         mvc.perform(historico().param("status", "CONFIRMADA_NO_HORARIO"))
                 .andExpect(jsonPath("$.totalElementos").value(2))
                 .andExpect(jsonPath("$.conteudo[*].status", contains("CONFIRMADA_NO_HORARIO", "CONFIRMADA_NO_HORARIO")));
-        mvc.perform(historico().param("status", "CONFIRMADA_COM_ATRASO").param("idosoId", idosoA.toString()))
+        mvc.perform(historico().param("status", "CONFIRMADA_COM_ATRASO").param("pacienteId", pacienteA.toString()))
                 .andExpect(jsonPath("$.totalElementos").value(1));
         // de e ate inclusivos: só o D2 inteiro
         mvc.perform(historicoEntre(D2.toString(), D2.toString()))
@@ -190,7 +190,7 @@ class HistoricoApiTest {
         jdbc.update("UPDATE medicamento SET removido_em = now() WHERE id = ?", losartana);
 
         mvc.perform(get(ROTA).header(HttpHeaders.AUTHORIZATION, "Bearer " + tokens.generateToken(cuidadorId, Role.CUIDADOR))
-                        .param("idosoId", idosoA.toString()).param("de", hoje.toString()))
+                        .param("pacienteId", pacienteA.toString()).param("de", hoje.toString()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.totalElementos").value(1))
                 .andExpect(jsonPath("$.conteudo[0].medicamentoNome").value("Losartana"));
@@ -205,7 +205,7 @@ class HistoricoApiTest {
                 List.of("page", "-1", "page"),
                 List.of("status", "ATRASADA", "status"),
                 List.of("ate", "18/10/2026", "ate"),
-                List.of("idosoId", "abc", "idosoId"))) {
+                List.of("pacienteId", "abc", "pacienteId"))) {
             MockHttpServletRequestBuilder requisicao = get(ROTA)
                     .header(HttpHeaders.AUTHORIZATION, "Bearer " + tokens.generateToken(cuidadorId, Role.CUIDADOR))
                     .param(caso.get(0), caso.get(1));
@@ -220,14 +220,14 @@ class HistoricoApiTest {
     }
 
     @Test
-    void idosoDeOutroCuidadorEhNaoEncontrado() throws Exception {
+    void pacienteDeOutroCuidadorEhNaoEncontrado() throws Exception {
         Long outroCuidador = cuidador();
 
         mvc.perform(get(ROTA).header(HttpHeaders.AUTHORIZATION, "Bearer " + tokens.generateToken(outroCuidador, Role.CUIDADOR))
-                        .param("idosoId", idosoA.toString()))
+                        .param("pacienteId", pacienteA.toString()))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.codigo").value("RECURSO_NAO_ENCONTRADO"));
-        // Sem idosoId, o outro cuidador não vê nada destes idosos
+        // Sem pacienteId, o outro cuidador não vê nada destes pacientes
         mvc.perform(get(ROTA).header(HttpHeaders.AUTHORIZATION, "Bearer " + tokens.generateToken(outroCuidador, Role.CUIDADOR))
                         .param("de", D1.toString()).param("ate", D3.toString()))
                 .andExpect(jsonPath("$.totalElementos").value(0));
@@ -246,7 +246,7 @@ class HistoricoApiTest {
 
     @Test
     void papeisEContaExcluida() throws Exception {
-        mvc.perform(get(ROTA).header(HttpHeaders.AUTHORIZATION, "Bearer " + tokens.generateToken(idosoA, Role.IDOSO)))
+        mvc.perform(get(ROTA).header(HttpHeaders.AUTHORIZATION, "Bearer " + tokens.generateToken(pacienteA, Role.PACIENTE)))
                 .andExpect(status().isForbidden());
         mvc.perform(get(ROTA)).andExpect(status().isUnauthorized());
         Long excluido = cuidador();
@@ -264,16 +264,16 @@ class HistoricoApiTest {
                 get(ROTA),
                 get("/api/configuracoes/tolerancia"),
                 put("/api/configuracoes/tolerancia").contentType(MediaType.APPLICATION_JSON).content("{\"toleranciaMinutos\": 30}"),
-                get("/api/relatorios/diario").param("idosoId", idosoA.toString()));
+                get("/api/relatorios/diario").param("pacienteId", pacienteA.toString()));
         for (MockHttpServletRequestBuilder rota : rotas) {
             mvc.perform(rota.header(HttpHeaders.AUTHORIZATION, "Bearer " + expirado)).andExpect(status().isUnauthorized());
         }
         mvc.perform(get(ROTA).header(HttpHeaders.AUTHORIZATION, "Bearer nao.e.um.jwt")).andExpect(status().isUnauthorized());
-        // Token de idoso cuja conta não existe mais, em rota de cuidador: barrado pelo papel
-        Long idosoExcluido = idoso(cuidadorId, "Excluído");
-        jdbc.update("DELETE FROM idoso WHERE id = ?", idosoExcluido);
+        // Token de paciente cuja conta não existe mais, em rota de cuidador: barrado pelo papel
+        Long pacienteExcluido = paciente(cuidadorId, "Excluído");
+        jdbc.update("DELETE FROM paciente WHERE id = ?", pacienteExcluido);
         mvc.perform(get("/api/configuracoes/tolerancia")
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + tokens.generateToken(idosoExcluido, Role.IDOSO)))
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + tokens.generateToken(pacienteExcluido, Role.PACIENTE)))
                 .andExpect(status().isForbidden());
     }
 }

@@ -1,12 +1,12 @@
 package com.medcare.senior.presentation.dto;
 
-import com.medcare.senior.domain.usuario.Idoso;
+import com.medcare.senior.domain.usuario.Paciente;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.time.LocalDate;
 
-@Schema(description = "Idoso cadastrado")
-public record IdosoResponseDTO(
+@Schema(description = "Paciente cadastrado")
+public record PacienteResponseDTO(
         @Schema(example = "10")
         Long id,
 
@@ -23,8 +23,8 @@ public record IdosoResponseDTO(
         Long cuidadorId
 ) {
 
-    public static IdosoResponseDTO from(Idoso idoso) {
-        return new IdosoResponseDTO(idoso.getId(), idoso.getNome(), idoso.getDataNascimento(),
-                idoso.getTelefone(), idoso.getCuidadorId());
+    public static PacienteResponseDTO from(Paciente paciente) {
+        return new PacienteResponseDTO(paciente.getId(), paciente.getNome(), paciente.getDataNascimento(),
+                paciente.getTelefone(), paciente.getCuidadorId());
     }
 }

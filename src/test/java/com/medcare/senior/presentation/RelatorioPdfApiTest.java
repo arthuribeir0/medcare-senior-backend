@@ -55,7 +55,7 @@ class RelatorioPdfApiTest {
     private JdbcTemplate jdbc;
 
     private Long cuidadorId;
-    private Long idosoId;
+    private Long pacienteId;
     private Long losartana;
     private Long tratamentoLosartana;
     private Long tratamentoMetformina;
@@ -63,7 +63,7 @@ class RelatorioPdfApiTest {
     @BeforeEach
     void criarDados() {
         cuidadorId = cuidador();
-        idosoId = jdbc.queryForObject("INSERT INTO idoso (nome, data_nascimento, cuidador_id) VALUES (?, ?, ?) RETURNING id",
+        pacienteId = jdbc.queryForObject("INSERT INTO paciente (nome, data_nascimento, cuidador_id) VALUES (?, ?, ?) RETURNING id",
                 Long.class, "Antônia Conceição " + UUID.randomUUID().toString().substring(0, 4), LocalDate.of(1945, 3, 12), cuidadorId);
         losartana = medicamento("Losartana", "50mg");
         tratamentoLosartana = tratamento(losartana);
@@ -73,10 +73,10 @@ class RelatorioPdfApiTest {
         dose(tratamentoLosartana, D1.plusDays(1).atTime(8, 0), "NAO_TOMADA");
         dose(tratamentoMetformina, D1.plusDays(1).atTime(12, 0), "CONFIRMADA_NO_HORARIO");
         dose(tratamentoMetformina, D1.plusDays(2).atTime(12, 0), "PENDENTE");
-        // Outro idoso (de outro cuidador) no mesmo dia: nunca entra no arquivo
-        Long outro = jdbc.queryForObject("INSERT INTO idoso (nome, data_nascimento, cuidador_id) VALUES ('Alheio Zuleica', ?, ?) "
+        // Outro paciente (de outro cuidador) no mesmo dia: nunca entra no arquivo
+        Long outro = jdbc.queryForObject("INSERT INTO paciente (nome, data_nascimento, cuidador_id) VALUES ('Alheio Zuleica', ?, ?) "
                 + "RETURNING id", Long.class, LocalDate.of(1950, 1, 1), cuidador());
-        Long remedioAlheio = jdbc.queryForObject("INSERT INTO medicamento (nome, dosagem, tipo, idoso_id) VALUES "
+        Long remedioAlheio = jdbc.queryForObject("INSERT INTO medicamento (nome, dosagem, tipo, paciente_id) VALUES "
                 + "('Remedio Alheio', '1mg', 'COMPRIMIDO', ?) RETURNING id", Long.class, outro);
         dose(tratamento(remedioAlheio), D1.atTime(9, 0), "CONFIRMADA_NO_HORARIO");
     }
@@ -88,8 +88,8 @@ class RelatorioPdfApiTest {
     }
 
     private Long medicamento(String nome, String dosagem) {
-        return jdbc.queryForObject("INSERT INTO medicamento (nome, dosagem, tipo, idoso_id) VALUES (?, ?, 'COMPRIMIDO', ?) "
-                + "RETURNING id", Long.class, nome, dosagem, idosoId);
+        return jdbc.queryForObject("INSERT INTO medicamento (nome, dosagem, tipo, paciente_id) VALUES (?, ?, 'COMPRIMIDO', ?) "
+                + "RETURNING id", Long.class, nome, dosagem, pacienteId);
     }
 
     private Long tratamento(Long medicamento) {
@@ -101,12 +101,12 @@ class RelatorioPdfApiTest {
         boolean confirmada = "CONFIRMADA_NO_HORARIO".equals(status) || "CONFIRMADA_COM_ATRASO".equals(status);
         jdbc.update("INSERT INTO dose (tratamento_id, horario_programado, hora_confirmacao, status, confirmado_por) "
                 + "VALUES (?, ?, ?, ?, ?)", tratamento, horario, confirmada ? horario.plusMinutes(5) : null, status,
-                confirmada ? "IDOSO" : null);
+                confirmada ? "PACIENTE" : null);
     }
 
     private MockHttpServletRequestBuilder pdf(String de, String ate) {
         MockHttpServletRequestBuilder r = get(ROTA).header(HttpHeaders.AUTHORIZATION, "Bearer " + tokens.generateToken(cuidadorId, Role.CUIDADOR))
-                .param("idosoId", idosoId.toString());
+                .param("pacienteId", pacienteId.toString());
         if (de != null) {
             r.param("de", de);
         }
@@ -116,8 +116,8 @@ class RelatorioPdfApiTest {
         return r;
     }
 
-    private String nomeDoIdoso() {
-        return jdbc.queryForObject("SELECT nome FROM idoso WHERE id = ?", String.class, idosoId);
+    private String nomeDoPaciente() {
+        return jdbc.queryForObject("SELECT nome FROM paciente WHERE id = ?", String.class, pacienteId);
     }
 
     @Test
@@ -126,20 +126,20 @@ class RelatorioPdfApiTest {
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_PDF))
                 .andExpect(header().string(HttpHeaders.CONTENT_DISPOSITION,
-                        "attachment; filename=\"historico-adesao-" + idosoId + "-2000-01-10-a-2000-01-12.pdf\""))
+                        "attachment; filename=\"historico-adesao-" + pacienteId + "-2000-01-10-a-2000-01-12.pdf\""))
                 .andExpect(header().string(HttpHeaders.CONTENT_DISPOSITION, not(containsString("Ant"))))
                 .andExpect(header().string(HttpHeaders.CACHE_CONTROL, containsString("no-store")))
                 .andReturn().getResponse().getContentAsByteArray();
 
         String texto = semEspacos(texto(arquivo));
         // (2 no horário + 1 com atraso) / (5 - 1 pendente) = 75,0%
-        for (String esperado : List.of("Idoso: " + nomeDoIdoso(), "Período: 10/01/2000 a 12/01/2000",
+        for (String esperado : List.of("Paciente: " + nomeDoPaciente(), "Período: 10/01/2000 a 12/01/2000",
                 "Taxa de adesão: 75,0%", "5 2 1 1 1",
                 "Losartana 50mg 3 1 1 1 0 66,7%", "Metformina 500mg 2 1 0 0 1 100,0%",
-                "10/01/2000 08:00 Losartana 50mg Confirmada no horário 08:05 pelo idoso",
-                "10/01/2000 20:00 Losartana 50mg Confirmada com atraso 20:05 pelo idoso",
+                "10/01/2000 08:00 Losartana 50mg Confirmada no horário 08:05 pelo paciente",
+                "10/01/2000 20:00 Losartana 50mg Confirmada com atraso 20:05 pelo paciente",
                 "11/01/2000 08:00 Losartana 50mg Não confirmada —",
-                "11/01/2000 12:00 Metformina 500mg Confirmada no horário 12:05 pelo idoso",
+                "11/01/2000 12:00 Metformina 500mg Confirmada no horário 12:05 pelo paciente",
                 "12/01/2000 12:00 Metformina 500mg Pendente —")) {
             assertThat(texto).contains(semEspacos(esperado));
         }
@@ -208,23 +208,23 @@ class RelatorioPdfApiTest {
 
     @Test
     void autorizacao() throws Exception {
-        // Idoso de outro cuidador: 404, como inexistente
+        // Paciente de outro cuidador: 404, como inexistente
         mvc.perform(get(ROTA).header(HttpHeaders.AUTHORIZATION, "Bearer " + tokens.generateToken(cuidador(), Role.CUIDADOR))
-                        .param("idosoId", idosoId.toString()).param("de", D1.toString()).param("ate", D1.plusDays(2).toString()))
+                        .param("pacienteId", pacienteId.toString()).param("de", D1.toString()).param("ate", D1.plusDays(2).toString()))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.codigo").value("RECURSO_NAO_ENCONTRADO"));
-        // Token de idoso: 403
-        mvc.perform(get(ROTA).header(HttpHeaders.AUTHORIZATION, "Bearer " + tokens.generateToken(idosoId, Role.IDOSO))
-                        .param("idosoId", idosoId.toString()).param("de", D1.toString()).param("ate", D1.plusDays(2).toString()))
+        // Token de paciente: 403
+        mvc.perform(get(ROTA).header(HttpHeaders.AUTHORIZATION, "Bearer " + tokens.generateToken(pacienteId, Role.PACIENTE))
+                        .param("pacienteId", pacienteId.toString()).param("de", D1.toString()).param("ate", D1.plusDays(2).toString()))
                 .andExpect(status().isForbidden());
         // Sem token: 401
-        mvc.perform(get(ROTA).param("idosoId", idosoId.toString()).param("de", D1.toString()).param("ate", D1.plusDays(2).toString()))
+        mvc.perform(get(ROTA).param("pacienteId", pacienteId.toString()).param("de", D1.toString()).param("ate", D1.plusDays(2).toString()))
                 .andExpect(status().isUnauthorized());
         // Cuidador de conta excluída: 401 SESSAO_INVALIDA
         Long excluido = cuidador();
         jdbc.update("DELETE FROM cuidador WHERE id = ?", excluido);
         mvc.perform(get(ROTA).header(HttpHeaders.AUTHORIZATION, "Bearer " + tokens.generateToken(excluido, Role.CUIDADOR))
-                        .param("idosoId", idosoId.toString()).param("de", D1.toString()).param("ate", D1.plusDays(2).toString()))
+                        .param("pacienteId", pacienteId.toString()).param("de", D1.toString()).param("ate", D1.plusDays(2).toString()))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.codigo").value("SESSAO_INVALIDA"));
     }

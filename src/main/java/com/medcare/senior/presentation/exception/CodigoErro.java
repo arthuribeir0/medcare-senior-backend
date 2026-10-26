@@ -21,7 +21,7 @@ package com.medcare.senior.presentation.exception;
  *  RECURSO_NAO_ENCONTRADO          404   recurso inexistente, removido ou de outro dono
  *  METODO_NAO_PERMITIDO            405   método HTTP não suportado pela rota
  *  EMAIL_DUPLICADO                 409   RN-001
- *  IDOSO_DUPLICADO                 409   RN-003
+ *  PACIENTE_DUPLICADO                 409   RN-003
  *  TRATAMENTO_ATIVO                409   RN-006 (remoção sem forcarRemocao=true)
  *  DOSE_JA_REGISTRADA              409   confirmação de dose que já tem status registrado (RN-008), inclusive corrida
  *  DOSE_MUITO_CEDO                 409   confirmação antes da abertura da janela
@@ -47,7 +47,7 @@ public enum CodigoErro {
     RECURSO_NAO_ENCONTRADO,
     METODO_NAO_PERMITIDO,
     EMAIL_DUPLICADO,
-    IDOSO_DUPLICADO,
+    PACIENTE_DUPLICADO,
     TRATAMENTO_ATIVO,
     DOSE_JA_REGISTRADA,
     DOSE_MUITO_CEDO,

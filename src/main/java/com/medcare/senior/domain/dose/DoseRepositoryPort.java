@@ -27,7 +27,7 @@ public interface DoseRepositoryPort {
 
     /**
      * Até {@code limite} doses PENDENTES que devem ser avisadas em {@code agora}: horário + tolerância do cuidador dono
-     * do idoso (ou {@code toleranciaPadrao}, se ele não tem uma própria) <= agora, ainda não encerradas (horário +
+     * do paciente (ou {@code toleranciaPadrao}, se ele não tem uma própria) <= agora, ainda não encerradas (horário +
      * tolerância + {@code margemPosAviso} > agora) e sem evento de notificação. Das mais antigas para as mais novas.
      * Ignora doses anonimizadas e de tratamento ou medicamento removido logicamente.
      *
@@ -49,41 +49,41 @@ public interface DoseRepositoryPort {
                                          int limite);
 
     /**
-     * Doses do idoso com horário programado em [{@code inicio}, {@code fim}), com idoso, medicamento e a tolerância
+     * Doses do paciente com horário programado em [{@code inicio}, {@code fim}), com paciente, medicamento e a tolerância
      * própria do cuidador (nula = padrão), em uma única consulta, ordenadas por horário. Ignora doses anonimizadas (sem tratamento) e de tratamento ou medicamento
      * removido logicamente.
      */
-    List<DoseDetalhada> findDetalhadasDoIdosoEntre(Long idosoId, LocalDateTime inicio, LocalDateTime fim);
+    List<DoseDetalhada> findDetalhadasDoPacienteEntre(Long pacienteId, LocalDateTime inicio, LocalDateTime fim);
 
     /**
-     * Página do histórico de doses dos idosos do cuidador (UC-011), da mais recente para a mais antiga, em uma consulta
+     * Página do histórico de doses dos pacientes do cuidador (UC-011), da mais recente para a mais antiga, em uma consulta
      * com projeção (mais a contagem). Inclui doses de tratamento ou medicamento removidos logicamente (o histórico é
      * preservado, RN-008); doses anonimizadas não têm dono e ficam de fora.
      */
     Pagina<DoseDetalhada> findHistorico(Long cuidadorId, FiltroHistorico filtro);
 
     /**
-     * Doses do idoso no intervalo [inicio, fim), agrupadas por medicamento e status gravado (relatório de adesão).
+     * Doses do paciente no intervalo [inicio, fim), agrupadas por medicamento e status gravado (relatório de adesão).
      * Como o histórico, inclui medicamentos e tratamentos removidos (RN-008); a dose anonimizada não tem dono.
      */
-    List<ContagemDeDoses> contarPorMedicamentoEStatus(Long idosoId, LocalDateTime inicio, LocalDateTime fim);
+    List<ContagemDeDoses> contarPorMedicamentoEStatus(Long pacienteId, LocalDateTime inicio, LocalDateTime fim);
 
     /**
-     * Entrega as doses do idoso no intervalo [inicio, fim), da mais antiga para a mais nova, em lotes de até
+     * Entrega as doses do paciente no intervalo [inicio, fim), da mais antiga para a mais nova, em lotes de até
      * {@code tamanhoDoLote} (nunca todas na memória). Mesmos filtros de {@link #contarPorMedicamentoEStatus}.
      */
-    void percorrerDoIdoso(Long idosoId, LocalDateTime inicio, LocalDateTime fim, int tamanhoDoLote,
+    void percorrerDoPaciente(Long pacienteId, LocalDateTime inicio, LocalDateTime fim, int tamanhoDoLote,
                           Consumer<List<DoseDetalhada>> lote);
 
     /**
-     * A dose, SOMENTE se pertencer ao idoso (dose -> tratamento -> medicamento -> idoso) e o tratamento e o
-     * medicamento não estiverem removidos. Dose de outro idoso, anonimizada ou de item removido volta vazia.
+     * A dose, SOMENTE se pertencer ao paciente (dose -> tratamento -> medicamento -> paciente) e o tratamento e o
+     * medicamento não estiverem removidos. Dose de outro paciente, anonimizada ou de item removido volta vazia.
      */
-    Optional<DoseDetalhada> findDetalhadaByIdAndIdosoId(Long doseId, Long idosoId);
+    Optional<DoseDetalhada> findDetalhadaByIdAndPacienteId(Long doseId, Long pacienteId);
 
     /**
-     * A dose, SOMENTE se o idoso dela for do cuidador (dose -> tratamento -> medicamento -> idoso -> cuidador) e o
-     * tratamento e o medicamento não estiverem removidos. Dose de idoso de outro cuidador, anonimizada ou de item
+     * A dose, SOMENTE se o paciente dela for do cuidador (dose -> tratamento -> medicamento -> paciente -> cuidador) e o
+     * tratamento e o medicamento não estiverem removidos. Dose de paciente de outro cuidador, anonimizada ou de item
      * removido volta vazia.
      */
     Optional<DoseDetalhada> findDetalhadaByIdAndCuidadorId(Long doseId, Long cuidadorId);
@@ -91,7 +91,7 @@ public interface DoseRepositoryPort {
     /**
      * Grava a versão registrada da dose (status, hora de confirmação e quem confirmou) SOMENTE se no banco ela ainda estiver
      * PENDENTE, em um único UPDATE atômico ({@code ... WHERE id = ? AND status = 'PENDENTE'}). Se outra transação
-     * registrou a dose antes (ex.: confirmação do idoso ou do cuidador), nada muda.
+     * registrou a dose antes (ex.: confirmação do paciente ou do cuidador), nada muda.
      *
      * @param doseRegistrada dose já em um status registrado, criada por uma transição de {@link Dose}
      * @return quantas linhas mudaram: 1 se a transição aconteceu, 0 se a dose não existe ou não estava PENDENTE

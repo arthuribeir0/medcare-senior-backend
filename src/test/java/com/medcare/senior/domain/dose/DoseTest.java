@@ -41,7 +41,7 @@ class DoseTest {
         Dose pendente = Dose.builder().id(7L).tratamentoId(1000L).horarioProgramado(horario)
                 .status(StatusDose.PENDENTE).build();
 
-        Dose confirmada = pendente.confirmar(confirmado, agora, ConfirmadoPor.IDOSO);
+        Dose confirmada = pendente.confirmar(confirmado, agora, ConfirmadoPor.PACIENTE);
 
         assertThat(confirmada).isNotSameAs(pendente);
         assertThat(confirmada.getId()).isEqualTo(7L);
@@ -49,7 +49,7 @@ class DoseTest {
         assertThat(confirmada.getHorarioProgramado()).isEqualTo(horario);
         assertThat(confirmada.getStatus()).isEqualTo(confirmado);
         assertThat(confirmada.getHoraConfirmacao()).isEqualTo(agora);
-        assertThat(confirmada.getConfirmadoPor()).isEqualTo(ConfirmadoPor.IDOSO);
+        assertThat(confirmada.getConfirmadoPor()).isEqualTo(ConfirmadoPor.PACIENTE);
         assertThat(pendente.getStatus()).isEqualTo(StatusDose.PENDENTE);
         assertThat(pendente.getHoraConfirmacao()).isNull();
         assertThat(pendente.getConfirmadoPor()).isNull();
@@ -76,7 +76,7 @@ class DoseTest {
         Dose pendente = Dose.builder().id(7L).tratamentoId(1000L).horarioProgramado(horario)
                 .status(StatusDose.PENDENTE).build();
 
-        Dose confirmada = pendente.confirmar(StatusDose.CONFIRMADA_NO_HORARIO, agoraComNanos, ConfirmadoPor.IDOSO);
+        Dose confirmada = pendente.confirmar(StatusDose.CONFIRMADA_NO_HORARIO, agoraComNanos, ConfirmadoPor.PACIENTE);
 
         assertThat(confirmada.getHoraConfirmacao()).isEqualTo(horario.plusMinutes(5).withNano(123_456_000));
     }
@@ -87,7 +87,7 @@ class DoseTest {
         Dose registrada = Dose.builder().id(7L).tratamentoId(1000L)
                 .horarioProgramado(LocalDateTime.of(2026, 10, 8, 8, 0)).status(status).build();
 
-        assertThatThrownBy(() -> registrada.confirmar(StatusDose.CONFIRMADA_NO_HORARIO, LocalDateTime.of(2026, 10, 8, 8, 5), ConfirmadoPor.IDOSO))
+        assertThatThrownBy(() -> registrada.confirmar(StatusDose.CONFIRMADA_NO_HORARIO, LocalDateTime.of(2026, 10, 8, 8, 5), ConfirmadoPor.PACIENTE))
                 .isInstanceOf(TransicaoDeDoseInvalidaException.class);
     }
 
@@ -96,7 +96,7 @@ class DoseTest {
     void confirmacaoSoGeraNoHorarioOuComAtraso(StatusDose invalido) {
         Dose pendente = Dose.pendente(1000L, LocalDateTime.of(2026, 10, 8, 8, 0));
 
-        assertThatThrownBy(() -> pendente.confirmar(invalido, LocalDateTime.of(2026, 10, 8, 8, 5), ConfirmadoPor.IDOSO))
+        assertThatThrownBy(() -> pendente.confirmar(invalido, LocalDateTime.of(2026, 10, 8, 8, 5), ConfirmadoPor.PACIENTE))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 

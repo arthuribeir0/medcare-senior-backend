@@ -5,7 +5,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 /**
- * Cabeçalho e resumo do relatório de adesão de um idoso num período (UC-012, RN-012). As doses, uma por linha, são
+ * Cabeçalho e resumo do relatório de adesão de um paciente num período (UC-012, RN-012). As doses, uma por linha, são
  * lidas em lotes na hora de gerar o arquivo (não ficam todas na memória).
  *
  * @param de             primeiro dia, inclusivo
@@ -14,8 +14,8 @@ import java.util.List;
  * @param totais         todas as doses do período, com a taxa de adesão do relatório diário
  * @param porMedicamento uma linha por medicamento avaliado, em ordem de nome
  */
-public record RelatorioDeAdesao(Long idosoId,
-                                String idosoNome,
+public record RelatorioDeAdesao(Long pacienteId,
+                                String pacienteNome,
                                 LocalDate de,
                                 LocalDate ate,
                                 LocalDateTime geradoEm,

@@ -1,10 +1,10 @@
 package com.medcare.senior.application.usecase;
 
-import com.medcare.senior.domain.exception.IdosoJaCadastradoException;
+import com.medcare.senior.domain.exception.PacienteJaCadastradoException;
 import com.medcare.senior.domain.exception.SessaoInvalidaException;
 import com.medcare.senior.domain.usuario.CuidadorRepositoryPort;
-import com.medcare.senior.domain.usuario.Idoso;
-import com.medcare.senior.domain.usuario.IdosoRepositoryPort;
+import com.medcare.senior.domain.usuario.Paciente;
+import com.medcare.senior.domain.usuario.PacienteRepositoryPort;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -23,30 +23,30 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-class CadastrarIdosoUseCaseTest {
+class CadastrarPacienteUseCaseTest {
 
     private static final Long CUIDADOR_ID = 1L;
     private static final LocalDate NASCIMENTO = LocalDate.of(1940, 5, 10);
 
     @Mock
-    private IdosoRepositoryPort idosoRepository;
+    private PacienteRepositoryPort pacienteRepository;
 
     @Mock
     private CuidadorRepositoryPort cuidadorRepository;
 
     @InjectMocks
-    private CadastrarIdosoUseCase useCase;
+    private CadastrarPacienteUseCase useCase;
 
     @Test
-    void deveCadastrarIdoso() {
+    void deveCadastrarPaciente() {
         when(cuidadorRepository.existsById(CUIDADOR_ID)).thenReturn(true);
-        when(idosoRepository.save(any(Idoso.class))).thenAnswer(invocacao -> {
-            Idoso idoso = invocacao.getArgument(0);
-            idoso.setId(10L);
-            return idoso;
+        when(pacienteRepository.save(any(Paciente.class))).thenAnswer(invocacao -> {
+            Paciente paciente = invocacao.getArgument(0);
+            paciente.setId(10L);
+            return paciente;
         });
 
-        Idoso resultado = useCase.executar("  Maria Silva  ", NASCIMENTO, "11988887777", CUIDADOR_ID);
+        Paciente resultado = useCase.executar("  Maria Silva  ", NASCIMENTO, "11988887777", CUIDADOR_ID);
 
         assertThat(resultado.getId()).isEqualTo(10L);
         assertThat(resultado.getNome()).isEqualTo("Maria Silva");
@@ -56,40 +56,40 @@ class CadastrarIdosoUseCaseTest {
     }
 
     @Test
-    void deveRejeitarIdosoDuplicadoParaOMesmoCuidador() {
-        when(idosoRepository.existsByCuidadorIdAndNomeAndDataNascimento(CUIDADOR_ID, "Maria Silva", NASCIMENTO))
+    void deveRejeitarPacienteDuplicadoParaOMesmoCuidador() {
+        when(pacienteRepository.existsByCuidadorIdAndNomeAndDataNascimento(CUIDADOR_ID, "Maria Silva", NASCIMENTO))
                 .thenReturn(true);
 
         assertThatThrownBy(() -> useCase.executar("Maria Silva", NASCIMENTO, null, CUIDADOR_ID))
-                .isInstanceOf(IdosoJaCadastradoException.class);
+                .isInstanceOf(PacienteJaCadastradoException.class);
 
-        verify(idosoRepository, never()).save(any());
+        verify(pacienteRepository, never()).save(any());
     }
 
     @Test
-    void deveRejeitarIdosoDuplicadoComVariacaoDeMaiusculasNoNome() {
+    void deveRejeitarPacienteDuplicadoComVariacaoDeMaiusculasNoNome() {
         // A porta compara o nome sem diferenciar maiúsculas/minúsculas (contrato da RN-003); o mock simula isso
-        when(idosoRepository.existsByCuidadorIdAndNomeAndDataNascimento(
+        when(pacienteRepository.existsByCuidadorIdAndNomeAndDataNascimento(
                 eq(CUIDADOR_ID), argThat(nome -> nome.equalsIgnoreCase("Maria Silva")), eq(NASCIMENTO)))
                 .thenReturn(true);
 
         assertThatThrownBy(() -> useCase.executar("  MARIA silva ", NASCIMENTO, null, CUIDADOR_ID))
-                .isInstanceOf(IdosoJaCadastradoException.class);
+                .isInstanceOf(PacienteJaCadastradoException.class);
 
-        verify(idosoRepository).existsByCuidadorIdAndNomeAndDataNascimento(CUIDADOR_ID, "MARIA silva", NASCIMENTO);
-        verify(idosoRepository, never()).save(any());
+        verify(pacienteRepository).existsByCuidadorIdAndNomeAndDataNascimento(CUIDADOR_ID, "MARIA silva", NASCIMENTO);
+        verify(pacienteRepository, never()).save(any());
     }
 
     @Test
     void devePermitirMesmoNomeEDataParaOutroCuidador() {
         Long outroCuidador = 2L;
         when(cuidadorRepository.existsById(outroCuidador)).thenReturn(true);
-        when(idosoRepository.save(any(Idoso.class))).thenAnswer(invocacao -> invocacao.getArgument(0));
+        when(pacienteRepository.save(any(Paciente.class))).thenAnswer(invocacao -> invocacao.getArgument(0));
 
-        Idoso resultado = useCase.executar("Maria Silva", NASCIMENTO, null, outroCuidador);
+        Paciente resultado = useCase.executar("Maria Silva", NASCIMENTO, null, outroCuidador);
 
         assertThat(resultado.getCuidadorId()).isEqualTo(outroCuidador);
-        verify(idosoRepository).existsByCuidadorIdAndNomeAndDataNascimento(outroCuidador, "Maria Silva", NASCIMENTO);
+        verify(pacienteRepository).existsByCuidadorIdAndNomeAndDataNascimento(outroCuidador, "Maria Silva", NASCIMENTO);
     }
 
     @Test
@@ -99,6 +99,6 @@ class CadastrarIdosoUseCaseTest {
         assertThatThrownBy(() -> useCase.executar("Maria Silva", NASCIMENTO, null, CUIDADOR_ID))
                 .isInstanceOf(SessaoInvalidaException.class);
 
-        verify(idosoRepository, never()).save(any());
+        verify(pacienteRepository, never()).save(any());
     }
 }

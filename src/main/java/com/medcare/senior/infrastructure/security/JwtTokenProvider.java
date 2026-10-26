@@ -17,17 +17,18 @@ import java.util.Date;
 public class JwtTokenProvider implements TokenGeneratorPort {
 
     private static final String ROLE_CLAIM = "role";
+    private static final String LEGACY_ROLE_PACIENTE = "IDOSO";
 
     private final SecretKey secretKey;
     private final long expirationCuidadorMs;
-    private final long expirationIdosoMs;
+    private final long expirationPacienteMs;
 
     public JwtTokenProvider(@Value("${jwt.secret}") String secret,
                             @Value("${jwt.expiration-ms}") long expirationCuidadorMs,
-                            @Value("${jwt.expiration-idoso-ms}") long expirationIdosoMs) {
+                            @Value("${jwt.expiration-paciente-ms}") long expirationPacienteMs) {
         this.secretKey = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
         this.expirationCuidadorMs = expirationCuidadorMs;
-        this.expirationIdosoMs = expirationIdosoMs;
+        this.expirationPacienteMs = expirationPacienteMs;
     }
 
     @Override
@@ -46,7 +47,7 @@ public class JwtTokenProvider implements TokenGeneratorPort {
         // switch exaustivo: um papel novo no enum obriga a definir aqui a validade do token dele
         return switch (role) {
             case CUIDADOR -> expirationCuidadorMs;
-            case IDOSO -> expirationIdosoMs;
+            case PACIENTE -> expirationPacienteMs;
         };
     }
 
@@ -64,7 +65,9 @@ public class JwtTokenProvider implements TokenGeneratorPort {
     }
 
     public Role getRole(String token) {
-        return Role.valueOf(parseClaims(token).get(ROLE_CLAIM, String.class));
+        String role = parseClaims(token).get(ROLE_CLAIM, String.class);
+        // Tokens emitidos antes da troca de nome do papel (valem 180 dias): o aparelho continua pareado
+        return LEGACY_ROLE_PACIENTE.equals(role) ? Role.PACIENTE : Role.valueOf(role);
     }
 
     private Claims parseClaims(String token) {

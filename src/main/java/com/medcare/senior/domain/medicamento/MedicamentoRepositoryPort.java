@@ -13,7 +13,7 @@ public interface MedicamentoRepositoryPort {
 
     Optional<Medicamento> findById(Long id);
 
-    List<Medicamento> findAllByIdosoId(Long idosoId);
+    List<Medicamento> findAllByPacienteId(Long pacienteId);
 
     boolean existsById(Long id);
 
@@ -23,7 +23,7 @@ public interface MedicamentoRepositoryPort {
     void marcarComoRemovido(Long id, LocalDateTime agora);
 
     /**
-     * Remove FISICAMENTE todos os medicamentos dos idosos do cuidador, inclusive os já removidos logicamente
+     * Remove FISICAMENTE todos os medicamentos dos pacientes do cuidador, inclusive os já removidos logicamente
      * (exclusão de conta, LGPD).
      */
     void deleteAllByCuidadorId(Long cuidadorId);

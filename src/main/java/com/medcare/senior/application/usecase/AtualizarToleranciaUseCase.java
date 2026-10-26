@@ -31,7 +31,7 @@ public class AtualizarToleranciaUseCase {
      */
     public int executar(Long cuidadorId, int toleranciaMinutos) {
         configuracoes.salvarToleranciaMinutos(cuidadorId, Tolerancia.validar(toleranciaMinutos));
-        // A tolerância muda o aviso e o limite de confirmação de todas as doses dos idosos do cuidador
+        // A tolerância muda o aviso e o limite de confirmação de todas as doses dos pacientes do cuidador
         cacheDeRelatorio.descartarDoCuidador(cuidadorId);
         return toleranciaMinutos;
     }

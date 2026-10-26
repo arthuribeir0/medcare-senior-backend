@@ -42,7 +42,7 @@ class VerificarDosesVencidasUseCaseTest {
     private static final Duration MARGEM = Duration.ofMinutes(30);
     private static final int LOTE = 500;
     private static final Long CUIDADOR_ID = 1L;
-    private static final Long IDOSO_ID = 2L;
+    private static final Long PACIENTE_ID = 2L;
 
     @Mock
     private CacheDeRelatorioDiarioPort cacheDeRelatorio;
@@ -71,7 +71,7 @@ class VerificarDosesVencidasUseCaseTest {
     }
 
     private static DoseParaAviso paraAviso(long doseId, LocalDateTime horario) {
-        return new DoseParaAviso(doseId, horario, CUIDADOR_ID, IDOSO_ID, "Maria");
+        return new DoseParaAviso(doseId, horario, CUIDADOR_ID, PACIENTE_ID, "Maria");
     }
 
     private void semEncerradas() {
@@ -106,16 +106,16 @@ class VerificarDosesVencidasUseCaseTest {
         // Também cobre a dose que chegou ao encerramento sem ter sido avisada (aplicação parada): encerra sem push.
         // Dose confirmada antes do UPDATE não volta na lista (perdeu a corrida para a confirmação) e não conta.
         when(doseRepository.encerrarVencidas(AGORA, TOLERANCIA, MARGEM, LOTE))
-                .thenReturn(List.of(new DoseEncerrada(10L, IDOSO_ID), new DoseEncerrada(11L, 3L),
-                        new DoseEncerrada(12L, IDOSO_ID)));
+                .thenReturn(List.of(new DoseEncerrada(10L, PACIENTE_ID), new DoseEncerrada(11L, 3L),
+                        new DoseEncerrada(12L, PACIENTE_ID)));
         semAvisos();
 
         VerificarDosesVencidasUseCase.Resultado resultado = useCase.executar();
 
         assertThat(resultado).isEqualTo(new VerificarDosesVencidasUseCase.Resultado(3, 0, 0, 0));
-        // Os relatórios diários dos dois idosos em cache são descartados
-        verify(cacheDeRelatorio).descartarDoIdoso(IDOSO_ID);
-        verify(cacheDeRelatorio).descartarDoIdoso(3L);
+        // Os relatórios diários dos dois pacientes em cache são descartados
+        verify(cacheDeRelatorio).descartarDoPaciente(PACIENTE_ID);
+        verify(cacheDeRelatorio).descartarDoPaciente(3L);
         // Nenhuma leitura seguida de gravação: o encerramento é um comando só no repositório
         verify(doseRepository, never()).registrarSePendente(any());
         verifyNoInteractions(eventos, envioDeAviso);
@@ -151,7 +151,7 @@ class VerificarDosesVencidasUseCaseTest {
         VerificarDosesVencidasUseCase.Resultado resultado = useCase.executar();
 
         assertThat(resultado).isEqualTo(new VerificarDosesVencidasUseCase.Resultado(0, 1, 1, 0));
-        verify(envioDeAviso).enviar(100L, new DoseNaoTomadaNotificacao(10L, CUIDADOR_ID, IDOSO_ID, "Maria", horario));
+        verify(envioDeAviso).enviar(100L, new DoseNaoTomadaNotificacao(10L, CUIDADOR_ID, PACIENTE_ID, "Maria", horario));
         // RN-009/RN-014: o aviso NÃO muda a dose; ela só vira NAO_TOMADA no encerramento
         verify(doseRepository, never()).registrarSePendente(any());
     }

@@ -5,7 +5,7 @@ Tudo o que é preciso para repetir o teste de carga da API. Os resultados medido
 
 | Arquivo | Para quê |
 |---|---|
-| `preparacao.jmx` | Cria a massa de teste **isolada**: uma conta de cuidador `carga+N@exemplo.invalid` por usuário virtual, com um paciente, um remédio e um tratamento com horários a cada 5 minutos, de 55 minutos antes a 55 minutos depois da hora da preparação. Assim as doses ficam confirmáveis durante o teste. |
+| `preparacao.jmx` | Cria a massa de teste **isolada**: uma conta de cuidador `carga+N@exemplo.invalid` por usuário virtual, com um paciente, um remédio e um tratamento com 12 horários a cada 5 minutos, o primeiro a mais de 6 minutos da hora da preparação (a API recusa horário de hoje a menos de 5 minutos). A janela abre 60 minutos antes, então as doses ficam confirmáveis durante o teste. |
 | `carga.jmx` | O teste: cuidadores e pacientes em paralelo, cada um sorteando ações com o peso do uso real. |
 | `limpeza.jmx` | Exclui as contas de teste pela própria API (a mesma exclusão de conta da LGPD). |
 | `ResumoCarga.java` | Lê o resultado (`.jtl`), monta a tabela por cenário e confere os critérios abaixo. Não tem dependências. |
@@ -55,7 +55,7 @@ paciente por código).
 | `rampa`, `duracao` | `60`, `300` | Segundos até todos os usuários estarem ativos, e duração total |
 | `pausa_min_ms`, `pausa_var_ms` | `500`, `1000` | Pausa entre ações: mínimo + sorteio de 0 até o valor |
 | `prefixo`, `senha` | `carga`, `CargaSomente1` | Contas de teste (`prefixo+N@exemplo.invalid`). A senha é só destas contas sintéticas |
-| `fuso` (só preparação) | `America/Sao_Paulo` | Fuso do backend, para os horários do tratamento ficarem em volta de agora |
+| `fuso` (só preparação) | `America/Sao_Paulo` | Fuso do backend, para os horários do tratamento partirem de agora |
 
 ## Como rodar localmente (sem instalar o JMeter)
 

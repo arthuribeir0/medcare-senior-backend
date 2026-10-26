@@ -20,11 +20,11 @@ public record ErroResponse(
                 + "da mensagem. Ver a tabela em CodigoErro.", example = "VALIDACAO",
                 allowableValues = {"VALIDACAO", "CORPO_INVALIDO", "REQUISICAO_INVALIDA", "SENHA_FRACA",
                         "CONSENTIMENTO_OBRIGATORIO", "TOKEN_DISPOSITIVO_INVALIDO", "CODIGO_INVALIDO",
-                        "DADOS_OBRIGATORIOS_MEDICAMENTO", "TRATAMENTO_INVALIDO", "CREDENCIAIS_INVALIDAS", "SESSAO_INVALIDA",
+                        "DADOS_OBRIGATORIOS_MEDICAMENTO", "TRATAMENTO_INVALIDO", "CREDENCIAIS_INVALIDAS", "SESSAO_INVALIDA", "NAO_AUTENTICADO",
                         "ACESSO_NEGADO",
-                        "RECURSO_NAO_ENCONTRADO", "METODO_NAO_PERMITIDO", "EMAIL_DUPLICADO", "IDOSO_DUPLICADO",
+                        "RECURSO_NAO_ENCONTRADO", "METODO_NAO_PERMITIDO", "EMAIL_DUPLICADO", "PACIENTE_DUPLICADO",
                         "TRATAMENTO_ATIVO", "DOSE_JA_REGISTRADA", "DOSE_MUITO_CEDO", "DOSE_ENCERRADA",
-                        "LIMITE_TENTATIVAS", "ERRO_INTERNO"})
+                        "PERIODO_SEM_REGISTROS", "LIMITE_TENTATIVAS", "ERRO_INTERNO"})
         String codigo,
 
         @Schema(example = "Um ou mais campos são inválidos")

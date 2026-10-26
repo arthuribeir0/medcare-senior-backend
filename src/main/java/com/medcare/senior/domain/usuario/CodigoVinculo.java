@@ -18,7 +18,7 @@ public class CodigoVinculo {
     private Long id;
     private String codigoUnico;
     private Long cuidadorId;
-    private Long idosoId;
+    private Long pacienteId;
     private LocalDateTime expiraEm;
     private boolean usado;
 }

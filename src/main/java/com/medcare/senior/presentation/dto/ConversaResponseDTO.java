@@ -6,13 +6,13 @@ import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.time.LocalDateTime;
 
-@Schema(description = "Uma conversa: o idoso, a última mensagem e quantas mensagens quem chama ainda não leu")
+@Schema(description = "Uma conversa: o paciente, a última mensagem e quantas mensagens quem chama ainda não leu")
 public record ConversaResponseDTO(
         @Schema(example = "10")
-        Long idosoId,
+        Long pacienteId,
 
         @Schema(example = "José Souza")
-        String idosoNome,
+        String pacienteNome,
 
         @Schema(description = "Última mensagem (null se a conversa ainda não tem mensagens)", nullable = true)
         UltimaMensagemDTO ultimaMensagem,
@@ -25,7 +25,7 @@ public record ConversaResponseDTO(
     public record UltimaMensagemDTO(
             @Schema(example = "Já tomei, obrigado!")
             String conteudo,
-            @Schema(example = "IDOSO")
+            @Schema(example = "PACIENTE")
             Remetente remetente,
             @Schema(example = "2026-10-20T08:10:00")
             LocalDateTime criadaEm
@@ -34,7 +34,7 @@ public record ConversaResponseDTO(
 
     public static ConversaResponseDTO from(ResumoConversa conversa) {
         ResumoConversa.UltimaMensagem ultima = conversa.ultimaMensagem();
-        return new ConversaResponseDTO(conversa.idosoId(), conversa.idosoNome(),
+        return new ConversaResponseDTO(conversa.pacienteId(), conversa.pacienteNome(),
                 ultima == null ? null : new UltimaMensagemDTO(ultima.conteudo(), ultima.remetente(), ultima.criadaEm()),
                 conversa.naoLidas());
     }

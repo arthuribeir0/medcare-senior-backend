@@ -18,7 +18,7 @@ import lombok.Setter;
 import java.time.LocalDateTime;
 
 /**
- * Mensagem da conversa de um idoso com o seu cuidador (V14). O idoso fica só pelo ID (as consultas não precisam
+ * Mensagem da conversa de um paciente com o seu cuidador (V14). O paciente fica só pelo ID (as consultas não precisam
  * carregar a entidade). O conteúdo é dado pessoal: esta entidade não tem toString de propósito.
  */
 @Entity
@@ -34,8 +34,8 @@ public class MensagemEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "idoso_id", nullable = false)
-    private Long idosoId;
+    @Column(name = "paciente_id", nullable = false)
+    private Long pacienteId;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "remetente", nullable = false, length = 10)

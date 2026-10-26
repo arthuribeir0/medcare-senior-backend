@@ -56,7 +56,7 @@ class ConfiguracaoApiTest {
 
     private LocalDateTime agora;
     private Long cuidadorId;
-    private Long idosoId;
+    private Long pacienteId;
 
     @BeforeEach
     void criarDados() {
@@ -64,7 +64,7 @@ class ConfiguracaoApiTest {
         cuidadorId = jdbc.queryForObject("INSERT INTO cuidador (nome, email, senha_hash, data_cadastro, consentimento_lgpd, "
                 + "data_consentimento) VALUES ('Cuidador tolerância', ?, 'hash', ?, true, ?) RETURNING id", Long.class,
                 "tolerancia-" + UUID.randomUUID() + "@teste.com", agora, agora);
-        idosoId = jdbc.queryForObject("INSERT INTO idoso (nome, data_nascimento, cuidador_id) VALUES ('Maria', ?, ?) "
+        pacienteId = jdbc.queryForObject("INSERT INTO paciente (nome, data_nascimento, cuidador_id) VALUES ('Maria', ?, ?) "
                 + "RETURNING id", Long.class, LocalDate.of(1945, 3, 12), cuidadorId);
     }
 
@@ -129,10 +129,10 @@ class ConfiguracaoApiTest {
     }
 
     @Test
-    void idosoNaoAcessaETokenAusenteEh401() throws Exception {
-        mvc.perform(como(get(ROTA), idosoId, Role.IDOSO)).andExpect(status().isForbidden());
-        mvc.perform(como(put(ROTA).contentType(MediaType.APPLICATION_JSON).content("{\"toleranciaMinutos\": 30}"), idosoId,
-                Role.IDOSO)).andExpect(status().isForbidden());
+    void pacienteNaoAcessaETokenAusenteEh401() throws Exception {
+        mvc.perform(como(get(ROTA), pacienteId, Role.PACIENTE)).andExpect(status().isForbidden());
+        mvc.perform(como(put(ROTA).contentType(MediaType.APPLICATION_JSON).content("{\"toleranciaMinutos\": 30}"), pacienteId,
+                Role.PACIENTE)).andExpect(status().isForbidden());
         mvc.perform(get(ROTA)).andExpect(status().isUnauthorized());
         mvc.perform(put(ROTA).contentType(MediaType.APPLICATION_JSON).content("{\"toleranciaMinutos\": 30}"))
                 .andExpect(status().isUnauthorized());
@@ -140,7 +140,7 @@ class ConfiguracaoApiTest {
 
     @Test
     void cuidadorDeContaExcluidaRecebeSessaoInvalida() throws Exception {
-        jdbc.update("DELETE FROM idoso WHERE id = ?", idosoId);
+        jdbc.update("DELETE FROM paciente WHERE id = ?", pacienteId);
         jdbc.update("DELETE FROM cuidador WHERE id = ?", cuidadorId);
 
         mvc.perform(como(get(ROTA), cuidadorId, Role.CUIDADOR))
@@ -152,9 +152,9 @@ class ConfiguracaoApiTest {
     }
 
     @Test
-    void dosesDoIdosoRefletemAToleranciaDoCuidador() throws Exception {
-        Long medicamentoId = jdbc.queryForObject("INSERT INTO medicamento (nome, dosagem, tipo, idoso_id) "
-                + "VALUES ('Losartana', '50mg', 'COMPRIMIDO', ?) RETURNING id", Long.class, idosoId);
+    void dosesDoPacienteRefletemAToleranciaDoCuidador() throws Exception {
+        Long medicamentoId = jdbc.queryForObject("INSERT INTO medicamento (nome, dosagem, tipo, paciente_id) "
+                + "VALUES ('Losartana', '50mg', 'COMPRIMIDO', ?) RETURNING id", Long.class, pacienteId);
         Long tratamentoId = jdbc.queryForObject("INSERT INTO tratamento (medicamento_id, data_inicio, horarios, dias_semana) "
                 + "VALUES (?, ?, '[\"08:00\"]'::jsonb, '[\"MONDAY\"]'::jsonb) RETURNING id", Long.class,
                 medicamentoId, agora.toLocalDate().minusDays(1));
@@ -164,11 +164,11 @@ class ConfiguracaoApiTest {
 
         mvc.perform(putTolerancia("{\"toleranciaMinutos\": 60}")).andExpect(status().isOk());
 
-        mvc.perform(como(get("/api/idosos/" + idosoId + "/doses"), cuidadorId, Role.CUIDADOR))
+        mvc.perform(como(get("/api/pacientes/" + pacienteId + "/doses"), cuidadorId, Role.CUIDADOR))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].toleranciaMinutos").value(60))
                 .andExpect(jsonPath("$[0].janela.avisoEm", startsWith(avisoEm)));
-        mvc.perform(como(get("/api/idosos/me/doses"), idosoId, Role.IDOSO))
+        mvc.perform(como(get("/api/pacientes/me/doses"), pacienteId, Role.PACIENTE))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].toleranciaMinutos").value(60))
                 .andExpect(jsonPath("$[0].janela.avisoEm", startsWith(avisoEm)));

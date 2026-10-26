@@ -4,8 +4,9 @@ import com.medcare.senior.domain.exception.RecursoNaoEncontradoException;
 import com.medcare.senior.domain.medicamento.DadosObrigatoriosMedicamentoException;
 import com.medcare.senior.domain.medicamento.Medicamento;
 import com.medcare.senior.domain.medicamento.MedicamentoRepositoryPort;
-import com.medcare.senior.domain.usuario.Idoso;
-import com.medcare.senior.domain.usuario.IdosoRepositoryPort;
+import com.medcare.senior.domain.usuario.Paciente;
+import com.medcare.senior.domain.usuario.PacienteRepositoryPort;
+import com.medcare.senior.domain.relatorio.CacheDeRelatorioDiarioPort;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -28,14 +29,17 @@ import static org.mockito.Mockito.when;
 class EditarMedicamentoUseCaseTest {
 
     private static final Long CUIDADOR_ID = 1L;
-    private static final Long IDOSO_ID = 10L;
+    private static final Long PACIENTE_ID = 10L;
     private static final Long MEDICAMENTO_ID = 100L;
+
+    @Mock
+    private CacheDeRelatorioDiarioPort cacheDeRelatorio;
 
     @Mock
     private MedicamentoRepositoryPort medicamentoRepository;
 
     @Mock
-    private IdosoRepositoryPort idosoRepository;
+    private PacienteRepositoryPort pacienteRepository;
 
     @InjectMocks
     private EditarMedicamentoUseCase useCase;
@@ -45,7 +49,7 @@ class EditarMedicamentoUseCaseTest {
                 .nome("Losartana")
                 .dosagem("100mg")
                 .tipo("COMPRIMIDO")
-                .idosoId(IDOSO_ID)
+                .pacienteId(PACIENTE_ID)
                 .build();
     }
 
@@ -54,8 +58,8 @@ class EditarMedicamentoUseCaseTest {
         atual.setId(MEDICAMENTO_ID);
         atual.setDosagem("50mg");
         when(medicamentoRepository.findById(MEDICAMENTO_ID)).thenReturn(Optional.of(atual));
-        when(idosoRepository.findByIdAndCuidadorId(IDOSO_ID, CUIDADOR_ID))
-                .thenReturn(Optional.of(Idoso.builder().id(IDOSO_ID).cuidadorId(CUIDADOR_ID).build()));
+        when(pacienteRepository.findByIdAndCuidadorId(PACIENTE_ID, CUIDADOR_ID))
+                .thenReturn(Optional.of(Paciente.builder().id(PACIENTE_ID).cuidadorId(CUIDADOR_ID).build()));
     }
 
     @Test
@@ -67,6 +71,7 @@ class EditarMedicamentoUseCaseTest {
 
         assertThat(resultado.getId()).isEqualTo(MEDICAMENTO_ID);
         assertThat(resultado.getDosagem()).isEqualTo("100mg");
+        verify(cacheDeRelatorio).descartarDoCuidador(CUIDADOR_ID);
     }
 
     @ParameterizedTest
@@ -107,7 +112,7 @@ class EditarMedicamentoUseCaseTest {
         Medicamento deOutro = dadosValidos();
         deOutro.setId(MEDICAMENTO_ID);
         when(medicamentoRepository.findById(MEDICAMENTO_ID)).thenReturn(Optional.of(deOutro));
-        when(idosoRepository.findByIdAndCuidadorId(IDOSO_ID, CUIDADOR_ID)).thenReturn(Optional.empty());
+        when(pacienteRepository.findByIdAndCuidadorId(PACIENTE_ID, CUIDADOR_ID)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> useCase.executar(MEDICAMENTO_ID, dadosValidos(), CUIDADOR_ID))
                 .isInstanceOf(RecursoNaoEncontradoException.class)
@@ -117,16 +122,16 @@ class EditarMedicamentoUseCaseTest {
     }
 
     @Test
-    void deveRejeitarTransferenciaParaIdosoDeOutroCuidador() {
+    void deveRejeitarTransferenciaParaPacienteDeOutroCuidador() {
         medicamentoExistenteDoCuidador();
-        Long idosoDeOutroCuidador = 20L;
-        when(idosoRepository.findByIdAndCuidadorId(idosoDeOutroCuidador, CUIDADOR_ID)).thenReturn(Optional.empty());
+        Long pacienteDeOutroCuidador = 20L;
+        when(pacienteRepository.findByIdAndCuidadorId(pacienteDeOutroCuidador, CUIDADOR_ID)).thenReturn(Optional.empty());
         Medicamento dados = dadosValidos();
-        dados.setIdosoId(idosoDeOutroCuidador);
+        dados.setPacienteId(pacienteDeOutroCuidador);
 
         assertThatThrownBy(() -> useCase.executar(MEDICAMENTO_ID, dados, CUIDADOR_ID))
                 .isInstanceOf(RecursoNaoEncontradoException.class)
-                .hasMessage("Idoso não encontrado");
+                .hasMessage("Paciente não encontrado");
 
         verify(medicamentoRepository, never()).save(any());
     }

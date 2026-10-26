@@ -9,26 +9,31 @@ import com.medcare.senior.domain.relatorio.ContagemDeDoses;
 import com.medcare.senior.domain.relatorio.GeradorDePdfPort;
 import com.medcare.senior.domain.relatorio.RelatorioDeAdesao;
 import com.medcare.senior.domain.relatorio.TotaisDoDia;
-import com.medcare.senior.domain.usuario.Idoso;
-import com.medcare.senior.domain.usuario.IdosoRepositoryPort;
+import com.medcare.senior.domain.usuario.Paciente;
+import com.medcare.senior.domain.usuario.PacienteRepositoryPort;
 import org.springframework.stereotype.Service;
 
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.EnumMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 /**
- * Exporta o histórico de adesão de um idoso do cuidador em PDF (UC-012, HU10).
+ * Exporta o histórico de adesão de um paciente do cuidador em PDF (UC-012, HU10).
  *
  * <ul>
  *   <li>RN-011: a data de início é obrigatória e não pode ser depois da de fim; sem data de fim, vale hoje (fuso da
- *       aplicação). O DRS não define período máximo: as doses são lidas em lotes, sem carregar o período inteiro.</li>
- *   <li>RN-012: o arquivo traz o nome do idoso, o período, os medicamentos avaliados, cada dose (data, hora programada,
+ *       aplicação). Período de no máximo {@value #PERIODO_MAXIMO_MESES} meses (de "de" até "ate", inclusive: de
+ *       10/01/2025 a 10/01/2026 é aceito; até 11/01/2026, não). As doses são lidas em lotes, sem carregar o período
+ *       inteiro.</li>
+ *   <li>RN-012: o arquivo traz o nome do paciente, o período, os medicamentos avaliados, cada dose (data, hora programada,
  *       status e hora da confirmação) e a taxa de adesão por medicamento e do período (mesma fórmula do relatório
  *       diário).</li>
  *   <li>UC-012, fluxo 4a: período sem nenhuma dose não gera arquivo ({@link PeriodoSemRegistrosException}).</li>
@@ -40,25 +45,30 @@ public class GerarRelatorioPdfUseCase {
     /** Doses lidas do banco por vez ao montar a tabela. */
     static final int TAMANHO_DO_LOTE = 500;
 
-    private final IdosoRepositoryPort idosoRepository;
+    /** Maior período aceito, em meses. */
+    public static final int PERIODO_MAXIMO_MESES = 12;
+
+    private static final DateTimeFormatter DATA = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+
+    private final PacienteRepositoryPort pacienteRepository;
     private final DoseRepositoryPort doseRepository;
     private final GeradorDePdfPort geradorDePdf;
     private final Clock clock;
 
-    public GerarRelatorioPdfUseCase(IdosoRepositoryPort idosoRepository, DoseRepositoryPort doseRepository,
+    public GerarRelatorioPdfUseCase(PacienteRepositoryPort pacienteRepository, DoseRepositoryPort doseRepository,
                                     GeradorDePdfPort geradorDePdf, Clock clock) {
-        this.idosoRepository = idosoRepository;
+        this.pacienteRepository = pacienteRepository;
         this.doseRepository = doseRepository;
         this.geradorDePdf = geradorDePdf;
         this.clock = clock;
     }
 
     /**
-     * @throws ParametroInvalidoException    sem data de início ou início depois do fim
-     * @throws RecursoNaoEncontradoException idoso inexistente ou de outro cuidador
-     * @throws PeriodoSemRegistrosException  nenhuma dose do idoso no período
+     * @throws ParametroInvalidoException    sem data de início, início depois do fim ou período maior que 12 meses
+     * @throws RecursoNaoEncontradoException paciente inexistente ou de outro cuidador
+     * @throws PeriodoSemRegistrosException  nenhuma dose do paciente no período
      */
-    public Resultado executar(Long cuidadorId, Long idosoId, LocalDate de, LocalDate ate) {
+    public Resultado executar(Long cuidadorId, Long pacienteId, LocalDate de, LocalDate ate) {
         LocalDateTime agora = LocalDateTime.now(clock);
         if (de == null) {
             throw new ParametroInvalidoException("de", "Informe a data de início do período");
@@ -67,19 +77,23 @@ public class GerarRelatorioPdfUseCase {
         if (de.isAfter(fim)) {
             throw new ParametroInvalidoException("de", "A data de início não pode ser posterior à data de fim");
         }
-        Idoso idoso = idosoRepository.findByIdAndCuidadorId(idosoId, cuidadorId)
-                .orElseThrow(() -> new RecursoNaoEncontradoException("Idoso não encontrado"));
+        if (fim.isAfter(de.plusMonths(PERIODO_MAXIMO_MESES))) {
+            throw new ParametroInvalidoException("ate", "O período do relatório pode ter no máximo 12 meses. "
+                    + "Escolha uma data de fim até " + de.plusMonths(PERIODO_MAXIMO_MESES).format(DATA) + ".");
+        }
+        Paciente paciente = pacienteRepository.findByIdAndCuidadorId(pacienteId, cuidadorId)
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Paciente não encontrado"));
 
         LocalDateTime inicio = de.atStartOfDay();
         LocalDateTime fimExclusivo = fim.plusDays(1).atStartOfDay();
-        List<ContagemDeDoses> contagens = doseRepository.contarPorMedicamentoEStatus(idosoId, inicio, fimExclusivo);
+        List<ContagemDeDoses> contagens = doseRepository.contarPorMedicamentoEStatus(pacienteId, inicio, fimExclusivo);
         if (contagens.stream().mapToLong(ContagemDeDoses::quantidade).sum() == 0) {
             throw new PeriodoSemRegistrosException();
         }
 
-        RelatorioDeAdesao relatorio = new RelatorioDeAdesao(idoso.getId(), idoso.getNome(), de, fim, agora,
+        RelatorioDeAdesao relatorio = new RelatorioDeAdesao(paciente.getId(), paciente.getNome(), de, fim, agora,
                 totais(contagens), porMedicamento(contagens));
-        byte[] pdf = geradorDePdf.gerar(relatorio, lote -> doseRepository.percorrerDoIdoso(idosoId, inicio, fimExclusivo,
+        byte[] pdf = geradorDePdf.gerar(relatorio, lote -> doseRepository.percorrerDoPaciente(pacienteId, inicio, fimExclusivo,
                 TAMANHO_DO_LOTE, lote));
         return new Resultado(relatorio, pdf);
     }
@@ -107,7 +121,7 @@ public class GerarRelatorioPdfUseCase {
     }
 
     private static TotaisDoDia totais(Map<StatusDose, Long> porStatus) {
-        return TotaisDoDia.deContagens(Math.toIntExact(porStatus.getOrDefault(StatusDose.TOMADA, 0L)),
+        return TotaisDoDia.deContagens(Math.toIntExact(porStatus.getOrDefault(StatusDose.CONFIRMADA_NO_HORARIO, 0L)),
                 Math.toIntExact(porStatus.getOrDefault(StatusDose.CONFIRMADA_COM_ATRASO, 0L)),
                 Math.toIntExact(porStatus.getOrDefault(StatusDose.NAO_TOMADA, 0L)),
                 Math.toIntExact(porStatus.getOrDefault(StatusDose.PENDENTE, 0L)));
@@ -117,5 +131,23 @@ public class GerarRelatorioPdfUseCase {
      * @param pdf o arquivo gerado
      */
     public record Resultado(RelatorioDeAdesao relatorio, byte[] pdf) {
+
+        // O record compararia o array pela referência: dois resultados com o mesmo PDF seriam diferentes
+        @Override
+        public boolean equals(Object outro) {
+            return outro instanceof Resultado r && Objects.equals(relatorio, r.relatorio) && Arrays.equals(pdf, r.pdf);
+        }
+
+        @Override
+        public int hashCode() {
+            return 31 * Objects.hashCode(relatorio) + Arrays.hashCode(pdf);
+        }
+
+        /** Sem dados de saúde nem o nome do paciente (seguro para log): só o id do paciente e o tamanho do PDF. */
+        @Override
+        public String toString() {
+            return "Resultado[pacienteId=" + (relatorio == null ? null : relatorio.pacienteId()) + ", pdf="
+                    + (pdf == null ? "null" : pdf.length + " bytes") + "]";
+        }
     }
 }

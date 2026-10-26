@@ -21,7 +21,7 @@ public interface EventoParaRetentativaView {
 
     Long getCuidadorId();
 
-    Long getIdosoId();
+    Long getPacienteId();
 
-    String getNomeIdoso();
+    String getNomePaciente();
 }

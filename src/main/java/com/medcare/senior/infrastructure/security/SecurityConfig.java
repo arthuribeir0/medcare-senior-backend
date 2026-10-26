@@ -1,18 +1,17 @@
 package com.medcare.senior.infrastructure.security;
 
 import com.medcare.senior.domain.usuario.Role;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
-import org.springframework.http.HttpStatus;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.authentication.HttpStatusEntryPoint;
+import org.springframework.security.web.AuthenticationEntryPoint;
+import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @Configuration
@@ -34,17 +33,22 @@ public class SecurityConfig {
      *   [ ] Adicione aqui uma regra explícita .requestMatchers(...).hasRole(...) ou .permitAll().
      *       Não confie na regra padrão, que agora bloqueia por padrão.
      *   [ ] Declare a regra ANTES de anyRequest(): as regras são avaliadas em ordem e a primeira que casar vence.
-     *   [ ] Use hasRole(CUIDADOR) / hasRole(IDOSO) — nunca apenas authenticated(), que aceita qualquer papel. Rota
+     *   [ ] Use hasRole(CUIDADOR) / hasRole(PACIENTE) — nunca apenas authenticated(), que aceita qualquer papel. Rota
      *       dos dois papéis: hasAnyRole com os dois nomes, e o use case decide o acesso de cada papel.
      *   [ ] permitAll() só para pontos de entrada públicos (cadastro, login, pareamento). Endpoint público que
      *       aceita tentativas (códigos, senhas) deve ter rate limiting.
-     *   [ ] No controller, use @AuthenticationPrincipal AuthenticatedUser e cuidadorId()/idosoId(),
+     *   [ ] No controller, use @AuthenticationPrincipal AuthenticatedUser e cuidadorId()/pacienteId(),
      *       nunca o userId solto.
      * =====================================================================================================
      */
+    // CSRF desligado de propósito (java:S4502): a API é stateless e autentica só pelo cabeçalho Authorization (Bearer
+    // JWT), que o navegador não envia sozinho; não há cookie de sessão nem formulário. Sem credencial automática, não
+    // há o que um site de terceiros possa forjar.
+    @SuppressWarnings("java:S4502")
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http, JwtTokenProvider jwtTokenProvider,
-                                                   @Value("${app.docs.enabled:false}") boolean docsEnabled) throws Exception {
+                                                   AuthenticationEntryPoint naoAutenticado,
+                                                   AccessDeniedHandler acessoNegado) throws Exception {
         http
                 .csrf(AbstractHttpConfigurer::disable)
                 .formLogin(AbstractHttpConfigurer::disable)
@@ -62,10 +66,11 @@ public class SecurityConfig {
                             .requestMatchers(HttpMethod.DELETE, "/api/cuidadores/me").hasRole(Role.CUIDADOR.name())
                             .requestMatchers(HttpMethod.PUT, "/api/cuidadores/me/fcm-token").hasRole(Role.CUIDADOR.name())
                             .requestMatchers(HttpMethod.DELETE, "/api/cuidadores/me/fcm-token").hasRole(Role.CUIDADOR.name())
-                            // Rotas do aparelho do idoso: ANTES de /api/idosos/** (a primeira regra que casa vence)
-                            .requestMatchers(HttpMethod.GET, "/api/idosos/me", "/api/idosos/me/doses").hasRole(Role.IDOSO.name())
-                            .requestMatchers("/api/idosos/**").hasRole(Role.CUIDADOR.name())
-                            .requestMatchers(HttpMethod.PUT, "/api/doses/*/confirmar").hasRole(Role.IDOSO.name())
+                            // Rotas do aparelho do paciente: ANTES de /api/pacientes/** (a primeira regra que casa vence)
+                            .requestMatchers(HttpMethod.GET, "/api/pacientes/me", "/api/pacientes/me/doses").hasRole(Role.PACIENTE.name())
+                            .requestMatchers("/api/pacientes/**").hasRole(Role.CUIDADOR.name())
+                            // Confirmação de dose: o paciente (a própria) ou o cuidador (dos pacientes dele); o dono fica no use case
+                            .requestMatchers(HttpMethod.PUT, "/api/doses/*/confirmar").hasAnyRole(Role.PACIENTE.name(), Role.CUIDADOR.name())
                             .requestMatchers("/api/medicamentos/**").hasRole(Role.CUIDADOR.name())
                             .requestMatchers("/api/tratamentos/**").hasRole(Role.CUIDADOR.name())
                             .requestMatchers(HttpMethod.GET, "/api/configuracoes/tolerancia").hasRole(Role.CUIDADOR.name())
@@ -74,22 +79,22 @@ public class SecurityConfig {
                             .requestMatchers(HttpMethod.GET, "/api/relatorios/pdf").hasRole(Role.CUIDADOR.name())
                             .requestMatchers(HttpMethod.GET, "/api/historico").hasRole(Role.CUIDADOR.name())
                             // Mensagens (UC-010): os dois papéis; de quem é a conversa fica no AcessoAConversaService
-                            .requestMatchers(HttpMethod.POST, "/api/mensagens").hasAnyRole(Role.CUIDADOR.name(), Role.IDOSO.name())
+                            .requestMatchers(HttpMethod.POST, "/api/mensagens").hasAnyRole(Role.CUIDADOR.name(), Role.PACIENTE.name())
                             .requestMatchers(HttpMethod.GET, "/api/mensagens", "/api/mensagens/conversas", "/api/mensagens/nao-lidas")
-                            .hasAnyRole(Role.CUIDADOR.name(), Role.IDOSO.name())
-                            .requestMatchers(HttpMethod.PUT, "/api/mensagens/lidas").hasAnyRole(Role.CUIDADOR.name(), Role.IDOSO.name());
+                            .hasAnyRole(Role.CUIDADOR.name(), Role.PACIENTE.name())
+                            .requestMatchers(HttpMethod.PUT, "/api/mensagens/lidas").hasAnyRole(Role.CUIDADOR.name(), Role.PACIENTE.name());
 
-                    // Documentação OpenAPI/Swagger: liberada SOMENTE com app.docs.enabled=true (DOCS_ENABLED).
-                    // Desligada, essas rotas caem no denyAll() abaixo, como qualquer outra rota sem regra.
-                    if (docsEnabled) {
-                        auth.requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll();
-                    }
+                    // Documentação OpenAPI/Swagger (app.docs.enabled, variável SWAGGER_ENABLED): ligada, é pública, sem
+                    // token. Desligada, o springdoc não registra as rotas e a liberação abaixo só faz a resposta ser
+                    // 404 (não há o que servir) em vez de 401, sem indicar que a documentação existe.
+                    auth.requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll();
 
                     // Fail closed: qualquer rota sem regra explícita acima é bloqueada (ver checklist)
                     auth.anyRequest().denyAll();
                 })
-                // Sem token (ou token inválido) -> 401; token válido sem o papel exigido -> 403
-                .exceptionHandling(ex -> ex.authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
+                // Sem token (ou token inválido) -> 401 NAO_AUTENTICADO; token válido sem o papel exigido -> 403
+                // ACESSO_NEGADO, os dois no corpo de erro padrão da API
+                .exceptionHandling(ex -> ex.authenticationEntryPoint(naoAutenticado).accessDeniedHandler(acessoNegado))
                 .addFilterBefore(new JwtAuthenticationFilter(jwtTokenProvider), UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }

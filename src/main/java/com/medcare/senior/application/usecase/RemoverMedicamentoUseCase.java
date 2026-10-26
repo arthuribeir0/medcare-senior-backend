@@ -5,7 +5,8 @@ import com.medcare.senior.domain.exception.RecursoNaoEncontradoException;
 import com.medcare.senior.domain.medicamento.MedicamentoComTratamentoAtivoException;
 import com.medcare.senior.domain.medicamento.MedicamentoRepositoryPort;
 import com.medcare.senior.domain.tratamento.TratamentoRepositoryPort;
-import com.medcare.senior.domain.usuario.IdosoRepositoryPort;
+import com.medcare.senior.domain.usuario.PacienteRepositoryPort;
+import com.medcare.senior.domain.relatorio.CacheDeRelatorioDiarioPort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -41,20 +42,23 @@ import java.time.LocalDateTime;
 public class RemoverMedicamentoUseCase {
 
     private final MedicamentoRepositoryPort medicamentoRepository;
-    private final IdosoRepositoryPort idosoRepository;
+    private final PacienteRepositoryPort pacienteRepository;
     private final TratamentoRepositoryPort tratamentoRepository;
     private final DoseRepositoryPort doseRepository;
+    private final CacheDeRelatorioDiarioPort cacheDeRelatorio;
     private final Clock clock;
 
     public RemoverMedicamentoUseCase(MedicamentoRepositoryPort medicamentoRepository,
-                                     IdosoRepositoryPort idosoRepository,
+                                     PacienteRepositoryPort pacienteRepository,
                                      TratamentoRepositoryPort tratamentoRepository,
                                      DoseRepositoryPort doseRepository,
+                                     CacheDeRelatorioDiarioPort cacheDeRelatorio,
                                      Clock clock) {
         this.medicamentoRepository = medicamentoRepository;
-        this.idosoRepository = idosoRepository;
+        this.pacienteRepository = pacienteRepository;
         this.tratamentoRepository = tratamentoRepository;
         this.doseRepository = doseRepository;
+        this.cacheDeRelatorio = cacheDeRelatorio;
         this.clock = clock;
     }
 
@@ -68,8 +72,8 @@ public class RemoverMedicamentoUseCase {
     public void executar(Long id, Long cuidadorId, boolean forcarRemocao) {
         // Medicamento já removido responde igual a inexistente (o repositório ignora removidos)
         medicamentoRepository.findById(id)
-                .filter(medicamento -> idosoRepository
-                        .findByIdAndCuidadorId(medicamento.getIdosoId(), cuidadorId).isPresent())
+                .filter(medicamento -> pacienteRepository
+                        .findByIdAndCuidadorId(medicamento.getPacienteId(), cuidadorId).isPresent())
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Medicamento não encontrado"));
 
         LocalDateTime agora = LocalDateTime.now(clock);
@@ -88,5 +92,6 @@ public class RemoverMedicamentoUseCase {
         doseRepository.deletePendentesFuturasByMedicamentoId(id, agora);
         tratamentoRepository.marcarComoRemovidosPorMedicamento(id, agora);
         medicamentoRepository.marcarComoRemovido(id, agora);
+        cacheDeRelatorio.descartarDoCuidador(cuidadorId);
     }
 }

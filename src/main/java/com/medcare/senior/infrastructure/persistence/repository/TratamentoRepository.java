@@ -17,9 +17,9 @@ public interface TratamentoRepository extends JpaRepository<TratamentoEntity, Lo
 
     List<TratamentoEntity> findAllByMedicamento_IdAndRemovidoEmIsNullOrderByDataInicioAscIdAsc(Long medicamentoId);
 
-    // Posse: tratamento -> medicamento -> idoso -> cuidador; nem o tratamento nem o medicamento podem estar removidos
+    // Posse: tratamento -> medicamento -> paciente -> cuidador; nem o tratamento nem o medicamento podem estar removidos
     @Query("SELECT t FROM TratamentoEntity t WHERE t.id = :id AND t.removidoEm IS NULL "
-            + "AND t.medicamento.removidoEm IS NULL AND t.medicamento.idoso.cuidador.id = :cuidadorId")
+            + "AND t.medicamento.removidoEm IS NULL AND t.medicamento.paciente.cuidador.id = :cuidadorId")
     Optional<TratamentoEntity> findAtivoByIdAndCuidadorId(@Param("id") Long id, @Param("cuidadorId") Long cuidadorId);
 
     @Query("SELECT t FROM TratamentoEntity t WHERE t.removidoEm IS NULL AND t.medicamento.removidoEm IS NULL "
@@ -35,6 +35,6 @@ public interface TratamentoRepository extends JpaRepository<TratamentoEntity, Lo
     // Exclusão física (LGPD): inclui os tratamentos já removidos logicamente
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("DELETE FROM TratamentoEntity t WHERE t.medicamento.id IN ("
-            + "SELECT m.id FROM MedicamentoEntity m WHERE m.idoso.cuidador.id = :cuidadorId)")
+            + "SELECT m.id FROM MedicamentoEntity m WHERE m.paciente.cuidador.id = :cuidadorId)")
     void deleteAllByCuidadorId(@Param("cuidadorId") Long cuidadorId);
 }

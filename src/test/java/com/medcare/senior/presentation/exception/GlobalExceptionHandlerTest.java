@@ -7,7 +7,7 @@ import com.medcare.senior.domain.exception.CodigoVinculoInvalidoException;
 import com.medcare.senior.domain.exception.ConsentimentoLgpdObrigatorioException;
 import com.medcare.senior.domain.exception.CredenciaisInvalidasException;
 import com.medcare.senior.domain.exception.EmailJaCadastradoException;
-import com.medcare.senior.domain.exception.IdosoJaCadastradoException;
+import com.medcare.senior.domain.exception.PacienteJaCadastradoException;
 import com.medcare.senior.domain.exception.RecursoNaoEncontradoException;
 import com.medcare.senior.domain.exception.SenhaFracaException;
 import com.medcare.senior.domain.exception.SessaoInvalidaException;
@@ -44,9 +44,9 @@ class GlobalExceptionHandlerTest {
         assertErro(handler.handleTokenDispositivoInvalido(new TokenDispositivoInvalidoException()), 400,
                 "TOKEN_DISPOSITIVO_INVALIDO");
         assertErro(handler.handleCredenciaisInvalidas(new CredenciaisInvalidasException()), 401, "CREDENCIAIS_INVALIDAS");
-        assertErro(handler.handleIdosoJaCadastrado(new IdosoJaCadastradoException()), 409, "IDOSO_DUPLICADO");
+        assertErro(handler.handlePacienteJaCadastrado(new PacienteJaCadastradoException()), 409, "PACIENTE_DUPLICADO");
         assertErro(handler.handleSessaoInvalida(new SessaoInvalidaException()), 401, "SESSAO_INVALIDA");
-        assertErro(handler.handleRecursoNaoEncontrado(new RecursoNaoEncontradoException("Idoso não encontrado")), 404,
+        assertErro(handler.handleRecursoNaoEncontrado(new RecursoNaoEncontradoException("Paciente não encontrado")), 404,
                 "RECURSO_NAO_ENCONTRADO");
         assertErro(handler.handleAcessoNegado(new AcessoNegadoException()), 403, "ACESSO_NEGADO");
         assertErro(handler.handleCodigoVinculoInvalido(new CodigoVinculoInvalidoException()), 400, "CODIGO_INVALIDO");

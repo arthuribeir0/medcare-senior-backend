@@ -26,7 +26,7 @@ public interface CuidadorRepositoryPort {
 
     /**
      * Tira o token de dispositivo de todos os OUTROS cuidadores que o tenham. Um aparelho pertence a uma conta por
-     * vez: sem isso, quem trocou de conta no mesmo celular continuaria recebendo avisos (com nomes de idosos e
+     * vez: sem isso, quem trocou de conta no mesmo celular continuaria recebendo avisos (com nomes de pacientes e
      * medicamentos) da conta anterior.
      */
     void removerFcmTokenDosOutrosCuidadores(String fcmToken, Long cuidadorId);

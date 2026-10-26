@@ -10,8 +10,9 @@ import com.medcare.senior.domain.tratamento.HorariosObrigatoriosException;
 import com.medcare.senior.domain.tratamento.PeriodoTratamentoInvalidoException;
 import com.medcare.senior.domain.tratamento.Tratamento;
 import com.medcare.senior.domain.tratamento.TratamentoRepositoryPort;
-import com.medcare.senior.domain.usuario.Idoso;
-import com.medcare.senior.domain.usuario.IdosoRepositoryPort;
+import com.medcare.senior.domain.usuario.Paciente;
+import com.medcare.senior.domain.usuario.PacienteRepositoryPort;
+import com.medcare.senior.domain.relatorio.CacheDeRelatorioDiarioPort;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -39,11 +40,14 @@ import static org.mockito.Mockito.when;
 class SalvarTratamentoUseCaseTest {
 
     private static final Long CUIDADOR_ID = 1L;
-    private static final Long IDOSO_ID = 10L;
+    private static final Long PACIENTE_ID = 10L;
     private static final Long MEDICAMENTO_ID = 100L;
     private static final LocalDate INICIO = LocalDate.of(2026, 10, 1);
     private static final List<LocalTime> HORARIOS = List.of(LocalTime.of(8, 0), LocalTime.of(20, 0));
     private static final List<DayOfWeek> DIAS = List.of(DayOfWeek.MONDAY, DayOfWeek.THURSDAY);
+
+    @Mock
+    private CacheDeRelatorioDiarioPort cacheDeRelatorio;
 
     @Mock
     private TratamentoRepositoryPort tratamentoRepository;
@@ -52,7 +56,7 @@ class SalvarTratamentoUseCaseTest {
     private MedicamentoRepositoryPort medicamentoRepository;
 
     @Mock
-    private IdosoRepositoryPort idosoRepository;
+    private PacienteRepositoryPort pacienteRepository;
 
     @Mock
     private GeradorDeDosesService geradorDeDoses;
@@ -62,9 +66,9 @@ class SalvarTratamentoUseCaseTest {
 
     private void medicamentoDoCuidador() {
         when(medicamentoRepository.findById(MEDICAMENTO_ID))
-                .thenReturn(Optional.of(Medicamento.builder().id(MEDICAMENTO_ID).idosoId(IDOSO_ID).build()));
-        when(idosoRepository.findByIdAndCuidadorId(IDOSO_ID, CUIDADOR_ID))
-                .thenReturn(Optional.of(Idoso.builder().id(IDOSO_ID).cuidadorId(CUIDADOR_ID).build()));
+                .thenReturn(Optional.of(Medicamento.builder().id(MEDICAMENTO_ID).pacienteId(PACIENTE_ID).build()));
+        when(pacienteRepository.findByIdAndCuidadorId(PACIENTE_ID, CUIDADOR_ID))
+                .thenReturn(Optional.of(Paciente.builder().id(PACIENTE_ID).cuidadorId(CUIDADOR_ID).build()));
     }
 
     @Test
@@ -90,6 +94,7 @@ class SalvarTratamentoUseCaseTest {
 
         // As doses da janela inicial são geradas para o tratamento já salvo (com id)
         verify(geradorDeDoses).gerar(resultado);
+        verify(cacheDeRelatorio).descartarDoCuidador(CUIDADOR_ID);
     }
 
     @Test
@@ -163,8 +168,8 @@ class SalvarTratamentoUseCaseTest {
     @Test
     void deveRejeitarMedicamentoDeOutroCuidador() {
         when(medicamentoRepository.findById(MEDICAMENTO_ID))
-                .thenReturn(Optional.of(Medicamento.builder().id(MEDICAMENTO_ID).idosoId(IDOSO_ID).build()));
-        when(idosoRepository.findByIdAndCuidadorId(IDOSO_ID, CUIDADOR_ID)).thenReturn(Optional.empty());
+                .thenReturn(Optional.of(Medicamento.builder().id(MEDICAMENTO_ID).pacienteId(PACIENTE_ID).build()));
+        when(pacienteRepository.findByIdAndCuidadorId(PACIENTE_ID, CUIDADOR_ID)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> useCase.executar(MEDICAMENTO_ID, INICIO, null, HORARIOS, DIAS, CUIDADOR_ID))
                 .isInstanceOf(RecursoNaoEncontradoException.class)

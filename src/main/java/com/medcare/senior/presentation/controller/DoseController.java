@@ -1,7 +1,10 @@
 package com.medcare.senior.presentation.controller;
 
+import com.medcare.senior.infrastructure.docs.PerfilExigido;
+import com.medcare.senior.infrastructure.docs.PerfilExigido.Perfil;
 import com.medcare.senior.application.usecase.ConfirmarDoseUseCase;
 import com.medcare.senior.domain.autenticacao.AuthenticatedUser;
+import com.medcare.senior.domain.dose.DoseAvaliada;
 import com.medcare.senior.presentation.dto.DoseResponseDTO;
 import com.medcare.senior.presentation.exception.ErroResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -19,31 +22,41 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Acesso restrito a IDOSO no SecurityConfig. O ID do idoso vem sempre do JWT, e o use case verifica que a dose é dele.
+ * PACIENTE e CUIDADOR no SecurityConfig. O ID vem sempre do JWT: o paciente só confirma as próprias doses; o cuidador, só as
+ * dos pacientes dele (o use case confere o dono e responde 404 para dose alheia).
  */
 @RestController
 @RequestMapping("/api/doses")
 @RequiredArgsConstructor
-@Tag(name = "Doses", description = "Confirmação de dose pelo idoso (somente IDOSO)")
+@Tag(name = "Doses")
 public class DoseController {
 
     private final ConfirmarDoseUseCase confirmarDoseUseCase;
 
     @PutMapping("/{id}/confirmar")
-    @Operation(summary = "Confirma que o idoso tomou a dose",
-            description = "Dentro da janela [abreEm, encerraEm]: TOMADA até avisoEm (inclusive) e CONFIRMADA_COM_ATRASO "
-                    + "depois. A hora da confirmação é a do servidor. Dose já registrada nunca muda (RN-008).")
+    @PerfilExigido(Perfil.CUIDADOR_OU_PACIENTE)
+    @Operation(summary = "Confirma que o paciente tomou a dose",
+            description = "Token PACIENTE: só a própria dose. Token CUIDADOR: só dose de paciente dele.\n\n"
+                    + "Janela, calculada no servidor: abre 60 minutos antes do horário programado (antes disso, "
+                    + "DOSE_MUITO_CEDO). Até o aviso ao cuidador (avisoEm = horário + tolerância do cuidador, padrão de 30 "
+                    + "minutos), inclusive, a dose fica CONFIRMADA_NO_HORARIO; depois, CONFIRMADA_COM_ATRASO. A janela "
+                    + "encerra 30 minutos depois do aviso (limiteConfirmacao); depois disso, DOSE_ENCERRADA, e a varredura "
+                    + "marca a dose como NAO_TOMADA.\n\n"
+                    + "A hora da confirmação é a do servidor e confirmadoPor registra quem confirmou (PACIENTE ou "
+                    + "CUIDADOR). Dose já registrada nunca muda (DOSE_JA_REGISTRADA), inclusive em confirmações "
+                    + "simultâneas.")
     @ApiResponse(responseCode = "200", description = "Dose confirmada")
-    @ApiResponse(responseCode = "401", description = "Token ausente ou inválido; ou idoso do token não existe mais "
-            + "(codigo SESSAO_INVALIDA)", content = @Content(schema = @Schema(implementation = ErroResponse.class)))
-    @ApiResponse(responseCode = "403", description = "Token sem o papel IDOSO", content = @Content)
-    @ApiResponse(responseCode = "404", description = "Dose inexistente, de outro idoso ou de remédio removido",
+    @ApiResponse(responseCode = "404", description = "Dose inexistente, de outro paciente, de paciente de outro cuidador ou de "
+            + "remédio removido",
             content = @Content(schema = @Schema(implementation = ErroResponse.class)))
     @ApiResponse(responseCode = "409", description = "DOSE_JA_REGISTRADA, DOSE_MUITO_CEDO ou DOSE_ENCERRADA",
             content = @Content(schema = @Schema(implementation = ErroResponse.class)))
-    public ResponseEntity<DoseResponseDTO> confirmar(@Parameter(description = "ID da dose") @PathVariable Long id,
+    public ResponseEntity<DoseResponseDTO> confirmar(@Parameter(description = "ID da dose", example = "1") @PathVariable Long id,
                                                      @Parameter(hidden = true)
                                                      @AuthenticationPrincipal AuthenticatedUser usuario) {
-        return ResponseEntity.ok(DoseResponseDTO.from(confirmarDoseUseCase.executar(id, usuario.idosoId())));
+        DoseAvaliada confirmada = usuario.isCuidador()
+                ? confirmarDoseUseCase.executarComoCuidador(id, usuario.cuidadorId())
+                : confirmarDoseUseCase.executar(id, usuario.pacienteId());
+        return ResponseEntity.ok(DoseResponseDTO.from(confirmada));
     }
 }

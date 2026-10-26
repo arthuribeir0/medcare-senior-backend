@@ -16,7 +16,7 @@ import java.util.Set;
 
 /**
  * Período e horários em que um medicamento deve ser tomado. A posse segue o caminho
- * tratamento -> medicamento -> idoso -> cuidador.
+ * tratamento -> medicamento -> paciente -> cuidador.
  */
 @Getter
 @Setter

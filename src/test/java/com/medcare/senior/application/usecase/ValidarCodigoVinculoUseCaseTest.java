@@ -5,8 +5,8 @@ import com.medcare.senior.domain.autenticacao.TokenGeneratorPort;
 import com.medcare.senior.domain.exception.CodigoVinculoInvalidoException;
 import com.medcare.senior.domain.usuario.CodigoVinculo;
 import com.medcare.senior.domain.usuario.CodigoVinculoRepositoryPort;
-import com.medcare.senior.domain.usuario.Idoso;
-import com.medcare.senior.domain.usuario.IdosoRepositoryPort;
+import com.medcare.senior.domain.usuario.Paciente;
+import com.medcare.senior.domain.usuario.PacienteRepositoryPort;
 import com.medcare.senior.domain.usuario.Role;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -34,7 +34,7 @@ import static org.mockito.Mockito.when;
 class ValidarCodigoVinculoUseCaseTest {
 
     private static final Long CODIGO_ID = 5L;
-    private static final Long IDOSO_ID = 10L;
+    private static final Long PACIENTE_ID = 10L;
     private static final ZoneId FUSO = ZoneId.of("America/Sao_Paulo");
     private static final LocalDateTime AGORA = LocalDateTime.of(2026, 10, 16, 9, 30);
 
@@ -45,13 +45,13 @@ class ValidarCodigoVinculoUseCaseTest {
     private TokenGeneratorPort tokenGenerator;
 
     @Mock
-    private IdosoRepositoryPort idosoRepository;
+    private PacienteRepositoryPort pacienteRepository;
 
     private ValidarCodigoVinculoUseCase useCase;
 
     @BeforeEach
     void setUp() {
-        useCase = new ValidarCodigoVinculoUseCase(codigoVinculoRepository, tokenGenerator, idosoRepository,
+        useCase = new ValidarCodigoVinculoUseCase(codigoVinculoRepository, tokenGenerator, pacienteRepository,
                 Clock.fixed(AGORA.atZone(FUSO).toInstant(), FUSO));
     }
 
@@ -60,25 +60,25 @@ class ValidarCodigoVinculoUseCaseTest {
                 .id(CODIGO_ID)
                 .codigoUnico(valor)
                 .cuidadorId(1L)
-                .idosoId(IDOSO_ID)
+                .pacienteId(PACIENTE_ID)
                 .expiraEm(expiraEm)
                 .usado(usado)
                 .build();
     }
 
     @Test
-    void codigoValidoDeveGerarTokenComRoleIdosoEDevolverIdENomeDoIdoso() {
+    void codigoValidoDeveGerarTokenComRolePacienteEDevolverIdENomeDoPaciente() {
         when(codigoVinculoRepository.findMaisRecenteByCodigoUnico("123456"))
                 .thenReturn(Optional.of(codigo("123456", AGORA.plusHours(1), false)));
         when(codigoVinculoRepository.marcarComoUsado(CODIGO_ID, AGORA)).thenReturn(true);
-        when(idosoRepository.findByIdAndCuidadorId(IDOSO_ID, 1L))
-                .thenReturn(Optional.of(Idoso.builder().id(IDOSO_ID).nome("José Souza").cuidadorId(1L).build()));
-        when(tokenGenerator.generateToken(IDOSO_ID, Role.IDOSO)).thenReturn("jwt-idoso");
+        when(pacienteRepository.findByIdAndCuidadorId(PACIENTE_ID, 1L))
+                .thenReturn(Optional.of(Paciente.builder().id(PACIENTE_ID).nome("José Souza").cuidadorId(1L).build()));
+        when(tokenGenerator.generateToken(PACIENTE_ID, Role.PACIENTE)).thenReturn("jwt-paciente");
 
         SessaoAutenticada sessao = useCase.executar(" 123456 ");
 
-        assertThat(sessao).isEqualTo(new SessaoAutenticada("jwt-idoso", IDOSO_ID, "José Souza"));
-        verify(tokenGenerator).generateToken(IDOSO_ID, Role.IDOSO);
+        assertThat(sessao).isEqualTo(new SessaoAutenticada("jwt-paciente", PACIENTE_ID, "José Souza"));
+        verify(tokenGenerator).generateToken(PACIENTE_ID, Role.PACIENTE);
     }
 
     @Test
@@ -88,8 +88,8 @@ class ValidarCodigoVinculoUseCaseTest {
         assertThatThrownBy(() -> useCase.executar("000000")).isInstanceOf(CodigoVinculoInvalidoException.class);
 
         verify(tokenGenerator, never()).generateToken(anyLong(), any());
-        // Tentativa inválida não consulta o idoso
-        verifyNoInteractions(idosoRepository);
+        // Tentativa inválida não consulta o paciente
+        verifyNoInteractions(pacienteRepository);
     }
 
     @Test

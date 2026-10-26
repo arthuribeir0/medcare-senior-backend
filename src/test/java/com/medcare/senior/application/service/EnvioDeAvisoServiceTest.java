@@ -68,6 +68,15 @@ class EnvioDeAvisoServiceTest {
     }
 
     @Test
+    void pushDesligadoEncerraOEventoComFalhaPushDesligadoSemRetentativa() {
+        when(notificador.notificar(NOTIFICACAO)).thenReturn(ResultadoEnvioPush.PUSH_DESLIGADO);
+
+        assertThat(service.enviar(EVENTO_ID, NOTIFICACAO)).isEqualTo(ResultadoEnvioPush.PUSH_DESLIGADO);
+        verify(eventos).marcarFalha(EVENTO_ID, MotivoFalhaNotificacao.PUSH_DESLIGADO);
+        verify(eventos, never()).marcarEnviado(EVENTO_ID);
+    }
+
+    @Test
     void falhaTemporariaDeixaOEventoPendenteParaARetentativa() {
         when(notificador.notificar(NOTIFICACAO)).thenReturn(ResultadoEnvioPush.FALHA_TEMPORARIA);
 

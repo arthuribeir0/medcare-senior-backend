@@ -42,7 +42,7 @@ public class FCMService implements NotificacaoPushPort {
             log.warn("Push pelo FCM ativo em DRY-RUN (app.fcm.dry-run=true): o Firebase valida as mensagens, mas "
                     + "NÃO as entrega aos aparelhos");
         } else {
-            log.info("Push pelo FCM ativo: avisos de dose não tomada são entregues aos aparelhos dos cuidadores");
+            log.info("Push pelo FCM ativo: avisos de dose não confirmada são entregues aos aparelhos dos cuidadores");
         }
     }
 

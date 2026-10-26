@@ -10,7 +10,7 @@ import java.time.Clock;
 import java.time.LocalDateTime;
 
 /**
- * Envia uma mensagem na conversa de um idoso com o seu cuidador (UC-010). Mensagem vazia é recusada (fluxo 3a).
+ * Envia uma mensagem na conversa de um paciente com o seu cuidador (UC-010). Mensagem vazia é recusada (fluxo 3a).
  */
 @Service
 public class EnviarMensagemUseCase {
@@ -27,14 +27,14 @@ public class EnviarMensagemUseCase {
     }
 
     /**
-     * @param idosoId idoso da conversa (obrigatório para o cuidador; o idoso escreve sempre na própria conversa)
+     * @param pacienteId paciente da conversa (obrigatório para o cuidador; o paciente escreve sempre na própria conversa)
      * @throws com.medcare.senior.domain.exception.ParametroInvalidoException se o conteúdo for vazio ou maior que 500
-     *                                                                        caracteres, ou faltar o idoso
+     *                                                                        caracteres, ou faltar o paciente
      * @see AcessoAConversaService#resolver(AuthenticatedUser, Long) demais recusas
      */
-    public Mensagem executar(AuthenticatedUser usuario, Long idosoId, String conteudo) {
-        AcessoAConversaService.Conversa conversa = acessoAConversa.resolver(usuario, idosoId);
-        return mensagemRepository.salvar(Mensagem.nova(conversa.idosoId(), conversa.lado(), conteudo,
+    public Mensagem executar(AuthenticatedUser usuario, Long pacienteId, String conteudo) {
+        AcessoAConversaService.Conversa conversa = acessoAConversa.resolver(usuario, pacienteId);
+        return mensagemRepository.salvar(Mensagem.nova(conversa.pacienteId(), conversa.lado(), conteudo,
                 LocalDateTime.now(clock)));
     }
 }

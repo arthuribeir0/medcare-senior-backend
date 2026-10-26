@@ -30,9 +30,9 @@ public class MarcarMensagensComoLidasUseCase {
      * @return quantas mensagens foram marcadas agora
      * @see AcessoAConversaService#resolver(AuthenticatedUser, Long) recusas
      */
-    public int executar(AuthenticatedUser usuario, Long idosoId) {
-        AcessoAConversaService.Conversa conversa = acessoAConversa.resolver(usuario, idosoId);
-        return mensagemRepository.marcarComoLidas(conversa.idosoId(), conversa.lado().outroLado(),
+    public int executar(AuthenticatedUser usuario, Long pacienteId) {
+        AcessoAConversaService.Conversa conversa = acessoAConversa.resolver(usuario, pacienteId);
+        return mensagemRepository.marcarComoLidas(conversa.pacienteId(), conversa.lado().outroLado(),
                 LocalDateTime.now(clock));
     }
 }

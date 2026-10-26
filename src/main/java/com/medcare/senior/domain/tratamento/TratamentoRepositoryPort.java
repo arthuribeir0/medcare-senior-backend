@@ -16,7 +16,7 @@ public interface TratamentoRepositoryPort {
 
     /**
      * Busca o tratamento somente se ele pertencer ao cuidador, pelo caminho
-     * tratamento -> medicamento -> idoso -> cuidador. Tratamento de outro cuidador, ou removido (ele ou o
+     * tratamento -> medicamento -> paciente -> cuidador. Tratamento de outro cuidador, ou removido (ele ou o
      * medicamento), volta vazio, igual a inexistente.
      */
     Optional<Tratamento> findByIdAndCuidadorId(Long id, Long cuidadorId);
@@ -33,7 +33,7 @@ public interface TratamentoRepositoryPort {
     void marcarComoRemovidosPorMedicamento(Long medicamentoId, LocalDateTime agora);
 
     /**
-     * Remove FISICAMENTE todos os tratamentos dos medicamentos dos idosos do cuidador, inclusive os já removidos
+     * Remove FISICAMENTE todos os tratamentos dos medicamentos dos pacientes do cuidador, inclusive os já removidos
      * logicamente (exclusão de conta, LGPD).
      */
     void deleteAllByCuidadorId(Long cuidadorId);

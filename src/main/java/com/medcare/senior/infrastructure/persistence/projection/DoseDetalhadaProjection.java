@@ -1,11 +1,12 @@
 package com.medcare.senior.infrastructure.persistence.projection;
 
+import com.medcare.senior.domain.dose.ConfirmadoPor;
 import com.medcare.senior.domain.dose.StatusDose;
 
 import java.time.LocalDateTime;
 
 /**
- * Linha das consultas de doses do app (construtor JPQL): a dose, o idoso, o medicamento e a tolerância própria do
+ * Linha das consultas de doses do app (construtor JPQL): a dose, o paciente, o medicamento e a tolerância própria do
  * cuidador (nula = padrão) em uma única consulta. A cor é a do medicamento (opcional).
  */
 public record DoseDetalhadaProjection(Long doseId,
@@ -13,8 +14,9 @@ public record DoseDetalhadaProjection(Long doseId,
                                       LocalDateTime horarioProgramado,
                                       LocalDateTime horaConfirmacao,
                                       StatusDose status,
-                                      Long idosoId,
-                                      String idosoNome,
+                                      ConfirmadoPor confirmadoPor,
+                                      Long pacienteId,
+                                      String pacienteNome,
                                       Long medicamentoId,
                                       String medicamentoNome,
                                       String dosagem,

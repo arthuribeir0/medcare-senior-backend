@@ -37,7 +37,7 @@ class PushNotificadorDeDoseNaoTomadaAdapterTest {
     private static final ZoneId FUSO = ZoneId.of("America/Sao_Paulo");
     private static final LocalDateTime AGORA = LocalDateTime.of(2026, 10, 16, 8, 45);
     private static final Long CUIDADOR_ID = 1L;
-    private static final Long IDOSO_ID = 20L;
+    private static final Long PACIENTE_ID = 20L;
     private static final String TOKEN = "token-do-aparelho";
 
     @Mock
@@ -55,7 +55,7 @@ class PushNotificadorDeDoseNaoTomadaAdapterTest {
     }
 
     private static DoseNaoTomadaNotificacao notificacao(LocalDateTime horario) {
-        return new DoseNaoTomadaNotificacao(10L, CUIDADOR_ID, IDOSO_ID, "Maria", horario);
+        return new DoseNaoTomadaNotificacao(10L, CUIDADOR_ID, PACIENTE_ID, "Maria", horario);
     }
 
     private void cuidadorComToken(String token) {
@@ -64,7 +64,7 @@ class PushNotificadorDeDoseNaoTomadaAdapterTest {
     }
 
     @Test
-    void enviaMensagemEmPortuguesComIdosoEHorarioSemOMedicamento() {
+    void enviaMensagemEmPortuguesComPacienteEHorarioSemOMedicamento() {
         cuidadorComToken(TOKEN);
         when(notificacaoPush.enviar(anyString(), anyString(), anyString(), anyMap())).thenReturn(ResultadoEnvioPush.ENVIADO);
 
@@ -72,7 +72,7 @@ class PushNotificadorDeDoseNaoTomadaAdapterTest {
 
         // Sem o nome do medicamento (dado de saúde passaria pelo FCM/Google); o payload leva só tipo, IDs e data
         verify(notificacaoPush).enviar(TOKEN, "Dose não confirmada", "Maria ainda não confirmou a dose das 08:00",
-                Map.of("tipo", "DOSE_NAO_CONFIRMADA", "doseId", "10", "idosoId", "20", "data", "2026-10-16"));
+                Map.of("tipo", "DOSE_NAO_CONFIRMADA", "doseId", "10", "pacienteId", "20", "data", "2026-10-16"));
         verify(cuidadorRepository, never()).removerFcmTokenSeIgual(anyLong(), anyString());
     }
 
@@ -84,7 +84,7 @@ class PushNotificadorDeDoseNaoTomadaAdapterTest {
         notificador.notificar(notificacao(LocalDateTime.of(2026, 10, 15, 22, 0)));
 
         verify(notificacaoPush).enviar(TOKEN, "Dose não confirmada", "Maria ainda não confirmou a dose das 22:00 de 15/10",
-                Map.of("tipo", "DOSE_NAO_CONFIRMADA", "doseId", "10", "idosoId", "20", "data", "2026-10-15"));
+                Map.of("tipo", "DOSE_NAO_CONFIRMADA", "doseId", "10", "pacienteId", "20", "data", "2026-10-15"));
     }
 
     @ParameterizedTest

@@ -34,14 +34,14 @@ class DoseTest {
     }
 
     @ParameterizedTest
-    @EnumSource(value = StatusDose.class, names = {"TOMADA", "CONFIRMADA_COM_ATRASO"})
+    @EnumSource(value = StatusDose.class, names = {"CONFIRMADA_NO_HORARIO", "CONFIRMADA_COM_ATRASO"})
     void dosePendentePodeSerConfirmadaSemAlterarAOriginal(StatusDose confirmado) {
         LocalDateTime horario = LocalDateTime.of(2026, 10, 8, 8, 0);
         LocalDateTime agora = horario.plusMinutes(40);
         Dose pendente = Dose.builder().id(7L).tratamentoId(1000L).horarioProgramado(horario)
                 .status(StatusDose.PENDENTE).build();
 
-        Dose confirmada = pendente.confirmar(confirmado, agora);
+        Dose confirmada = pendente.confirmar(confirmado, agora, ConfirmadoPor.PACIENTE);
 
         assertThat(confirmada).isNotSameAs(pendente);
         assertThat(confirmada.getId()).isEqualTo(7L);
@@ -49,8 +49,24 @@ class DoseTest {
         assertThat(confirmada.getHorarioProgramado()).isEqualTo(horario);
         assertThat(confirmada.getStatus()).isEqualTo(confirmado);
         assertThat(confirmada.getHoraConfirmacao()).isEqualTo(agora);
+        assertThat(confirmada.getConfirmadoPor()).isEqualTo(ConfirmadoPor.PACIENTE);
         assertThat(pendente.getStatus()).isEqualTo(StatusDose.PENDENTE);
         assertThat(pendente.getHoraConfirmacao()).isNull();
+        assertThat(pendente.getConfirmadoPor()).isNull();
+    }
+
+    @Test
+    void confirmacaoGuardaQuemConfirmouEExigeQueSejaInformado() {
+        Dose pendente = Dose.pendente(1000L, LocalDateTime.of(2026, 10, 8, 8, 0));
+        LocalDateTime agora = LocalDateTime.of(2026, 10, 8, 8, 5);
+
+        assertThat(pendente.confirmar(StatusDose.CONFIRMADA_NO_HORARIO, agora, ConfirmadoPor.CUIDADOR).getConfirmadoPor())
+                .isEqualTo(ConfirmadoPor.CUIDADOR);
+        assertThatThrownBy(() -> pendente.confirmar(StatusDose.CONFIRMADA_NO_HORARIO, agora, null))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("quem confirmou");
+        // Dose não confirmada não tem quem confirmou
+        assertThat(pendente.marcarComoNaoTomada().getConfirmadoPor()).isNull();
     }
 
     @Test
@@ -60,7 +76,7 @@ class DoseTest {
         Dose pendente = Dose.builder().id(7L).tratamentoId(1000L).horarioProgramado(horario)
                 .status(StatusDose.PENDENTE).build();
 
-        Dose confirmada = pendente.confirmar(StatusDose.TOMADA, agoraComNanos);
+        Dose confirmada = pendente.confirmar(StatusDose.CONFIRMADA_NO_HORARIO, agoraComNanos, ConfirmadoPor.PACIENTE);
 
         assertThat(confirmada.getHoraConfirmacao()).isEqualTo(horario.plusMinutes(5).withNano(123_456_000));
     }
@@ -71,16 +87,16 @@ class DoseTest {
         Dose registrada = Dose.builder().id(7L).tratamentoId(1000L)
                 .horarioProgramado(LocalDateTime.of(2026, 10, 8, 8, 0)).status(status).build();
 
-        assertThatThrownBy(() -> registrada.confirmar(StatusDose.TOMADA, LocalDateTime.of(2026, 10, 8, 8, 5)))
+        assertThatThrownBy(() -> registrada.confirmar(StatusDose.CONFIRMADA_NO_HORARIO, LocalDateTime.of(2026, 10, 8, 8, 5), ConfirmadoPor.PACIENTE))
                 .isInstanceOf(TransicaoDeDoseInvalidaException.class);
     }
 
     @ParameterizedTest
     @EnumSource(value = StatusDose.class, names = {"PENDENTE", "NAO_TOMADA"})
-    void confirmacaoSoGeraTomadaOuComAtraso(StatusDose invalido) {
+    void confirmacaoSoGeraNoHorarioOuComAtraso(StatusDose invalido) {
         Dose pendente = Dose.pendente(1000L, LocalDateTime.of(2026, 10, 8, 8, 0));
 
-        assertThatThrownBy(() -> pendente.confirmar(invalido, LocalDateTime.of(2026, 10, 8, 8, 5)))
+        assertThatThrownBy(() -> pendente.confirmar(invalido, LocalDateTime.of(2026, 10, 8, 8, 5), ConfirmadoPor.PACIENTE))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 

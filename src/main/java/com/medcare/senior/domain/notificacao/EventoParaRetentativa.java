@@ -12,10 +12,10 @@ import java.time.LocalDateTime;
  * @param doseId            dose do aviso
  * @param statusDose        status da dose no momento da busca (o reenvio só faz sentido com a dose PENDENTE)
  * @param horarioProgramado horário da dose
- * @param semDono           dose anonimizada ou de tratamento, medicamento ou idoso que não existe mais (removido)
+ * @param semDono           dose anonimizada ou de tratamento, medicamento ou paciente que não existe mais (removido)
  * @param cuidadorId        destinatário (nulo se {@code semDono})
- * @param idosoId           idoso da dose (nulo se {@code semDono})
- * @param nomeIdoso         nome para o texto do aviso (nulo se {@code semDono})
+ * @param pacienteId           paciente da dose (nulo se {@code semDono})
+ * @param nomePaciente         nome para o texto do aviso (nulo se {@code semDono})
  */
 public record EventoParaRetentativa(Long eventoId,
                                     int tentativas,
@@ -24,6 +24,6 @@ public record EventoParaRetentativa(Long eventoId,
                                     LocalDateTime horarioProgramado,
                                     boolean semDono,
                                     Long cuidadorId,
-                                    Long idosoId,
-                                    String nomeIdoso) {
+                                    Long pacienteId,
+                                    String nomePaciente) {
 }

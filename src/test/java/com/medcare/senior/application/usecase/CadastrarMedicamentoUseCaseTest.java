@@ -4,8 +4,8 @@ import com.medcare.senior.domain.exception.RecursoNaoEncontradoException;
 import com.medcare.senior.domain.medicamento.DadosObrigatoriosMedicamentoException;
 import com.medcare.senior.domain.medicamento.Medicamento;
 import com.medcare.senior.domain.medicamento.MedicamentoRepositoryPort;
-import com.medcare.senior.domain.usuario.Idoso;
-import com.medcare.senior.domain.usuario.IdosoRepositoryPort;
+import com.medcare.senior.domain.usuario.Paciente;
+import com.medcare.senior.domain.usuario.PacienteRepositoryPort;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -28,13 +28,13 @@ import static org.mockito.Mockito.when;
 class CadastrarMedicamentoUseCaseTest {
 
     private static final Long CUIDADOR_ID = 1L;
-    private static final Long IDOSO_ID = 10L;
+    private static final Long PACIENTE_ID = 10L;
 
     @Mock
     private MedicamentoRepositoryPort medicamentoRepository;
 
     @Mock
-    private IdosoRepositoryPort idosoRepository;
+    private PacienteRepositoryPort pacienteRepository;
 
     @InjectMocks
     private CadastrarMedicamentoUseCase useCase;
@@ -44,18 +44,18 @@ class CadastrarMedicamentoUseCaseTest {
                 .nome("Losartana")
                 .dosagem("50mg")
                 .tipo("COMPRIMIDO")
-                .idosoId(IDOSO_ID)
+                .pacienteId(PACIENTE_ID)
                 .build();
     }
 
-    private void idosoPertenceAoCuidador() {
-        when(idosoRepository.findByIdAndCuidadorId(IDOSO_ID, CUIDADOR_ID))
-                .thenReturn(Optional.of(Idoso.builder().id(IDOSO_ID).cuidadorId(CUIDADOR_ID).build()));
+    private void pacientePertenceAoCuidador() {
+        when(pacienteRepository.findByIdAndCuidadorId(PACIENTE_ID, CUIDADOR_ID))
+                .thenReturn(Optional.of(Paciente.builder().id(PACIENTE_ID).cuidadorId(CUIDADOR_ID).build()));
     }
 
     @Test
     void deveCadastrarMedicamento() {
-        idosoPertenceAoCuidador();
+        pacientePertenceAoCuidador();
         when(medicamentoRepository.save(any(Medicamento.class))).thenAnswer(invocacao -> invocacao.getArgument(0));
         Medicamento medicamento = medicamentoValido();
         medicamento.setId(999L); // id vindo do cliente deve ser ignorado
@@ -70,7 +70,7 @@ class CadastrarMedicamentoUseCaseTest {
     @NullAndEmptySource
     @ValueSource(strings = "   ")
     void deveRejeitarNomeAusente(String nome) {
-        idosoPertenceAoCuidador();
+        pacientePertenceAoCuidador();
         Medicamento medicamento = medicamentoValido();
         medicamento.setNome(nome);
 
@@ -81,7 +81,7 @@ class CadastrarMedicamentoUseCaseTest {
     @NullAndEmptySource
     @ValueSource(strings = "   ")
     void deveRejeitarDosagemAusente(String dosagem) {
-        idosoPertenceAoCuidador();
+        pacientePertenceAoCuidador();
         Medicamento medicamento = medicamentoValido();
         medicamento.setDosagem(dosagem);
 
@@ -92,7 +92,7 @@ class CadastrarMedicamentoUseCaseTest {
     @NullAndEmptySource
     @ValueSource(strings = "   ")
     void deveRejeitarTipoAusente(String tipo) {
-        idosoPertenceAoCuidador();
+        pacientePertenceAoCuidador();
         Medicamento medicamento = medicamentoValido();
         medicamento.setTipo(tipo);
 
@@ -100,8 +100,8 @@ class CadastrarMedicamentoUseCaseTest {
     }
 
     @Test
-    void deveRejeitarIdosoDeOutroCuidador() {
-        when(idosoRepository.findByIdAndCuidadorId(IDOSO_ID, CUIDADOR_ID)).thenReturn(Optional.empty());
+    void deveRejeitarPacienteDeOutroCuidador() {
+        when(pacienteRepository.findByIdAndCuidadorId(PACIENTE_ID, CUIDADOR_ID)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> useCase.executar(medicamentoValido(), CUIDADOR_ID))
                 .isInstanceOf(RecursoNaoEncontradoException.class);

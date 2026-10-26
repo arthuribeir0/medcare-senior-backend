@@ -46,6 +46,15 @@ services:
       JOBS_ENABLED: ${JOBS_ENABLED:-true}
       FCM_ENABLED: ${FCM_ENABLED:-false}
       FCM_DRY_RUN: ${FCM_DRY_RUN:-false}
+      # Swagger UI e /v3/api-docs: desligados no perfil prod; true os expõe sem token (ver docs/api/README.md)
+      SWAGGER_ENABLED: ${SWAGGER_ENABLED:-false}
+      # Pool de conexões com o banco (ver docs/capacidade.md)
+      DB_POOL_MAX: ${DB_POOL_MAX:-8}
+      DB_POOL_MIN_IDLE: ${DB_POOL_MIN_IDLE:-2}
+      # Regras com padrão no application.yml (opcionais no .env.prod)
+      ALERTAS_MARGEM_POS_AVISO_MINUTOS: ${ALERTAS_MARGEM_POS_AVISO_MINUTOS:-30}
+      DOSES_HORIZONTE_DIAS: ${DOSES_HORIZONTE_DIAS:-30}
+      CACHE_RELATORIO_DIARIO_SEGUNDOS: ${CACHE_RELATORIO_DIARIO_SEGUNDOS:-30}
       # Caminho DENTRO do contêiner; o arquivo vem do volume somente leitura abaixo
       FIREBASE_CREDENTIALS_PATH: /run/secrets/firebase-adminsdk.json
       # Heap: 75% da memória do contêiner (ver docs/capacidade.md para a VM de 1 GB)
@@ -78,6 +87,8 @@ services:
       # NGINX_MODO=http-inicial para emitir o certificado; depois https (ver docs/implantacao.md)
       - ./nginx/templates/${NGINX_MODO:-https}:/etc/nginx/templates:ro
       - ./nginx/seguranca.conf:/etc/nginx/snippets/seguranca.conf:ro
+      # IPs isentos do limite por IP, só para teste de carga (o arquivo do repositório não isenta ninguém)
+      - ./nginx/carga-isenta.conf:/etc/nginx/snippets/carga-isenta.conf:ro
       - ./certbot/www:/var/www/certbot:ro
       - ./certbot/conf:/etc/letsencrypt:ro
     networks:

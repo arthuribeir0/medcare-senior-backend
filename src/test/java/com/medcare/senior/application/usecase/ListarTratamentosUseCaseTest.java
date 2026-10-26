@@ -5,8 +5,8 @@ import com.medcare.senior.domain.medicamento.Medicamento;
 import com.medcare.senior.domain.medicamento.MedicamentoRepositoryPort;
 import com.medcare.senior.domain.tratamento.Tratamento;
 import com.medcare.senior.domain.tratamento.TratamentoRepositoryPort;
-import com.medcare.senior.domain.usuario.Idoso;
-import com.medcare.senior.domain.usuario.IdosoRepositoryPort;
+import com.medcare.senior.domain.usuario.Paciente;
+import com.medcare.senior.domain.usuario.PacienteRepositoryPort;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -26,7 +26,7 @@ import static org.mockito.Mockito.when;
 class ListarTratamentosUseCaseTest {
 
     private static final Long CUIDADOR_ID = 1L;
-    private static final Long IDOSO_ID = 10L;
+    private static final Long PACIENTE_ID = 10L;
     private static final Long MEDICAMENTO_ID = 100L;
 
     @Mock
@@ -36,7 +36,7 @@ class ListarTratamentosUseCaseTest {
     private MedicamentoRepositoryPort medicamentoRepository;
 
     @Mock
-    private IdosoRepositoryPort idosoRepository;
+    private PacienteRepositoryPort pacienteRepository;
 
     @InjectMocks
     private ListarTratamentosUseCase useCase;
@@ -44,9 +44,9 @@ class ListarTratamentosUseCaseTest {
     @Test
     void deveListarTratamentosDoMedicamentoDoCuidador() {
         when(medicamentoRepository.findById(MEDICAMENTO_ID))
-                .thenReturn(Optional.of(Medicamento.builder().id(MEDICAMENTO_ID).idosoId(IDOSO_ID).build()));
-        when(idosoRepository.findByIdAndCuidadorId(IDOSO_ID, CUIDADOR_ID))
-                .thenReturn(Optional.of(Idoso.builder().id(IDOSO_ID).cuidadorId(CUIDADOR_ID).build()));
+                .thenReturn(Optional.of(Medicamento.builder().id(MEDICAMENTO_ID).pacienteId(PACIENTE_ID).build()));
+        when(pacienteRepository.findByIdAndCuidadorId(PACIENTE_ID, CUIDADOR_ID))
+                .thenReturn(Optional.of(Paciente.builder().id(PACIENTE_ID).cuidadorId(CUIDADOR_ID).build()));
         List<Tratamento> tratamentos = List.of(
                 Tratamento.builder().id(1L).medicamentoId(MEDICAMENTO_ID).dataInicio(LocalDate.of(2026, 1, 1)).build());
         when(tratamentoRepository.findAllByMedicamentoId(MEDICAMENTO_ID)).thenReturn(tratamentos);
@@ -57,8 +57,8 @@ class ListarTratamentosUseCaseTest {
     @Test
     void deveRejeitarMedicamentoDeOutroCuidador() {
         when(medicamentoRepository.findById(MEDICAMENTO_ID))
-                .thenReturn(Optional.of(Medicamento.builder().id(MEDICAMENTO_ID).idosoId(IDOSO_ID).build()));
-        when(idosoRepository.findByIdAndCuidadorId(IDOSO_ID, CUIDADOR_ID)).thenReturn(Optional.empty());
+                .thenReturn(Optional.of(Medicamento.builder().id(MEDICAMENTO_ID).pacienteId(PACIENTE_ID).build()));
+        when(pacienteRepository.findByIdAndCuidadorId(PACIENTE_ID, CUIDADOR_ID)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> useCase.executar(MEDICAMENTO_ID, CUIDADOR_ID))
                 .isInstanceOf(RecursoNaoEncontradoException.class)

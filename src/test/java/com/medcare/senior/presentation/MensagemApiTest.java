@@ -55,16 +55,16 @@ class MensagemApiTest {
     private JdbcTemplate jdbc;
 
     private Long cuidadorId;
-    private Long idosoId;
-    private Long outroIdosoDoCuidador;
-    private Long idosoDeOutroCuidador;
+    private Long pacienteId;
+    private Long outroPacienteDoCuidador;
+    private Long pacienteDeOutroCuidador;
 
     @BeforeEach
     void criarDados() {
         cuidadorId = cuidador();
-        idosoId = idoso(cuidadorId, "Maria");
-        outroIdosoDoCuidador = idoso(cuidadorId, "João");
-        idosoDeOutroCuidador = idoso(cuidador(), "Alheio");
+        pacienteId = paciente(cuidadorId, "Maria");
+        outroPacienteDoCuidador = paciente(cuidadorId, "João");
+        pacienteDeOutroCuidador = paciente(cuidador(), "Alheio");
     }
 
     private Long cuidador() {
@@ -73,13 +73,13 @@ class MensagemApiTest {
                 Long.class, "mensagens-api-" + UUID.randomUUID() + "@teste.com");
     }
 
-    private Long idoso(Long cuidador, String nome) {
-        return jdbc.queryForObject("INSERT INTO idoso (nome, data_nascimento, cuidador_id) VALUES (?, ?, ?) RETURNING id",
+    private Long paciente(Long cuidador, String nome) {
+        return jdbc.queryForObject("INSERT INTO paciente (nome, data_nascimento, cuidador_id) VALUES (?, ?, ?) RETURNING id",
                 Long.class, nome, LocalDate.of(1945, 3, 12), cuidador);
     }
 
-    private void mensagem(Long idoso, String remetente, String conteudo, LocalDateTime quando) {
-        jdbc.update("INSERT INTO mensagem (idoso_id, remetente, conteudo, criada_em) VALUES (?, ?, ?, ?)", idoso,
+    private void mensagem(Long paciente, String remetente, String conteudo, LocalDateTime quando) {
+        jdbc.update("INSERT INTO mensagem (paciente_id, remetente, conteudo, criada_em) VALUES (?, ?, ?, ?)", paciente,
                 remetente, conteudo, quando);
     }
 
@@ -87,8 +87,8 @@ class MensagemApiTest {
         return r.header(HttpHeaders.AUTHORIZATION, "Bearer " + tokens.generateToken(cuidadorId, Role.CUIDADOR));
     }
 
-    private MockHttpServletRequestBuilder comoIdoso(MockHttpServletRequestBuilder r) {
-        return r.header(HttpHeaders.AUTHORIZATION, "Bearer " + tokens.generateToken(idosoId, Role.IDOSO));
+    private MockHttpServletRequestBuilder comoPaciente(MockHttpServletRequestBuilder r) {
+        return r.header(HttpHeaders.AUTHORIZATION, "Bearer " + tokens.generateToken(pacienteId, Role.PACIENTE));
     }
 
     private static MockHttpServletRequestBuilder enviar(String json) {
@@ -102,66 +102,66 @@ class MensagemApiTest {
     // --- Envio ----------------------------------------------------------------------------------------------------
 
     @Test
-    void cuidadorEnviaParaUmIdosoSeuEIdosoEnviaParaOCuidador() throws Exception {
-        mvc.perform(comoCuidador(enviar("{\"idosoId\": " + idosoId + ", \"conteudo\": \"  Bom dia, Maria!  \"}")))
+    void cuidadorEnviaParaUmPacienteSeuEPacienteEnviaParaOCuidador() throws Exception {
+        mvc.perform(comoCuidador(enviar("{\"pacienteId\": " + pacienteId + ", \"conteudo\": \"  Bom dia, Maria!  \"}")))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id", notNullValue()))
                 .andExpect(jsonPath("$.remetente").value("CUIDADOR"))
                 .andExpect(jsonPath("$.conteudo").value("Bom dia, Maria!"))
                 .andExpect(jsonPath("$.criadaEm", notNullValue()))
                 .andExpect(jsonPath("$.lidaEm", nullValue()));
-        // O idoso não precisa (nem pode) escolher a conversa: é sempre a dele
-        mvc.perform(comoIdoso(enviar("{\"conteudo\": \"Bom dia!\"}")))
+        // O paciente não precisa (nem pode) escolher a conversa: é sempre a dele
+        mvc.perform(comoPaciente(enviar("{\"conteudo\": \"Bom dia!\"}")))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.remetente").value("IDOSO"));
-        mvc.perform(comoIdoso(enviar("{\"idosoId\": " + idosoId + ", \"conteudo\": \"De novo\"}")))
+                .andExpect(jsonPath("$.remetente").value("PACIENTE"));
+        mvc.perform(comoPaciente(enviar("{\"pacienteId\": " + pacienteId + ", \"conteudo\": \"De novo\"}")))
                 .andExpect(status().isCreated());
 
         assertThat(jdbc.queryForObject(
-                "SELECT COUNT(*) FROM mensagem WHERE idoso_id = ?", Long.class, idosoId)).isEqualTo(3);
+                "SELECT COUNT(*) FROM mensagem WHERE paciente_id = ?", Long.class, pacienteId)).isEqualTo(3);
     }
 
     @Test
     void conteudoVazioSoEspacosAusenteOuMaiorQue500Eh400NoCampoConteudo() throws Exception {
-        for (String corpo : List.of("{\"idosoId\": " + idosoId + ", \"conteudo\": \"\"}",
-                "{\"idosoId\": " + idosoId + ", \"conteudo\": \"   \\n \"}",
-                "{\"idosoId\": " + idosoId + "}",
-                "{\"idosoId\": " + idosoId + ", \"conteudo\": \"" + "a".repeat(501) + "\"}")) {
+        for (String corpo : List.of("{\"pacienteId\": " + pacienteId + ", \"conteudo\": \"\"}",
+                "{\"pacienteId\": " + pacienteId + ", \"conteudo\": \"   \\n \"}",
+                "{\"pacienteId\": " + pacienteId + "}",
+                "{\"pacienteId\": " + pacienteId + ", \"conteudo\": \"" + "a".repeat(501) + "\"}")) {
             erro(mvc.perform(comoCuidador(enviar(corpo))), 400, "VALIDACAO");
             mvc.perform(comoCuidador(enviar(corpo))).andExpect(jsonPath("$.campos[0].campo").value("conteudo"));
         }
-        erro(mvc.perform(comoIdoso(enviar("{\"conteudo\": \"\"}"))), 400, "VALIDACAO");
+        erro(mvc.perform(comoPaciente(enviar("{\"conteudo\": \"\"}"))), 400, "VALIDACAO");
         // Exatamente 500 passa
-        mvc.perform(comoCuidador(enviar("{\"idosoId\": " + idosoId + ", \"conteudo\": \"" + "a".repeat(500) + "\"}")))
+        mvc.perform(comoCuidador(enviar("{\"pacienteId\": " + pacienteId + ", \"conteudo\": \"" + "a".repeat(500) + "\"}")))
                 .andExpect(status().isCreated());
     }
 
     @Test
-    void cuidadorSemIdosoEh400ECorpoIlegivelEhCorpoInvalido() throws Exception {
+    void cuidadorSemPacienteEh400ECorpoIlegivelEhCorpoInvalido() throws Exception {
         erro(mvc.perform(comoCuidador(enviar("{\"conteudo\": \"Oi\"}"))), 400, "VALIDACAO");
-        mvc.perform(comoCuidador(enviar("{\"conteudo\": \"Oi\"}"))).andExpect(jsonPath("$.campos[0].campo").value("idosoId"));
+        mvc.perform(comoCuidador(enviar("{\"conteudo\": \"Oi\"}"))).andExpect(jsonPath("$.campos[0].campo").value("pacienteId"));
         erro(mvc.perform(comoCuidador(enviar("{nao e json"))), 400, "CORPO_INVALIDO");
     }
 
     // --- Acesso ---------------------------------------------------------------------------------------------------
 
     @Test
-    void cuidadorNaoAcessaIdosoDeOutroCuidadorEmNenhumaRota() throws Exception {
-        erro(mvc.perform(comoCuidador(enviar("{\"idosoId\": " + idosoDeOutroCuidador + ", \"conteudo\": \"Oi\"}"))),
+    void cuidadorNaoAcessaPacienteDeOutroCuidadorEmNenhumaRota() throws Exception {
+        erro(mvc.perform(comoCuidador(enviar("{\"pacienteId\": " + pacienteDeOutroCuidador + ", \"conteudo\": \"Oi\"}"))),
                 404, "RECURSO_NAO_ENCONTRADO");
-        erro(mvc.perform(comoCuidador(get(ROTA).param("idosoId", idosoDeOutroCuidador.toString()))),
+        erro(mvc.perform(comoCuidador(get(ROTA).param("pacienteId", pacienteDeOutroCuidador.toString()))),
                 404, "RECURSO_NAO_ENCONTRADO");
-        erro(mvc.perform(comoCuidador(put(ROTA + "/lidas").param("idosoId", idosoDeOutroCuidador.toString()))),
+        erro(mvc.perform(comoCuidador(put(ROTA + "/lidas").param("pacienteId", pacienteDeOutroCuidador.toString()))),
                 404, "RECURSO_NAO_ENCONTRADO");
-        erro(mvc.perform(comoCuidador(get(ROTA).param("idosoId", "999999999"))), 404, "RECURSO_NAO_ENCONTRADO");
+        erro(mvc.perform(comoCuidador(get(ROTA).param("pacienteId", "999999999"))), 404, "RECURSO_NAO_ENCONTRADO");
     }
 
     @Test
-    void idosoInformandoOutroIdosoEhAcessoNegadoEmTodasAsRotas() throws Exception {
-        String outro = outroIdosoDoCuidador.toString();
-        erro(mvc.perform(comoIdoso(enviar("{\"idosoId\": " + outro + ", \"conteudo\": \"Oi\"}"))), 403, "ACESSO_NEGADO");
-        erro(mvc.perform(comoIdoso(get(ROTA).param("idosoId", outro))), 403, "ACESSO_NEGADO");
-        erro(mvc.perform(comoIdoso(put(ROTA + "/lidas").param("idosoId", outro))), 403, "ACESSO_NEGADO");
+    void pacienteInformandoOutroPacienteEhAcessoNegadoEmTodasAsRotas() throws Exception {
+        String outro = outroPacienteDoCuidador.toString();
+        erro(mvc.perform(comoPaciente(enviar("{\"pacienteId\": " + outro + ", \"conteudo\": \"Oi\"}"))), 403, "ACESSO_NEGADO");
+        erro(mvc.perform(comoPaciente(get(ROTA).param("pacienteId", outro))), 403, "ACESSO_NEGADO");
+        erro(mvc.perform(comoPaciente(put(ROTA + "/lidas").param("pacienteId", outro))), 403, "ACESSO_NEGADO");
     }
 
     @Test
@@ -172,14 +172,14 @@ class MensagemApiTest {
     }
 
     @Test
-    void tokenDeIdosoOuCuidadorExcluidoEh401SessaoInvalidaEmTodasAsRotas() throws Exception {
-        Long idosoExcluido = idoso(cuidadorId, "Excluído");
-        jdbc.update("DELETE FROM idoso WHERE id = ?", idosoExcluido);
+    void tokenDePacienteOuCuidadorExcluidoEh401SessaoInvalidaEmTodasAsRotas() throws Exception {
+        Long pacienteExcluido = paciente(cuidadorId, "Excluído");
+        jdbc.update("DELETE FROM paciente WHERE id = ?", pacienteExcluido);
         Long cuidadorExcluido = cuidador();
         jdbc.update("DELETE FROM cuidador WHERE id = ?", cuidadorExcluido);
 
         for (MockHttpServletRequestBuilder rota : rotas()) {
-            erro(mvc.perform(rota.header(HttpHeaders.AUTHORIZATION, "Bearer " + tokens.generateToken(idosoExcluido, Role.IDOSO))),
+            erro(mvc.perform(rota.header(HttpHeaders.AUTHORIZATION, "Bearer " + tokens.generateToken(pacienteExcluido, Role.PACIENTE))),
                     401, "SESSAO_INVALIDA");
         }
         for (MockHttpServletRequestBuilder rota : rotas()) {
@@ -190,10 +190,10 @@ class MensagemApiTest {
 
     private List<MockHttpServletRequestBuilder> rotas() {
         return List.of(
-                enviar("{\"idosoId\": " + idosoId + ", \"conteudo\": \"Oi\"}"),
-                get(ROTA).param("idosoId", idosoId.toString()),
+                enviar("{\"pacienteId\": " + pacienteId + ", \"conteudo\": \"Oi\"}"),
+                get(ROTA).param("pacienteId", pacienteId.toString()),
                 get(ROTA + "/conversas"),
-                put(ROTA + "/lidas").param("idosoId", idosoId.toString()),
+                put(ROTA + "/lidas").param("pacienteId", pacienteId.toString()),
                 get(ROTA + "/nao-lidas"));
     }
 
@@ -201,7 +201,7 @@ class MensagemApiTest {
     void outrosMetodosERotasDeMensagensSaoNegados() throws Exception {
         mvc.perform(comoCuidador(delete(ROTA)))
                 .andExpect(status().isForbidden());
-        mvc.perform(comoIdoso(get(ROTA + "/qualquer"))).andExpect(status().isForbidden());
+        mvc.perform(comoPaciente(get(ROTA + "/qualquer"))).andExpect(status().isForbidden());
     }
 
     // --- Conversa, lidas e contador ----------------------------------------------------------------------------------
@@ -209,11 +209,11 @@ class MensagemApiTest {
     @Test
     void conversaPaginadaDaMaisRecenteNosDoisPapeis() throws Exception {
         for (int i = 1; i <= 25; i++) {
-            mensagem(idosoId, i % 2 == 0 ? "IDOSO" : "CUIDADOR", "m" + i, T0.plusMinutes(i));
+            mensagem(pacienteId, i % 2 == 0 ? "PACIENTE" : "CUIDADOR", "m" + i, T0.plusMinutes(i));
         }
-        mensagem(outroIdosoDoCuidador, "CUIDADOR", "outra conversa", T0.plusDays(1));
+        mensagem(outroPacienteDoCuidador, "CUIDADOR", "outra conversa", T0.plusDays(1));
 
-        mvc.perform(comoCuidador(get(ROTA).param("idosoId", idosoId.toString())))
+        mvc.perform(comoCuidador(get(ROTA).param("pacienteId", pacienteId.toString())))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.conteudo", hasSize(20)))
                 .andExpect(jsonPath("$.conteudo[0].conteudo").value("m25"))
@@ -221,66 +221,66 @@ class MensagemApiTest {
                 .andExpect(jsonPath("$.tamanho").value(20))
                 .andExpect(jsonPath("$.totalElementos").value(25))
                 .andExpect(jsonPath("$.totalPaginas").value(2));
-        mvc.perform(comoIdoso(get(ROTA).param("page", "1")))
+        mvc.perform(comoPaciente(get(ROTA).param("page", "1")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.conteudo[*].conteudo", contains("m5", "m4", "m3", "m2", "m1")));
-        mvc.perform(comoIdoso(get(ROTA).param("size", "100")))
+        mvc.perform(comoPaciente(get(ROTA).param("size", "100")))
                 .andExpect(jsonPath("$.conteudo", hasSize(25)));
         for (List<String> invalido : List.of(List.of("size", "101"), List.of("size", "0"), List.of("page", "-1"))) {
-            erro(mvc.perform(comoIdoso(get(ROTA).param(invalido.get(0), invalido.get(1)))), 400, "VALIDACAO");
+            erro(mvc.perform(comoPaciente(get(ROTA).param(invalido.get(0), invalido.get(1)))), 400, "VALIDACAO");
         }
         erro(mvc.perform(comoCuidador(get(ROTA))), 400, "VALIDACAO");
     }
 
     @Test
     void marcarComoLidasSoMudaAsDoOutroLadoEEhIdempotente() throws Exception {
-        mensagem(idosoId, "IDOSO", "a", T0);
-        mensagem(idosoId, "IDOSO", "b", T0.plusMinutes(1));
-        mensagem(idosoId, "CUIDADOR", "c", T0.plusMinutes(2));
+        mensagem(pacienteId, "PACIENTE", "a", T0);
+        mensagem(pacienteId, "PACIENTE", "b", T0.plusMinutes(1));
+        mensagem(pacienteId, "CUIDADOR", "c", T0.plusMinutes(2));
 
         mvc.perform(comoCuidador(get(ROTA + "/nao-lidas"))).andExpect(jsonPath("$.naoLidas").value(2));
-        mvc.perform(comoIdoso(get(ROTA + "/nao-lidas"))).andExpect(jsonPath("$.naoLidas").value(1));
+        mvc.perform(comoPaciente(get(ROTA + "/nao-lidas"))).andExpect(jsonPath("$.naoLidas").value(1));
 
-        mvc.perform(comoCuidador(put(ROTA + "/lidas").param("idosoId", idosoId.toString())))
+        mvc.perform(comoCuidador(put(ROTA + "/lidas").param("pacienteId", pacienteId.toString())))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.marcadas").value(2));
-        mvc.perform(comoCuidador(put(ROTA + "/lidas").param("idosoId", idosoId.toString())))
+        mvc.perform(comoCuidador(put(ROTA + "/lidas").param("pacienteId", pacienteId.toString())))
                 .andExpect(jsonPath("$.marcadas").value(0));
 
         mvc.perform(comoCuidador(get(ROTA + "/nao-lidas"))).andExpect(jsonPath("$.naoLidas").value(0));
-        // A do cuidador continua não lida para o idoso
-        mvc.perform(comoIdoso(get(ROTA + "/nao-lidas"))).andExpect(jsonPath("$.naoLidas").value(1));
-        mvc.perform(comoIdoso(get(ROTA)))
+        // A do cuidador continua não lida para o paciente
+        mvc.perform(comoPaciente(get(ROTA + "/nao-lidas"))).andExpect(jsonPath("$.naoLidas").value(1));
+        mvc.perform(comoPaciente(get(ROTA)))
                 .andExpect(jsonPath("$.conteudo[0].remetente").value("CUIDADOR"))
                 .andExpect(jsonPath("$.conteudo[0].lidaEm", nullValue()))
                 .andExpect(jsonPath("$.conteudo[1].lidaEm", notNullValue()));
 
-        mvc.perform(comoIdoso(put(ROTA + "/lidas"))).andExpect(jsonPath("$.marcadas").value(1));
-        mvc.perform(comoIdoso(get(ROTA + "/nao-lidas"))).andExpect(jsonPath("$.naoLidas").value(0));
+        mvc.perform(comoPaciente(put(ROTA + "/lidas"))).andExpect(jsonPath("$.marcadas").value(1));
+        mvc.perform(comoPaciente(get(ROTA + "/nao-lidas"))).andExpect(jsonPath("$.naoLidas").value(0));
     }
 
     @Test
-    void conversasDoCuidadorEDoIdosoNoMesmoFormato() throws Exception {
-        mensagem(idosoId, "IDOSO", "Já tomei", T0.plusMinutes(5));
-        mensagem(idosoId, "CUIDADOR", "Bom dia", T0);
-        mensagem(idosoDeOutroCuidador, "IDOSO", "não aparece", T0.plusDays(1));
+    void conversasDoCuidadorEDoPacienteNoMesmoFormato() throws Exception {
+        mensagem(pacienteId, "PACIENTE", "Já tomei", T0.plusMinutes(5));
+        mensagem(pacienteId, "CUIDADOR", "Bom dia", T0);
+        mensagem(pacienteDeOutroCuidador, "PACIENTE", "não aparece", T0.plusDays(1));
 
         mvc.perform(comoCuidador(get(ROTA + "/conversas")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(2)))
-                .andExpect(jsonPath("$[0].idosoId").value(idosoId))
-                .andExpect(jsonPath("$[0].idosoNome").value("Maria"))
+                .andExpect(jsonPath("$[0].pacienteId").value(pacienteId))
+                .andExpect(jsonPath("$[0].pacienteNome").value("Maria"))
                 .andExpect(jsonPath("$[0].ultimaMensagem.conteudo").value("Já tomei"))
-                .andExpect(jsonPath("$[0].ultimaMensagem.remetente").value("IDOSO"))
+                .andExpect(jsonPath("$[0].ultimaMensagem.remetente").value("PACIENTE"))
                 .andExpect(jsonPath("$[0].ultimaMensagem.criadaEm").value(T0.plusMinutes(5) + ":00"))
                 .andExpect(jsonPath("$[0].naoLidas").value(1))
-                .andExpect(jsonPath("$[1].idosoId").value(outroIdosoDoCuidador))
+                .andExpect(jsonPath("$[1].pacienteId").value(outroPacienteDoCuidador))
                 .andExpect(jsonPath("$[1].ultimaMensagem", nullValue()))
                 .andExpect(jsonPath("$[1].naoLidas").value(0));
-        mvc.perform(comoIdoso(get(ROTA + "/conversas")))
+        mvc.perform(comoPaciente(get(ROTA + "/conversas")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(1)))
-                .andExpect(jsonPath("$[0].idosoId").value(idosoId))
+                .andExpect(jsonPath("$[0].pacienteId").value(pacienteId))
                 .andExpect(jsonPath("$[0].ultimaMensagem.conteudo").value("Já tomei"))
                 .andExpect(jsonPath("$[0].naoLidas").value(1));
     }

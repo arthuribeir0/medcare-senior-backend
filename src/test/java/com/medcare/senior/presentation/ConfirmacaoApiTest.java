@@ -27,7 +27,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * Confirmação de dose pela API, ponta a ponta no PostgreSQL real: cada recusa com o seu código (antes da janela,
  * depois do encerramento, remédio removido, dose inexistente), confirmação com atraso e o que fica gravado.
- * Janela padrão: abre 60 min antes, tolerância de 30 min, encerra 180 min depois. Cada teste é desfeito com rollback.
+ * Janela padrão: abre 60 min antes, tolerância de 30 min, encerra 30 min depois do aviso. Cada teste é desfeito com rollback.
  */
 @SpringBootTest(properties = {"app.jobs.enabled=false", "app.fcm.enabled=false", "spring.jpa.show-sql=false"})
 @AutoConfigureMockMvc
@@ -47,20 +47,21 @@ class ConfirmacaoApiTest {
     private Clock clock;
 
     private LocalDateTime agora;
-    private Long idosoId;
+    private Long cuidadorId;
+    private Long pacienteId;
     private Long medicamentoId;
     private Long tratamentoId;
 
     @BeforeEach
     void criarDados() {
         agora = LocalDateTime.now(clock).truncatedTo(ChronoUnit.MINUTES);
-        Long cuidadorId = jdbc.queryForObject("INSERT INTO cuidador (nome, email, senha_hash, data_cadastro, "
+        cuidadorId = jdbc.queryForObject("INSERT INTO cuidador (nome, email, senha_hash, data_cadastro, "
                 + "consentimento_lgpd, data_consentimento) VALUES ('Cuidador confirmação', ?, 'hash', ?, true, ?) "
                 + "RETURNING id", Long.class, "confirmacao-" + UUID.randomUUID() + "@teste.com", agora, agora);
-        idosoId = jdbc.queryForObject("INSERT INTO idoso (nome, data_nascimento, cuidador_id) VALUES ('Maria', ?, ?) "
+        pacienteId = jdbc.queryForObject("INSERT INTO paciente (nome, data_nascimento, cuidador_id) VALUES ('Maria', ?, ?) "
                 + "RETURNING id", Long.class, LocalDate.of(1945, 3, 12), cuidadorId);
-        medicamentoId = jdbc.queryForObject("INSERT INTO medicamento (nome, dosagem, tipo, idoso_id) "
-                + "VALUES ('Losartana', '50mg', 'COMPRIMIDO', ?) RETURNING id", Long.class, idosoId);
+        medicamentoId = jdbc.queryForObject("INSERT INTO medicamento (nome, dosagem, tipo, paciente_id) "
+                + "VALUES ('Losartana', '50mg', 'COMPRIMIDO', ?) RETURNING id", Long.class, pacienteId);
         tratamentoId = jdbc.queryForObject("INSERT INTO tratamento (medicamento_id, data_inicio, horarios, dias_semana) "
                 + "VALUES (?, ?, '[\"08:00\"]'::jsonb, '[\"MONDAY\"]'::jsonb) RETURNING id", Long.class,
                 medicamentoId, agora.toLocalDate().minusDays(2));
@@ -73,7 +74,22 @@ class ConfirmacaoApiTest {
 
     private ResultActions confirmar(Long doseId) throws Exception {
         return mvc.perform(put("/api/doses/" + doseId + "/confirmar")
-                .header(HttpHeaders.AUTHORIZATION, "Bearer " + tokens.generateToken(idosoId, Role.IDOSO)));
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + tokens.generateToken(pacienteId, Role.PACIENTE)));
+    }
+
+    private ResultActions confirmarComoCuidador(Long doseId, Long cuidador) throws Exception {
+        return mvc.perform(put("/api/doses/" + doseId + "/confirmar")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + tokens.generateToken(cuidador, Role.CUIDADOR)));
+    }
+
+    private Long outroCuidador() {
+        return jdbc.queryForObject("INSERT INTO cuidador (nome, email, senha_hash, data_cadastro, consentimento_lgpd, "
+                + "data_consentimento) VALUES ('Outro cuidador', ?, 'hash', ?, true, ?) RETURNING id", Long.class,
+                "outro-" + UUID.randomUUID() + "@teste.com", agora, agora);
+    }
+
+    private String confirmadoPor(Long doseId) {
+        return jdbc.queryForObject("SELECT confirmado_por FROM dose WHERE id = ?", String.class, doseId);
     }
 
     private String statusGravado(Long doseId) {
@@ -92,7 +108,7 @@ class ConfirmacaoApiTest {
 
     @Test
     void depoisDoEncerramentoEh409DoseEncerradaENadaMuda() throws Exception {
-        Long dose = dosePendente(agora.minusMinutes(181));
+        Long dose = dosePendente(agora.minusMinutes(61));
 
         confirmar(dose)
                 .andExpect(status().isConflict())
@@ -109,8 +125,10 @@ class ConfirmacaoApiTest {
                 .andExpect(jsonPath("$.status").value("CONFIRMADA_COM_ATRASO"))
                 .andExpect(jsonPath("$.statusExibicao").value("CONFIRMADA_COM_ATRASO"))
                 .andExpect(jsonPath("$.confirmabilidade").value("JA_REGISTRADA"))
+                .andExpect(jsonPath("$.confirmadoPor").value("PACIENTE"))
                 .andExpect(jsonPath("$.horaConfirmacao").exists());
         assertThat(statusGravado(dose)).isEqualTo("CONFIRMADA_COM_ATRASO");
+        assertThat(confirmadoPor(dose)).isEqualTo("PACIENTE");
         // Já registrada: a segunda tentativa não muda nada
         confirmar(dose)
                 .andExpect(status().isConflict())
@@ -131,14 +149,64 @@ class ConfirmacaoApiTest {
         assertThat(statusGravado(dose)).isEqualTo("PENDENTE");
     }
 
-    @Test
-    void cuidadorNaoConfirmaDose() throws Exception {
-        Long dose = dosePendente(agora);
-        Long cuidadorId = jdbc.queryForObject("SELECT cuidador_id FROM idoso WHERE id = ?", Long.class, idosoId);
+    // ---- confirmação pelo cuidador --------------------------------------------------------------------------------
 
-        mvc.perform(put("/api/doses/" + dose + "/confirmar")
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + tokens.generateToken(cuidadorId, Role.CUIDADOR)))
-                .andExpect(status().isForbidden());
-        assertThat(statusGravado(dose)).isEqualTo("PENDENTE");
+    @Test
+    void cuidadorConfirmaDoseDoPacienteDeleEGravaQuemConfirmou() throws Exception {
+        Long dose = dosePendente(agora);
+
+        confirmarComoCuidador(dose, cuidadorId)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(dose))
+                .andExpect(jsonPath("$.status").value("CONFIRMADA_NO_HORARIO"))
+                .andExpect(jsonPath("$.confirmadoPor").value("CUIDADOR"))
+                .andExpect(jsonPath("$.horaConfirmacao").exists())
+                .andExpect(jsonPath("$.limiteConfirmacao").value(agora.plusMinutes(60) + ":00"));
+        assertThat(statusGravado(dose)).isEqualTo("CONFIRMADA_NO_HORARIO");
+        assertThat(confirmadoPor(dose)).isEqualTo("CUIDADOR");
+
+        // Já confirmada pelo cuidador: o paciente (e o próprio cuidador) recebem 409, nada muda
+        confirmar(dose)
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.codigo").value("DOSE_JA_REGISTRADA"));
+        confirmarComoCuidador(dose, cuidadorId)
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.codigo").value("DOSE_JA_REGISTRADA"));
+        assertThat(confirmadoPor(dose)).isEqualTo("CUIDADOR");
     }
+
+    @Test
+    void cuidadorSegueAMesmaJanela() throws Exception {
+        confirmarComoCuidador(dosePendente(agora.plusMinutes(61)), cuidadorId)
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.codigo").value("DOSE_MUITO_CEDO"));
+        confirmarComoCuidador(dosePendente(agora.minusMinutes(61)), cuidadorId)
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.codigo").value("DOSE_ENCERRADA"));
+        Long comAtraso = dosePendente(agora.minusMinutes(45));
+        confirmarComoCuidador(comAtraso, cuidadorId)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("CONFIRMADA_COM_ATRASO"));
+    }
+
+    @Test
+    void cuidadorDeOutroPacienteRecebeOMesmo404DeDoseInexistente() throws Exception {
+        Long dose = dosePendente(agora);
+        Long outro = outroCuidador();
+
+        String alheia = confirmarComoCuidador(dose, outro)
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.codigo").value("RECURSO_NAO_ENCONTRADO"))
+                .andReturn().getResponse().getContentAsString();
+        String inexistente = confirmarComoCuidador(Long.MAX_VALUE, outro)
+                .andExpect(status().isNotFound())
+                .andReturn().getResponse().getContentAsString();
+
+        // Mesma resposta (a menos do instante): não revela que a dose existe
+        assertThat(alheia.replaceAll("\"timestamp\":\"[^\"]*\"", ""))
+                .isEqualTo(inexistente.replaceAll("\"timestamp\":\"[^\"]*\"", ""));
+        assertThat(statusGravado(dose)).isEqualTo("PENDENTE");
+        assertThat(confirmadoPor(dose)).isNull();
+    }
+
 }

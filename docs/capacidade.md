@@ -1,7 +1,8 @@
 # Capacidade no plano gratuito e plano B
 
-> **Tudo aqui é ESTIMATIVA**, feita com contas e premissas explícitas. Não houve teste de carga (JMeter fica para
-> um bloco seguinte). Os números servem para escolher a VM e saber onde está o limite, não como garantia.
+> As contas abaixo são **estimativas**, feitas com premissas explícitas, para escolher a VM e saber onde está o limite.
+> A medição real, com JMeter na máquina local (50 e 150 usuários, e o teto sem pausa), está em
+> [carga/resultados.md](carga/resultados.md); na VM, repita o teste depois da implantação ([carga/README.md](carga/README.md)).
 
 ## Premissas
 
@@ -10,7 +11,7 @@
 | Memória do contêiner do backend | 640 MB (VM AMD de 1 GB) / 2 GB (Ampere A1) | `BACKEND_MEM_LIMIT` no `.env.prod` |
 | Heap da JVM | 75% do contêiner: ~480 MB / ~1,5 GB | `-XX:MaxRAMPercentage=75` no Dockerfile |
 | Memória fora do heap (metaspace, threads, buffers) | ~150 a 200 MB | Spring Boot 4 + Hibernate + Tomcat, ordem de grandeza típica |
-| Pool de conexões (HikariCP) | 10 conexões (padrão) | `application.yml` não muda o tamanho |
+| Pool de conexões (HikariCP) | 8 conexões no máximo, 2 ociosas | `DB_POOL_MAX` / `DB_POOL_MIN_IDLE` (seção "Pool de conexões" abaixo) |
 | PostgreSQL | `max_connections` 100, `shared_buffers` 128 MB (padrões da imagem) | `postgres:16-alpine` sem ajuste |
 | Tempo de uma requisição típica | 10 a 30 ms de banco (consultas indexadas, uma por requisição) | consultas com projeção e índices das migrations |
 | Threads do Tomcat | até 200 | padrão do Spring Boot |
@@ -19,10 +20,10 @@
 
 | Tela | Requisições | Por segundo |
 |---|---|---|
-| Painel do cuidador (1 idoso) | 2 GET por minuto (doses do dia + alertas; repetidas em 3 s viram uma) | ~0,03 |
-| Painel do cuidador (3 idosos, "Todos") | ~4 GET por minuto | ~0,07 |
-| Mensagens abertas (cuidador ou idoso) | 6 GET por minuto (atualização a cada 10 s) | 0,10 |
-| Tela inicial do idoso | 1 GET por minuto | ~0,02 |
+| Painel do cuidador (1 paciente) | 2 GET por minuto (doses do dia + alertas; repetidas em 3 s viram uma) | ~0,03 |
+| Painel do cuidador (3 pacientes, "Todos") | ~4 GET por minuto | ~0,07 |
+| Mensagens abertas (cuidador ou paciente) | 6 GET por minuto (atualização a cada 10 s) | 0,10 |
+| Tela inicial do paciente | 1 GET por minuto | ~0,02 |
 | Escritas (confirmar dose, enviar mensagem) | raras | desprezível |
 
 Média adotada para um usuário **ativo**: **0,1 requisição por segundo** (pior caso comum: mensagens abertas).
@@ -30,14 +31,14 @@ Usuário com o app fechado não gera requisição (o aviso de dose chega por pus
 
 ## Conta da capacidade
 
-**Banco**: 10 conexões × (1 / 0,02 s) = **~500 consultas por segundo** de teto teórico, com 20 ms por consulta.
+**Banco**: 8 conexões × (1 / 0,02 s) = **~400 consultas por segundo** de teto teórico, com 20 ms por consulta.
 
 **CPU**, que é o limite real:
 
 - **Ampere A1, 1 OCPU (ARM)**: uma API Spring simples serve, em ordem de grandeza, **150 a 300 req/s** num núcleo
   dedicado (JSON pequeno, uma consulta por requisição).
   → 150 req/s ÷ 0,1 req/s por usuário = **~1.500 usuários ativos ao mesmo tempo** (estimativa conservadora).
-  Com 2 OCPU, o dobro, até o teto do pool (~500 req/s ≈ 5.000 usuários ativos), quando o pool passa a limitar.
+  Com 2 OCPU, o dobro, até o teto do pool (~400 req/s ≈ 4.000 usuários ativos), quando o pool passa a limitar.
 - **AMD micro (1/8 de OCPU, com picos curtos)**: **15 a 30 req/s** sustentados.
   → 15 ÷ 0,1 = **~150 usuários ativos** (estimativa conservadora). A memória (1 GB, com 640 MB para o backend e o
   restante para PostgreSQL, nginx e sistema) também é apertada: precisa do swap do roteiro.
@@ -48,6 +49,48 @@ cada 5 minutos. Com poucos milhares de doses por dia isso leva milissegundos e n
 **Conclusão**: a VM **Ampere A1** comporta com folga um piloto (dezenas a centenas de usuários) e chega à ordem de
 1.000 usuários ativos simultâneos. A meta do RNF-10 (10.000 usuários simultâneos) **não** cabe no plano gratuito sem
 teste de carga e ajuste (pool, réplicas, banco gerenciado). A VM AMD micro serve só para demonstração.
+
+## Pool de conexões
+
+| Propriedade | Valor | Por quê |
+|---|---|---|
+| `maximum-pool-size` | 8 (`DB_POOL_MAX`) | A regra do HikariCP (núcleos × 2 + 1) dá 3 a 5 conexões para 1 a 2 OCPU. Mais conexões que isso só disputam a mesma CPU. 8 deixa folga para os jobs (varredura a cada minuto, retentativa a cada 5 min) sem tirar conexão das requisições, e fica muito abaixo do `max_connections` 100 do PostgreSQL. |
+| `minimum-idle` | 2 (`DB_POOL_MIN_IDLE`) | Com o app parado, só 2 conexões abertas: menos memória no PostgreSQL da VM pequena. |
+| `idle-timeout` | 5 min | Conexões acima das 2 ociosas fecham depois de 5 min sem uso. |
+| `max-lifetime` | 30 min | Recicla cada conexão antes de qualquer corte de rede ou firewall. |
+| `keepalive-time` | 5 min | Testa as conexões ociosas para não entregar uma conexão morta. |
+| `connection-timeout` | 5 s | Banco fora do ar: a requisição desiste em 5 s em vez de ficar presa (a saúde responde 503). |
+| `validation-timeout` | 3 s | Idem, para a validação da conexão. |
+
+Na VM AMD micro (1/8 de OCPU), `DB_POOL_MAX=4` basta. Só aumente depois de um teste de carga mostrar espera por
+conexão (métrica `hikaricp.connections.pending`).
+
+## Consultas e índices (EXPLAIN)
+
+Plano das consultas dos caminhos mais usados com volume sintético, num PostgreSQL 16 local: 200 cuidadores (um terço
+com tolerância própria), 600 pacientes, 1.800 tratamentos e **1.425.600 doses** (2 por dia, 13 meses). Os dados foram
+criados numa transação desfeita no fim (`EXPLAIN (ANALYZE, BUFFERS)`, com `ANALYZE` das tabelas antes).
+
+| Consulta | Caminho no plano | Tempo |
+|---|---|---|
+| Varredura: doses para aviso (lote de 500) | `idx_dose_status_horario` (status, horário) na faixa de horário; tolerância do cuidador pela chave de `configuracao_alerta` | 3,6 ms |
+| Varredura: encerramento atômico (500 doses) | mesmo índice, ordem pronta (incremental sort) e UPDATE pela chave da dose | 13 ms |
+| Doses do dia de um paciente (lista e relatório diário) | `idx_medicamento_paciente_id` → `idx_tratamento_medicamento_id` → `uk_dose_tratamento_horario` | 0,2 ms |
+| Histórico, página de 20 (30 dias) e contagem | `idx_paciente_cuidador_id` → mesmos índices acima | 0,4 ms + 0,3 ms |
+| Histórico sem data de início, filtrado por status | idem | 2,5 ms |
+| PDF de 12 meses: contagem por remédio e status | idem | 0,9 ms |
+| PDF de 12 meses: lote de 500 linhas (o último) | idem | 1,8 ms |
+
+Conclusão: todas as junções usam índice (inclusive `configuracao_alerta`, pela chave primária `cuidador_id`), não há
+varredura completa de `dose` e nenhuma consulta passou de 13 ms. **Nenhum índice novo foi necessário.** As consultas
+das telas são uma só por tela, com projeção (sem N+1): dose, paciente, remédio e tolerância vêm juntos.
+
+## Cache do relatório diário
+
+O relatório diário fica em memória por 30 s (`CACHE_RELATORIO_DIARIO_SEGUNDOS`, 0 desliga), por cuidador, paciente e
+dia, no máximo 10.000 relatórios. A confirmação ou o encerramento de uma dose descartam os relatórios do paciente na
+hora, e as alterações do cuidador (tolerância, remédio, tratamento) descartam os dele: o relatório nunca fica atrasado
+depois de uma ação. O cache é de cada instância do backend (a implantação atual tem uma só).
 
 ## Limites do Oracle Cloud Always Free (confira a página oficial antes de criar)
 

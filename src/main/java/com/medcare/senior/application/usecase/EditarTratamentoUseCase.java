@@ -5,6 +5,7 @@ import com.medcare.senior.domain.dose.DoseRepositoryPort;
 import com.medcare.senior.domain.exception.RecursoNaoEncontradoException;
 import com.medcare.senior.domain.tratamento.Tratamento;
 import com.medcare.senior.domain.tratamento.TratamentoRepositoryPort;
+import com.medcare.senior.domain.relatorio.CacheDeRelatorioDiarioPort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,15 +22,18 @@ public class EditarTratamentoUseCase {
     private final TratamentoRepositoryPort tratamentoRepository;
     private final DoseRepositoryPort doseRepository;
     private final GeradorDeDosesService geradorDeDoses;
+    private final CacheDeRelatorioDiarioPort cacheDeRelatorio;
     private final Clock clock;
 
     public EditarTratamentoUseCase(TratamentoRepositoryPort tratamentoRepository,
                                    DoseRepositoryPort doseRepository,
                                    GeradorDeDosesService geradorDeDoses,
+                                   CacheDeRelatorioDiarioPort cacheDeRelatorio,
                                    Clock clock) {
         this.tratamentoRepository = tratamentoRepository;
         this.doseRepository = doseRepository;
         this.geradorDeDoses = geradorDeDoses;
+        this.cacheDeRelatorio = cacheDeRelatorio;
         this.clock = clock;
     }
 
@@ -64,6 +68,7 @@ public class EditarTratamentoUseCase {
         Tratamento salvo = tratamentoRepository.save(editado);
         doseRepository.deletePendentesFuturasByTratamentoId(salvo.getId(), LocalDateTime.now(clock));
         geradorDeDoses.gerar(salvo);
+        cacheDeRelatorio.descartarDoCuidador(cuidadorId);
         return salvo;
     }
 }

@@ -44,3 +44,18 @@ deploy/certbot/
 *service-account*.json
 *serviceAccount*.json
 *-adminsdk-*.json
+
+### Teste de carga (JMeter roda por Docker; resultados e ferramentas ficam fora do git) ###
+tools/
+*.jtl
+jmeter.log
+gc*.log
+
+### Backups do banco (deploy/backup.sh) ###
+backups/
+*.sql.gz
+*.dump
+
+### Análise de qualidade (SonarQube) ###
+.scannerwork/
+.sonar/

@@ -9,7 +9,7 @@ import org.springframework.stereotype.Service;
 
 /**
  * Total de mensagens que quem chama recebeu e ainda não leu: para o cuidador, somando as conversas de todos os seus
- * idosos; para o idoso, as do cuidador.
+ * pacientes; para o paciente, as do cuidador.
  */
 @Service
 @RequiredArgsConstructor
@@ -19,12 +19,12 @@ public class ContarMensagensNaoLidasUseCase {
     private final MensagemRepositoryPort mensagemRepository;
 
     /**
-     * @throws com.medcare.senior.domain.exception.SessaoInvalidaException se o idoso do token não existir mais
+     * @throws com.medcare.senior.domain.exception.SessaoInvalidaException se o paciente do token não existir mais
      */
     public long executar(AuthenticatedUser usuario) {
         if (usuario.isCuidador()) {
             return mensagemRepository.contarNaoLidasDoCuidador(usuario.cuidadorId());
         }
-        return mensagemRepository.contarNaoLidas(acessoAConversa.exigirIdoso(usuario), Remetente.CUIDADOR);
+        return mensagemRepository.contarNaoLidas(acessoAConversa.exigirPaciente(usuario), Remetente.CUIDADOR);
     }
 }

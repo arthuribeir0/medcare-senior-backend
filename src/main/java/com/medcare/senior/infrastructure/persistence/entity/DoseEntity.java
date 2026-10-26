@@ -1,5 +1,6 @@
 package com.medcare.senior.infrastructure.persistence.entity;
 
+import com.medcare.senior.domain.dose.ConfirmadoPor;
 import com.medcare.senior.domain.dose.StatusDose;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -37,4 +38,9 @@ public class DoseEntity {
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 30)
     private StatusDose status;
+
+    // Só nas doses confirmadas: quem confirmou (CHECK no banco, V15)
+    @Enumerated(EnumType.STRING)
+    @Column(name = "confirmado_por", length = 10)
+    private ConfirmadoPor confirmadoPor;
 }

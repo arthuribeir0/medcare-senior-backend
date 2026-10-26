@@ -220,6 +220,18 @@ class OpenApiContratoTest {
     }
 
     @Test
+    void tratamentoDocumentaAPrimeiraDoseEOHorarioMuitoProximo() {
+        JsonNode primeiraDose = contrato.at("/components/schemas/TratamentoResponseDTO/properties/primeiraDose");
+        assertThat(primeiraDose.path("format").asString("")).isEqualTo("date-time");
+        for (String operacao : List.of("/paths/~1api~1medicamentos~1{medicamentoId}~1tratamentos/post",
+                "/paths/~1api~1tratamentos~1{id}/put")) {
+            JsonNode exemplo = contrato.at(operacao + "/responses/400/content/application~1json/examples/HORARIO_MUITO_PROXIMO");
+            assertThat(exemplo.isMissingNode()).as(operacao).isFalse();
+            assertThat(exemplo.toString()).contains("pelo menos 5 minutos de diferença do horário atual");
+        }
+    }
+
+    @Test
     void arquivoExportadoEstaIgualAoContratoGerado() throws Exception {
         String gerado = exportavel();
         if (Boolean.getBoolean("openapi.atualizar")) {

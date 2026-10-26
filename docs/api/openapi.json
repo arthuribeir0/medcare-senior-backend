@@ -50,7 +50,7 @@
       "put" : {
         "tags" : [ "Medicamentos e tratamentos" ],
         "summary" : "Edita horários, dias da semana e data de término de um tratamento",
-        "description" : "**Perfil exigido:** CUIDADOR.\n\nA data de início não muda. As doses PENDENTES futuras são apagadas e geradas de novo conforme a nova configuração; doses já registradas e doses passadas não são alteradas. Mesmas regras do cadastro.",
+        "description" : "**Perfil exigido:** CUIDADOR.\n\nA data de início não muda. As doses PENDENTES futuras são apagadas e geradas de novo conforme a nova configuração; doses já registradas e doses passadas não são alteradas. Mesmas regras do cadastro.\n\nSe hoje é um dia do tratamento (dentro do período e num dos dias da semana), nenhum horário pode cair do minuto atual até daqui a menos de 5 minutos (400 VALIDACAO). Horários que já passaram hoje são aceitos: a primeira dose fica para o próximo dia válido, informado em primeiraDose. Na edição, só os horários adicionados ou alterados são verificados; os que já existiam não bloqueiam.",
         "operationId" : "editar",
         "parameters" : [ {
           "name" : "id",
@@ -74,7 +74,7 @@
         },
         "responses" : {
           "200" : {
-            "description" : "Tratamento atualizado",
+            "description" : "Tratamento atualizado; primeiraDose diz quando é a primeira dose",
             "content" : {
               "*/*" : {
                 "schema" : {
@@ -84,13 +84,28 @@
             }
           },
           "400" : {
-            "description" : "Campos inválidos (VALIDACAO) ou horários, dias da semana ou período inválidos (TRATAMENTO_INVALIDO)",
+            "description" : "Campos inválidos ou horário novo de hoje a menos de 5 minutos (VALIDACAO); horários, dias da semana ou período inválidos (TRATAMENTO_INVALIDO)",
             "content" : {
               "application/json" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/ErroResponse"
                 },
                 "examples" : {
+                  "HORARIO_MUITO_PROXIMO" : {
+                    "summary" : "Horário agora ou a menos de 5 minutos",
+                    "description" : "HORARIO_MUITO_PROXIMO",
+                    "value" : {
+                      "timestamp" : "2026-10-08T14:30:00",
+                      "status" : 400,
+                      "erro" : "Bad Request",
+                      "codigo" : "VALIDACAO",
+                      "mensagem" : "Não é possível cadastrar um horário que seja agora ou daqui a menos de 5 minutos. Escolha um horário com pelo menos 5 minutos de diferença do horário atual.",
+                      "campos" : [ {
+                        "campo" : "horarios",
+                        "mensagem" : "Não é possível cadastrar um horário que seja agora ou daqui a menos de 5 minutos. Escolha um horário com pelo menos 5 minutos de diferença do horário atual."
+                      } ]
+                    }
+                  },
                   "VALIDACAO" : {
                     "summary" : "VALIDACAO",
                     "value" : {
@@ -2844,7 +2859,7 @@
       "post" : {
         "tags" : [ "Medicamentos e tratamentos" ],
         "summary" : "Cadastra um tratamento para o medicamento e gera as doses do horizonte (padrão de 30 dias)",
-        "description" : "**Perfil exigido:** CUIDADOR.\n\nAo menos um horário, sem horários repetidos; ao menos um dia da semana; dataFim (opcional) igual ou posterior a dataInicio.",
+        "description" : "**Perfil exigido:** CUIDADOR.\n\nAo menos um horário, sem horários repetidos; ao menos um dia da semana; dataFim (opcional) igual ou posterior a dataInicio.\n\nSe hoje é um dia do tratamento (dentro do período e num dos dias da semana), nenhum horário pode cair do minuto atual até daqui a menos de 5 minutos (400 VALIDACAO). Horários que já passaram hoje são aceitos: a primeira dose fica para o próximo dia válido, informado em primeiraDose.",
         "operationId" : "cadastrar_2",
         "parameters" : [ {
           "name" : "medicamentoId",
@@ -2868,7 +2883,7 @@
         },
         "responses" : {
           "201" : {
-            "description" : "Tratamento cadastrado",
+            "description" : "Tratamento cadastrado; primeiraDose diz quando é a primeira dose",
             "content" : {
               "*/*" : {
                 "schema" : {
@@ -2878,13 +2893,28 @@
             }
           },
           "400" : {
-            "description" : "Campos inválidos (VALIDACAO) ou horários, dias da semana ou período inválidos (TRATAMENTO_INVALIDO)",
+            "description" : "Campos inválidos ou horário de hoje a menos de 5 minutos (VALIDACAO); horários, dias da semana ou período inválidos (TRATAMENTO_INVALIDO)",
             "content" : {
               "application/json" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/ErroResponse"
                 },
                 "examples" : {
+                  "HORARIO_MUITO_PROXIMO" : {
+                    "summary" : "Horário agora ou a menos de 5 minutos",
+                    "description" : "HORARIO_MUITO_PROXIMO",
+                    "value" : {
+                      "timestamp" : "2026-10-08T14:30:00",
+                      "status" : 400,
+                      "erro" : "Bad Request",
+                      "codigo" : "VALIDACAO",
+                      "mensagem" : "Não é possível cadastrar um horário que seja agora ou daqui a menos de 5 minutos. Escolha um horário com pelo menos 5 minutos de diferença do horário atual.",
+                      "campos" : [ {
+                        "campo" : "horarios",
+                        "mensagem" : "Não é possível cadastrar um horário que seja agora ou daqui a menos de 5 minutos. Escolha um horário com pelo menos 5 minutos de diferença do horário atual."
+                      } ]
+                    }
+                  },
                   "VALIDACAO" : {
                     "summary" : "VALIDACAO",
                     "value" : {
@@ -5012,6 +5042,12 @@
               "enum" : [ "MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY", "SUNDAY" ],
               "example" : "MONDAY"
             }
+          },
+          "primeiraDose" : {
+            "type" : [ "string", "null" ],
+            "format" : "date-time",
+            "description" : "Só no cadastro e na edição: data e hora da primeira dose a partir de agora (fuso da aplicação). Se a data não é hoje, os horários de hoje já passaram e o app avisa o usuário. null na listagem ou se não houver dose até o mesmo dia da semana seguinte.",
+            "example" : "2026-10-09T08:00:00"
           }
         }
       },

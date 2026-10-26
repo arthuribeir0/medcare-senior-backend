@@ -49,6 +49,35 @@ O app decide pelo `codigo`, que nunca muda de nome; a `mensagem` é para pessoas
 | 429 | `LIMITE_TENTATIVAS`, com o cabeçalho `Retry-After` |
 | 500 | `ERRO_INTERNO`, sem detalhes na resposta |
 
+## Horário do tratamento: antecedência mínima e primeira dose
+
+No cadastro (`POST /api/medicamentos/{medicamentoId}/tratamentos`) e na edição (`PUT /api/tratamentos/{id}`), se hoje
+é um dia do tratamento (dentro do período e num dos dias da semana escolhidos), nenhum horário pode cair entre o
+minuto atual (inclusive) e daqui a 5 minutos. Exemplo às 10:00: 10:00 e 10:04 são recusados; 10:05 é aceito. Na
+edição, só os horários adicionados ou alterados são verificados.
+
+```json
+{
+  "timestamp": "2026-10-08T14:30:00",
+  "status": 400,
+  "erro": "Bad Request",
+  "codigo": "VALIDACAO",
+  "mensagem": "Não é possível cadastrar um horário que seja agora ou daqui a menos de 5 minutos. Escolha um horário com pelo menos 5 minutos de diferença do horário atual.",
+  "campos": [
+    {
+      "campo": "horarios",
+      "mensagem": "Não é possível cadastrar um horário que seja agora ou daqui a menos de 5 minutos. Escolha um horário com pelo menos 5 minutos de diferença do horário atual."
+    }
+  ]
+}
+```
+
+Horários que já passaram hoje são aceitos; a dose de hoje não é gerada e a primeira fica para o próximo dia válido.
+A resposta do cadastro e da edição traz o campo novo `primeiraDose` (data e hora local, por exemplo
+`"2026-10-09T08:00:00"`) para o app avisar quando ela não é hoje. Na listagem o campo vem `null`, e também quando não
+há dose até o mesmo dia da semana seguinte (tratamento que termina antes). O campo é aditivo: quem não o conhece
+continua funcionando.
+
 ## Quando a documentação fica exposta
 
 | Ambiente | Variável `SWAGGER_ENABLED` | Resultado |

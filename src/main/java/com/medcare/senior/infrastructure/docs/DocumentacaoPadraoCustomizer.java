@@ -112,6 +112,12 @@ public class DocumentacaoPadraoCustomizer implements GlobalOperationCustomizer, 
                 return;
             }
             MediaType json = new MediaType().schema(new Schema<>().$ref(ERRO_RESPONSE_REF));
+            // Exemplos declarados na própria operação (casos específicos) vêm primeiro e são mantidos
+            if (resposta.getContent() != null) {
+                resposta.getContent().values().stream()
+                        .filter(anotado -> anotado.getExamples() != null)
+                        .forEach(anotado -> anotado.getExamples().forEach(json::addExamples));
+            }
             exemplos(status, resposta.getDescription()).forEach(json::addExamples);
             resposta.setContent(new Content().addMediaType(org.springframework.http.MediaType.APPLICATION_JSON_VALUE, json));
             if ("429".equals(status)) {

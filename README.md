@@ -101,6 +101,7 @@ Cobertura atual: 99,6% das linhas e 97,6% dos ramos em domain+application; 93% n
 | Remédio exige nome, dosagem e tipo | `Medicamento` | `CadastrarMedicamentoUseCaseTest`, `EditarMedicamentoUseCaseTest` |
 | Remédio com tratamento ativo só sai com confirmação | `RemoverMedicamentoUseCase` | `RemoverMedicamentoUseCaseTest` |
 | Tratamento válido (horários sem repetição, dias da semana, período) | `Tratamento` | `TratamentoTest`, `SalvarTratamentoUseCaseTest`, `EditarTratamentoUseCaseTest` |
+| Horário de hoje com pelo menos 5 minutos de antecedência (na edição, só os novos ou alterados); horário que já passou vale a partir do próximo dia, informado em `primeiraDose` | `Tratamento.validarAntecedencia`, `Tratamento.primeiraDoseDepoisDe` | `AntecedenciaDoHorarioTest`, `SalvarTratamentoUseCaseTest`, `EditarTratamentoUseCaseTest`, `TratamentoApiTest` |
 | Doses geradas numa janela rolante, idempotente | `GeradorDeDosesService` | `GeradorDeDosesServiceTest`, `PersistenciaPostgresTest` |
 | Janela da dose (abre 60 min antes; aviso na tolerância; encerra 30 min depois do aviso) | `PoliticaDeJanela` | `PoliticaDeJanelaTest`, `ConfirmarDoseUseCaseTest` |
 | Dose registrada nunca muda, nem em confirmações simultâneas | `Dose`, `DoseRepositoryAdapter.registrarSePendente` | `DoseTest`, `ConfirmacaoConcorrentePostgresTest`, `VarreduraConcorrentePostgresTest` |

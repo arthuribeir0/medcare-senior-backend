@@ -98,7 +98,7 @@ public class GeradorDeDosesService {
         }
 
         if (!novas.isEmpty()) {
-            doseRepository.saveAll(novas);
+            doseRepository.inserirPendentes(novas);
         }
         return novas.size();
     }

@@ -43,6 +43,7 @@ import com.medcare.senior.infrastructure.persistence.mapper.MedicamentoMapper;
 import com.medcare.senior.infrastructure.persistence.mapper.TratamentoMapper;
 import com.medcare.senior.infrastructure.cache.CacheDeRelatorioDiarioCaffeine;
 import org.junit.jupiter.api.Test;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
@@ -50,7 +51,6 @@ import org.springframework.boot.jpa.test.autoconfigure.TestEntityManager;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
-import org.springframework.dao.DataIntegrityViolationException;
 
 import java.time.Clock;
 import java.time.DayOfWeek;
@@ -528,14 +528,22 @@ class PersistenciaPostgresTest {
     // ---------------------------------------------------------------------------------------------------------
 
     @Test
-    void indiceUnicoImpedeDuasDosesNoMesmoHorarioDoMesmoTratamento() {
+    void indiceUnicoDeixaUmaSoDoseNoMesmoHorarioDoMesmoTratamento() {
         TratamentoEntity tratamento = tratamento(medicamento(paciente(cuidador()), null), null);
         LocalDateTime horario = AGORA.plusDays(1);
+        LocalDateTime outroHorario = AGORA.plusDays(2);
 
-        assertThatThrownBy(() -> doseAdapter.saveAll(List.of(
-                Dose.pendente(tratamento.getId(), horario),
-                Dose.pendente(tratamento.getId(), horario))))
-                .isInstanceOf(DataIntegrityViolationException.class);
+        // Repetido no mesmo lote e numa segunda gravação (duas gerações ao mesmo tempo): fica uma dose só, sem erro
+        doseAdapter.inserirPendentes(List.of(Dose.pendente(tratamento.getId(), horario),
+                Dose.pendente(tratamento.getId(), horario), Dose.pendente(tratamento.getId(), outroHorario)));
+        doseAdapter.inserirPendentes(List.of(Dose.pendente(tratamento.getId(), horario)));
+
+        assertThat(doseAdapter.findHorariosProgramadosByTratamentoIdDesde(tratamento.getId(), AGORA))
+                .containsExactlyInAnyOrder(horario, outroHorario);
+        Number pendentes = (Number) em.getEntityManager()
+                .createNativeQuery("SELECT COUNT(*) FROM dose WHERE tratamento_id = ?1 AND status = 'PENDENTE'")
+                .setParameter(1, tratamento.getId()).getSingleResult();
+        assertThat(pendentes.longValue()).isEqualTo(2);
     }
 
     @Test

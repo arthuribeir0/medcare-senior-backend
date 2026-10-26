@@ -17,7 +17,11 @@ import java.util.function.Consumer;
  */
 public interface DoseRepositoryPort {
 
-    List<Dose> saveAll(List<Dose> doses);
+    /**
+     * Grava doses PENDENTES novas em lote. Horário que já tem dose no mesmo tratamento é ignorado (índice único), o que
+     * deixa a geração idempotente mesmo quando duas gerações do mesmo tratamento correm ao mesmo tempo.
+     */
+    void inserirPendentes(List<Dose> doses);
 
     /**
      * Horários que já têm dose (de qualquer status) para o tratamento, a partir de {@code desde} (inclusive).

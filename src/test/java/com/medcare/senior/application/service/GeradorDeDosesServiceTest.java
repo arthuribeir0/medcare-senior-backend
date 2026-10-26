@@ -72,7 +72,7 @@ class GeradorDeDosesServiceTest {
     @SuppressWarnings("unchecked")
     private List<Dose> dosesSalvas() {
         ArgumentCaptor<List<Dose>> captor = ArgumentCaptor.forClass(List.class);
-        verify(doseRepository).saveAll(captor.capture());
+        verify(doseRepository).inserirPendentes(captor.capture());
         return captor.getValue();
     }
 
@@ -168,7 +168,7 @@ class GeradorDeDosesServiceTest {
         int geradas = gerador.gerar(tratamento(HOJE, HOJE.plusDays(1), TODOS_OS_DIAS, LocalTime.of(20, 0)));
 
         assertThat(geradas).isZero();
-        verify(doseRepository, never()).saveAll(any());
+        verify(doseRepository, never()).inserirPendentes(any());
     }
 
     @Test
@@ -238,6 +238,6 @@ class GeradorDeDosesServiceTest {
 
         assertThat(primeira).isEqualTo(31);
         assertThat(segunda).isZero();
-        verify(doseRepository, times(1)).saveAll(any());
+        verify(doseRepository, times(1)).inserirPendentes(any());
     }
 }

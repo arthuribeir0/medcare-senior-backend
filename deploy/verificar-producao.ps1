@@ -5,8 +5,11 @@
 .DESCRIPTION
   1. Saúde: GET <Url>/actuator/health precisa responder {"status":"UP"} e só isso.
   2. HTTPS: http:// redireciona para https:// (pule com -SemRedirecionamento no túnel).
-  3. Cabeçalhos de segurança do nginx e rotas internas fechadas (Swagger e actuator).
-  4. Fluxo real pelo smoke do app (repositório do front): cadastro, login, paciente, remédio, dose, confirmação,
+  3. Certificado válido, com mais de 14 dias até vencer.
+  4. Cabeçalhos de segurança do nginx e rotas internas fechadas (Swagger com 404, demais endpoints do actuator).
+  5. Portas do banco (5432) e do backend (8080) fechadas para fora: só o nginx (80/443) responde.
+  6. (Opcional, -TestarLimite) Limite de requisições do nginx: uma rajada acima de 20/s recebe 429 LIMITE_TENTATIVAS.
+  7. Fluxo real pelo smoke do app (repositório do front): cadastro, login, paciente, remédio, dose, confirmação,
      histórico, mensagens e exclusão da conta. O smoke cria uma conta de teste e a exclui no fim.
   Não imprime nem pede segredo. Os logs dos jobs ficam na VM (ver docs/implantacao.md, seção 10).
 
@@ -14,6 +17,8 @@
   .\verificar-producao.ps1 -Url https://medcare-senior.duckdns.org
 .EXAMPLE
   .\verificar-producao.ps1 -Url https://abc.trycloudflare.com -SemRedirecionamento -SemCabecalhos
+.EXAMPLE
+  .\verificar-producao.ps1 -Url https://medcare-senior.duckdns.org -TestarLimite
 .EXAMPLE
   # SÓ para testar a pilha de produção no próprio PC com certificado autoassinado (nunca contra a URL pública)
   .\verificar-producao.ps1 -Url https://localhost -IgnorarCertificado
@@ -24,7 +29,10 @@ param(
     [switch] $SemRedirecionamento,
     [switch] $SemCabecalhos,
     [switch] $SemSmoke,
-    [switch] $IgnorarCertificado
+    [switch] $IgnorarCertificado,
+    # Com SWAGGER_ENABLED=true no .env.prod, a documentação responde 200 de propósito
+    [switch] $SwaggerLigado,
+    [switch] $TestarLimite
 )
 
 $ErrorActionPreference = 'Stop'
@@ -89,16 +97,60 @@ if (-not $SemCabecalhos) {
     }
 }
 
-Passo 'rotas internas fechadas (Swagger e demais endpoints do actuator)' {
-    foreach ($rota in '/v3/api-docs', '/swagger-ui.html', '/actuator/env', '/actuator', '/actuator/info') {
+if (-not $IgnorarCertificado) {
+    Passo 'certificado HTTPS válido e longe de vencer' {
+        $req = [Net.HttpWebRequest]::Create("$base/actuator/health")
+        $req.Timeout = 20000
+        $req.GetResponse().Close()
+        $cert = New-Object Security.Cryptography.X509Certificates.X509Certificate2($req.ServicePoint.Certificate)
+        $dias = [int] ($cert.NotAfter - (Get-Date)).TotalDays
+        if ($dias -lt 14) { throw "o certificado vence em $dias dias ($($cert.NotAfter)); confira a renovação automática" }
+        Write-Host "     certificado de $($cert.Subject), vence em $dias dias"
+    }
+}
+
+Passo 'Swagger desligado (404) e demais endpoints do actuator fechados' {
+    if (-not $SwaggerLigado) {
+        foreach ($rota in '/v3/api-docs', '/swagger-ui/index.html', '/swagger-ui.html') {
+            $s = (Get-Resposta "$base$rota").Status
+            if ($s -ne 404) { throw "$rota respondeu $s (esperava 404; se SWAGGER_ENABLED=true for de propósito, use -SwaggerLigado)" }
+        }
+    }
+    foreach ($rota in '/actuator/env', '/actuator', '/actuator/info', '/actuator/metrics') {
         $s = (Get-Resposta "$base$rota").Status
         if ($s -lt 400) { throw "$rota respondeu $s" }
+    }
+}
+
+Passo 'portas 5432 (banco) e 8080 (backend) fechadas para fora' {
+    $servidor = ([Uri] $base).Host
+    foreach ($porta in 5432, 8080) {
+        $cliente = New-Object Net.Sockets.TcpClient
+        try {
+            $tentativa = $cliente.BeginConnect($servidor, $porta, $null, $null)
+            if ($tentativa.AsyncWaitHandle.WaitOne(3000) -and $cliente.Connected) { throw "a porta $porta aceitou conexão de fora" }
+        } finally { $cliente.Close() }
     }
 }
 
 Passo 'rota da API sem token responde 401' {
     $s = (Get-Resposta "$base/api/pacientes").Status
     if ($s -ne 401) { throw "esperava 401, veio $s" }
+}
+
+if ($TestarLimite) {
+    Passo 'limite de requisições do nginx (rajada de 150 pedidos recebe 429)' {
+        $limitados = 0
+        $corpo429 = ''
+        1..150 | ForEach-Object {
+            $r = Get-Resposta "$base/api/pacientes"
+            if ($r.Status -eq 429) { $limitados++; $corpo429 = $r.Corpo }
+        }
+        if ($limitados -eq 0) { throw 'nenhuma resposta 429: o limit_req do nginx não está ativo (ou o IP está isento em carga-isenta.conf)' }
+        if ($corpo429 -notmatch 'LIMITE_TENTATIVAS') { throw "o 429 veio sem o codigo LIMITE_TENTATIVAS: $corpo429" }
+        Write-Host "     $limitados de 150 pedidos limitados (aguarde alguns segundos antes do smoke)"
+        Start-Sleep -Seconds 5
+    }
 }
 
 if (-not $SemSmoke) {

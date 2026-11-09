@@ -244,6 +244,342 @@
         } ]
       }
     },
+    "/api/pacientes/{id}/pedidos-desconexao/{pedidoId}/recusar" : {
+      "put" : {
+        "tags" : [ "Pacientes" ],
+        "summary" : "Recusa o pedido do paciente para sair da conta",
+        "description" : "**Perfil exigido:** CUIDADOR.\n\nO paciente continua conectado. Recusar de novo devolve o pedido como está.",
+        "operationId" : "recusar",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "description" : "ID do paciente",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        }, {
+          "name" : "pedidoId",
+          "in" : "path",
+          "description" : "ID do pedido",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Pedido recusado",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PedidoDesconexaoResponseDTO"
+                }
+              }
+            }
+          },
+          "404" : {
+            "description" : "Paciente ou pedido inexistente, ou de outro cuidador",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErroResponse"
+                },
+                "examples" : {
+                  "RECURSO_NAO_ENCONTRADO" : {
+                    "summary" : "RECURSO_NAO_ENCONTRADO",
+                    "value" : {
+                      "timestamp" : "2026-10-08T14:30:00",
+                      "status" : 404,
+                      "erro" : "Not Found",
+                      "codigo" : "RECURSO_NAO_ENCONTRADO",
+                      "mensagem" : "Recurso não encontrado",
+                      "campos" : [ ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409" : {
+            "description" : "Pedido já autorizado, cancelado ou vencido (PEDIDO_ENCERRADO)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErroResponse"
+                },
+                "examples" : {
+                  "PEDIDO_ENCERRADO" : {
+                    "summary" : "PEDIDO_ENCERRADO",
+                    "value" : {
+                      "timestamp" : "2026-10-08T14:30:00",
+                      "status" : 409,
+                      "erro" : "Conflict",
+                      "codigo" : "PEDIDO_ENCERRADO",
+                      "mensagem" : "Este pedido já foi decidido, cancelado ou expirou.",
+                      "campos" : [ ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Sem token, ou token inválido ou expirado (NAO_AUTENTICADO); ou token de conta que não existe mais (SESSAO_INVALIDA)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErroResponse"
+                },
+                "examples" : {
+                  "NAO_AUTENTICADO" : {
+                    "summary" : "NAO_AUTENTICADO",
+                    "value" : {
+                      "timestamp" : "2026-10-08T14:30:00",
+                      "status" : 401,
+                      "erro" : "Unauthorized",
+                      "codigo" : "NAO_AUTENTICADO",
+                      "mensagem" : "Autenticação necessária. Envie um token válido no cabeçalho Authorization.",
+                      "campos" : [ ]
+                    }
+                  },
+                  "SESSAO_INVALIDA" : {
+                    "summary" : "SESSAO_INVALIDA",
+                    "value" : {
+                      "timestamp" : "2026-10-08T14:30:00",
+                      "status" : 401,
+                      "erro" : "Unauthorized",
+                      "codigo" : "SESSAO_INVALIDA",
+                      "mensagem" : "Sessão inválida. Entre na sua conta de novo.",
+                      "campos" : [ ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "Token válido de outro perfil (ACESSO_NEGADO)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErroResponse"
+                },
+                "examples" : {
+                  "ACESSO_NEGADO" : {
+                    "summary" : "ACESSO_NEGADO",
+                    "value" : {
+                      "timestamp" : "2026-10-08T14:30:00",
+                      "status" : 403,
+                      "erro" : "Forbidden",
+                      "codigo" : "ACESSO_NEGADO",
+                      "mensagem" : "Acesso negado para este perfil.",
+                      "campos" : [ ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Erro inesperado, sem detalhes na resposta (ERRO_INTERNO)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErroResponse"
+                },
+                "examples" : {
+                  "ERRO_INTERNO" : {
+                    "summary" : "ERRO_INTERNO",
+                    "value" : {
+                      "timestamp" : "2026-10-08T14:30:00",
+                      "status" : 500,
+                      "erro" : "Internal Server Error",
+                      "codigo" : "ERRO_INTERNO",
+                      "mensagem" : "Erro interno. Tente novamente mais tarde.",
+                      "campos" : [ ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/api/pacientes/{id}/pedidos-desconexao/{pedidoId}/autorizar" : {
+      "put" : {
+        "tags" : [ "Pacientes" ],
+        "summary" : "Autoriza o pedido do paciente para sair da conta",
+        "description" : "**Perfil exigido:** CUIDADOR.\n\nDesconecta o aparelho do paciente: o token dele deixa de valer e os códigos de vínculo não usados são inutilizados. O vínculo, os remédios e o histórico continuam; para voltar, gere um código novo. Autorizar de novo devolve o pedido como está.",
+        "operationId" : "autorizar",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "description" : "ID do paciente",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        }, {
+          "name" : "pedidoId",
+          "in" : "path",
+          "description" : "ID do pedido",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Pedido autorizado",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PedidoDesconexaoResponseDTO"
+                }
+              }
+            }
+          },
+          "404" : {
+            "description" : "Paciente ou pedido inexistente, ou de outro cuidador",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErroResponse"
+                },
+                "examples" : {
+                  "RECURSO_NAO_ENCONTRADO" : {
+                    "summary" : "RECURSO_NAO_ENCONTRADO",
+                    "value" : {
+                      "timestamp" : "2026-10-08T14:30:00",
+                      "status" : 404,
+                      "erro" : "Not Found",
+                      "codigo" : "RECURSO_NAO_ENCONTRADO",
+                      "mensagem" : "Recurso não encontrado",
+                      "campos" : [ ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409" : {
+            "description" : "Pedido já recusado, cancelado ou vencido (PEDIDO_ENCERRADO)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErroResponse"
+                },
+                "examples" : {
+                  "PEDIDO_ENCERRADO" : {
+                    "summary" : "PEDIDO_ENCERRADO",
+                    "value" : {
+                      "timestamp" : "2026-10-08T14:30:00",
+                      "status" : 409,
+                      "erro" : "Conflict",
+                      "codigo" : "PEDIDO_ENCERRADO",
+                      "mensagem" : "Este pedido já foi decidido, cancelado ou expirou.",
+                      "campos" : [ ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Sem token, ou token inválido ou expirado (NAO_AUTENTICADO); ou token de conta que não existe mais (SESSAO_INVALIDA)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErroResponse"
+                },
+                "examples" : {
+                  "NAO_AUTENTICADO" : {
+                    "summary" : "NAO_AUTENTICADO",
+                    "value" : {
+                      "timestamp" : "2026-10-08T14:30:00",
+                      "status" : 401,
+                      "erro" : "Unauthorized",
+                      "codigo" : "NAO_AUTENTICADO",
+                      "mensagem" : "Autenticação necessária. Envie um token válido no cabeçalho Authorization.",
+                      "campos" : [ ]
+                    }
+                  },
+                  "SESSAO_INVALIDA" : {
+                    "summary" : "SESSAO_INVALIDA",
+                    "value" : {
+                      "timestamp" : "2026-10-08T14:30:00",
+                      "status" : 401,
+                      "erro" : "Unauthorized",
+                      "codigo" : "SESSAO_INVALIDA",
+                      "mensagem" : "Sessão inválida. Entre na sua conta de novo.",
+                      "campos" : [ ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "Token válido de outro perfil (ACESSO_NEGADO)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErroResponse"
+                },
+                "examples" : {
+                  "ACESSO_NEGADO" : {
+                    "summary" : "ACESSO_NEGADO",
+                    "value" : {
+                      "timestamp" : "2026-10-08T14:30:00",
+                      "status" : 403,
+                      "erro" : "Forbidden",
+                      "codigo" : "ACESSO_NEGADO",
+                      "mensagem" : "Acesso negado para este perfil.",
+                      "campos" : [ ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Erro inesperado, sem detalhes na resposta (ERRO_INTERNO)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErroResponse"
+                },
+                "examples" : {
+                  "ERRO_INTERNO" : {
+                    "summary" : "ERRO_INTERNO",
+                    "value" : {
+                      "timestamp" : "2026-10-08T14:30:00",
+                      "status" : 500,
+                      "erro" : "Internal Server Error",
+                      "codigo" : "ERRO_INTERNO",
+                      "mensagem" : "Erro interno. Tente novamente mais tarde.",
+                      "campos" : [ ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
     "/api/mensagens/lidas" : {
       "put" : {
         "tags" : [ "Mensagens" ],
@@ -1977,6 +2313,466 @@
                 }
               }
             }
+          },
+          "401" : {
+            "description" : "Sem token, ou token inválido ou expirado (NAO_AUTENTICADO); ou token de conta que não existe mais (SESSAO_INVALIDA)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErroResponse"
+                },
+                "examples" : {
+                  "NAO_AUTENTICADO" : {
+                    "summary" : "NAO_AUTENTICADO",
+                    "value" : {
+                      "timestamp" : "2026-10-08T14:30:00",
+                      "status" : 401,
+                      "erro" : "Unauthorized",
+                      "codigo" : "NAO_AUTENTICADO",
+                      "mensagem" : "Autenticação necessária. Envie um token válido no cabeçalho Authorization.",
+                      "campos" : [ ]
+                    }
+                  },
+                  "SESSAO_INVALIDA" : {
+                    "summary" : "SESSAO_INVALIDA",
+                    "value" : {
+                      "timestamp" : "2026-10-08T14:30:00",
+                      "status" : 401,
+                      "erro" : "Unauthorized",
+                      "codigo" : "SESSAO_INVALIDA",
+                      "mensagem" : "Sessão inválida. Entre na sua conta de novo.",
+                      "campos" : [ ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "Token válido de outro perfil (ACESSO_NEGADO)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErroResponse"
+                },
+                "examples" : {
+                  "ACESSO_NEGADO" : {
+                    "summary" : "ACESSO_NEGADO",
+                    "value" : {
+                      "timestamp" : "2026-10-08T14:30:00",
+                      "status" : 403,
+                      "erro" : "Forbidden",
+                      "codigo" : "ACESSO_NEGADO",
+                      "mensagem" : "Acesso negado para este perfil.",
+                      "campos" : [ ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Erro inesperado, sem detalhes na resposta (ERRO_INTERNO)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErroResponse"
+                },
+                "examples" : {
+                  "ERRO_INTERNO" : {
+                    "summary" : "ERRO_INTERNO",
+                    "value" : {
+                      "timestamp" : "2026-10-08T14:30:00",
+                      "status" : 500,
+                      "erro" : "Internal Server Error",
+                      "codigo" : "ERRO_INTERNO",
+                      "mensagem" : "Erro interno. Tente novamente mais tarde.",
+                      "campos" : [ ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/api/pacientes/{id}/desconectar-aparelho" : {
+      "post" : {
+        "tags" : [ "Pacientes" ],
+        "summary" : "Desconecta o aparelho do paciente sem esperar um pedido",
+        "description" : "**Perfil exigido:** CUIDADOR.\n\nMesmo efeito da autorização (ex.: celular perdido ou trocado). Um pedido pendente fica como AUTORIZADO. Idempotente.",
+        "operationId" : "desconectarAparelho",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "description" : "ID do paciente",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "Aparelho desconectado"
+          },
+          "404" : {
+            "description" : "Paciente inexistente ou de outro cuidador",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErroResponse"
+                },
+                "examples" : {
+                  "RECURSO_NAO_ENCONTRADO" : {
+                    "summary" : "RECURSO_NAO_ENCONTRADO",
+                    "value" : {
+                      "timestamp" : "2026-10-08T14:30:00",
+                      "status" : 404,
+                      "erro" : "Not Found",
+                      "codigo" : "RECURSO_NAO_ENCONTRADO",
+                      "mensagem" : "Recurso não encontrado",
+                      "campos" : [ ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Sem token, ou token inválido ou expirado (NAO_AUTENTICADO); ou token de conta que não existe mais (SESSAO_INVALIDA)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErroResponse"
+                },
+                "examples" : {
+                  "NAO_AUTENTICADO" : {
+                    "summary" : "NAO_AUTENTICADO",
+                    "value" : {
+                      "timestamp" : "2026-10-08T14:30:00",
+                      "status" : 401,
+                      "erro" : "Unauthorized",
+                      "codigo" : "NAO_AUTENTICADO",
+                      "mensagem" : "Autenticação necessária. Envie um token válido no cabeçalho Authorization.",
+                      "campos" : [ ]
+                    }
+                  },
+                  "SESSAO_INVALIDA" : {
+                    "summary" : "SESSAO_INVALIDA",
+                    "value" : {
+                      "timestamp" : "2026-10-08T14:30:00",
+                      "status" : 401,
+                      "erro" : "Unauthorized",
+                      "codigo" : "SESSAO_INVALIDA",
+                      "mensagem" : "Sessão inválida. Entre na sua conta de novo.",
+                      "campos" : [ ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "Token válido de outro perfil (ACESSO_NEGADO)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErroResponse"
+                },
+                "examples" : {
+                  "ACESSO_NEGADO" : {
+                    "summary" : "ACESSO_NEGADO",
+                    "value" : {
+                      "timestamp" : "2026-10-08T14:30:00",
+                      "status" : 403,
+                      "erro" : "Forbidden",
+                      "codigo" : "ACESSO_NEGADO",
+                      "mensagem" : "Acesso negado para este perfil.",
+                      "campos" : [ ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Erro inesperado, sem detalhes na resposta (ERRO_INTERNO)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErroResponse"
+                },
+                "examples" : {
+                  "ERRO_INTERNO" : {
+                    "summary" : "ERRO_INTERNO",
+                    "value" : {
+                      "timestamp" : "2026-10-08T14:30:00",
+                      "status" : 500,
+                      "erro" : "Internal Server Error",
+                      "codigo" : "ERRO_INTERNO",
+                      "mensagem" : "Erro interno. Tente novamente mais tarde.",
+                      "campos" : [ ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/api/pacientes/me/pedido-desconexao" : {
+      "get" : {
+        "tags" : [ "Pacientes" ],
+        "summary" : "Pedido mais recente do paciente para sair da conta",
+        "description" : "**Perfil exigido:** PACIENTE.\n\nPara a tela de espera do app. Depois de AUTORIZADO, o token do aparelho deixa de valer: esta e qualquer outra rota respondem 401 SESSAO_INVALIDA.",
+        "operationId" : "consultar",
+        "responses" : {
+          "200" : {
+            "description" : "Pedido mais recente, com o status valendo agora",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PedidoDesconexaoResponseDTO"
+                }
+              }
+            }
+          },
+          "404" : {
+            "description" : "O paciente nunca pediu para sair (RECURSO_NAO_ENCONTRADO)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErroResponse"
+                },
+                "examples" : {
+                  "RECURSO_NAO_ENCONTRADO" : {
+                    "summary" : "RECURSO_NAO_ENCONTRADO",
+                    "value" : {
+                      "timestamp" : "2026-10-08T14:30:00",
+                      "status" : 404,
+                      "erro" : "Not Found",
+                      "codigo" : "RECURSO_NAO_ENCONTRADO",
+                      "mensagem" : "Recurso não encontrado",
+                      "campos" : [ ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Sem token, ou token inválido ou expirado (NAO_AUTENTICADO); ou token de conta que não existe mais (SESSAO_INVALIDA)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErroResponse"
+                },
+                "examples" : {
+                  "NAO_AUTENTICADO" : {
+                    "summary" : "NAO_AUTENTICADO",
+                    "value" : {
+                      "timestamp" : "2026-10-08T14:30:00",
+                      "status" : 401,
+                      "erro" : "Unauthorized",
+                      "codigo" : "NAO_AUTENTICADO",
+                      "mensagem" : "Autenticação necessária. Envie um token válido no cabeçalho Authorization.",
+                      "campos" : [ ]
+                    }
+                  },
+                  "SESSAO_INVALIDA" : {
+                    "summary" : "SESSAO_INVALIDA",
+                    "value" : {
+                      "timestamp" : "2026-10-08T14:30:00",
+                      "status" : 401,
+                      "erro" : "Unauthorized",
+                      "codigo" : "SESSAO_INVALIDA",
+                      "mensagem" : "Sessão inválida. Entre na sua conta de novo.",
+                      "campos" : [ ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "Token válido de outro perfil (ACESSO_NEGADO)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErroResponse"
+                },
+                "examples" : {
+                  "ACESSO_NEGADO" : {
+                    "summary" : "ACESSO_NEGADO",
+                    "value" : {
+                      "timestamp" : "2026-10-08T14:30:00",
+                      "status" : 403,
+                      "erro" : "Forbidden",
+                      "codigo" : "ACESSO_NEGADO",
+                      "mensagem" : "Acesso negado para este perfil.",
+                      "campos" : [ ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Erro inesperado, sem detalhes na resposta (ERRO_INTERNO)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErroResponse"
+                },
+                "examples" : {
+                  "ERRO_INTERNO" : {
+                    "summary" : "ERRO_INTERNO",
+                    "value" : {
+                      "timestamp" : "2026-10-08T14:30:00",
+                      "status" : 500,
+                      "erro" : "Internal Server Error",
+                      "codigo" : "ERRO_INTERNO",
+                      "mensagem" : "Erro interno. Tente novamente mais tarde.",
+                      "campos" : [ ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      },
+      "post" : {
+        "tags" : [ "Pacientes" ],
+        "summary" : "O paciente pede para sair da conta neste aparelho",
+        "description" : "**Perfil exigido:** PACIENTE.\n\nO cuidador é avisado (push, quando ligado) e decide. Só um pedido pendente por vez: pedir de novo devolve o mesmo (200), sem duplicar nem avisar outra vez. Vale 24 horas (DESCONEXAO_VALIDADE_HORAS).",
+        "operationId" : "pedir",
+        "responses" : {
+          "201" : {
+            "description" : "Pedido criado; o cuidador foi avisado",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PedidoDesconexaoResponseDTO"
+                }
+              }
+            }
+          },
+          "200" : {
+            "description" : "Já havia um pedido pendente; ele é devolvido",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PedidoDesconexaoResponseDTO"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Sem token, ou token inválido ou expirado (NAO_AUTENTICADO); ou token de conta que não existe mais (SESSAO_INVALIDA)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErroResponse"
+                },
+                "examples" : {
+                  "NAO_AUTENTICADO" : {
+                    "summary" : "NAO_AUTENTICADO",
+                    "value" : {
+                      "timestamp" : "2026-10-08T14:30:00",
+                      "status" : 401,
+                      "erro" : "Unauthorized",
+                      "codigo" : "NAO_AUTENTICADO",
+                      "mensagem" : "Autenticação necessária. Envie um token válido no cabeçalho Authorization.",
+                      "campos" : [ ]
+                    }
+                  },
+                  "SESSAO_INVALIDA" : {
+                    "summary" : "SESSAO_INVALIDA",
+                    "value" : {
+                      "timestamp" : "2026-10-08T14:30:00",
+                      "status" : 401,
+                      "erro" : "Unauthorized",
+                      "codigo" : "SESSAO_INVALIDA",
+                      "mensagem" : "Sessão inválida. Entre na sua conta de novo.",
+                      "campos" : [ ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "Token válido de outro perfil (ACESSO_NEGADO)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErroResponse"
+                },
+                "examples" : {
+                  "ACESSO_NEGADO" : {
+                    "summary" : "ACESSO_NEGADO",
+                    "value" : {
+                      "timestamp" : "2026-10-08T14:30:00",
+                      "status" : 403,
+                      "erro" : "Forbidden",
+                      "codigo" : "ACESSO_NEGADO",
+                      "mensagem" : "Acesso negado para este perfil.",
+                      "campos" : [ ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Erro inesperado, sem detalhes na resposta (ERRO_INTERNO)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErroResponse"
+                },
+                "examples" : {
+                  "ERRO_INTERNO" : {
+                    "summary" : "ERRO_INTERNO",
+                    "value" : {
+                      "timestamp" : "2026-10-08T14:30:00",
+                      "status" : 500,
+                      "erro" : "Internal Server Error",
+                      "codigo" : "ERRO_INTERNO",
+                      "mensagem" : "Erro interno. Tente novamente mais tarde.",
+                      "campos" : [ ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      },
+      "delete" : {
+        "tags" : [ "Pacientes" ],
+        "summary" : "O paciente desiste do pedido para sair da conta",
+        "description" : "**Perfil exigido:** PACIENTE.\n\nIdempotente: sem pedido pendente, também responde 204.",
+        "operationId" : "cancelar",
+        "responses" : {
+          "204" : {
+            "description" : "Pedido cancelado (ou não havia pendente)"
           },
           "401" : {
             "description" : "Sem token, ou token inválido ou expirado (NAO_AUTENTICADO); ou token de conta que não existe mais (SESSAO_INVALIDA)",
@@ -3999,6 +4795,112 @@
         } ]
       }
     },
+    "/api/pacientes/pedidos-desconexao" : {
+      "get" : {
+        "tags" : [ "Pacientes" ],
+        "summary" : "Pedidos dos pacientes do cuidador para sair da conta, aguardando decisão",
+        "description" : "**Perfil exigido:** CUIDADOR.\n\nSó os pendentes dentro do prazo, dos mais antigos para os mais novos.",
+        "operationId" : "listarPendentes",
+        "responses" : {
+          "200" : {
+            "description" : "Pedidos pendentes (pode ser vazia)",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/PedidoDesconexaoPendenteResponseDTO"
+                  }
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Sem token, ou token inválido ou expirado (NAO_AUTENTICADO); ou token de conta que não existe mais (SESSAO_INVALIDA)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErroResponse"
+                },
+                "examples" : {
+                  "NAO_AUTENTICADO" : {
+                    "summary" : "NAO_AUTENTICADO",
+                    "value" : {
+                      "timestamp" : "2026-10-08T14:30:00",
+                      "status" : 401,
+                      "erro" : "Unauthorized",
+                      "codigo" : "NAO_AUTENTICADO",
+                      "mensagem" : "Autenticação necessária. Envie um token válido no cabeçalho Authorization.",
+                      "campos" : [ ]
+                    }
+                  },
+                  "SESSAO_INVALIDA" : {
+                    "summary" : "SESSAO_INVALIDA",
+                    "value" : {
+                      "timestamp" : "2026-10-08T14:30:00",
+                      "status" : 401,
+                      "erro" : "Unauthorized",
+                      "codigo" : "SESSAO_INVALIDA",
+                      "mensagem" : "Sessão inválida. Entre na sua conta de novo.",
+                      "campos" : [ ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "Token válido de outro perfil (ACESSO_NEGADO)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErroResponse"
+                },
+                "examples" : {
+                  "ACESSO_NEGADO" : {
+                    "summary" : "ACESSO_NEGADO",
+                    "value" : {
+                      "timestamp" : "2026-10-08T14:30:00",
+                      "status" : 403,
+                      "erro" : "Forbidden",
+                      "codigo" : "ACESSO_NEGADO",
+                      "mensagem" : "Acesso negado para este perfil.",
+                      "campos" : [ ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Erro inesperado, sem detalhes na resposta (ERRO_INTERNO)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErroResponse"
+                },
+                "examples" : {
+                  "ERRO_INTERNO" : {
+                    "summary" : "ERRO_INTERNO",
+                    "value" : {
+                      "timestamp" : "2026-10-08T14:30:00",
+                      "status" : 500,
+                      "erro" : "Internal Server Error",
+                      "codigo" : "ERRO_INTERNO",
+                      "mensagem" : "Erro interno. Tente novamente mais tarde.",
+                      "campos" : [ ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
     "/api/pacientes/me" : {
       "get" : {
         "tags" : [ "Pacientes" ],
@@ -4986,7 +5888,7 @@
           "codigo" : {
             "type" : "string",
             "description" : "Código estável do erro (UPPER_SNAKE_CASE), para o app decidir o que fazer sem depender da mensagem. Ver a tabela em CodigoErro.",
-            "enum" : [ "VALIDACAO", "CORPO_INVALIDO", "REQUISICAO_INVALIDA", "SENHA_FRACA", "CONSENTIMENTO_OBRIGATORIO", "TOKEN_DISPOSITIVO_INVALIDO", "CODIGO_INVALIDO", "DADOS_OBRIGATORIOS_MEDICAMENTO", "TRATAMENTO_INVALIDO", "CREDENCIAIS_INVALIDAS", "SESSAO_INVALIDA", "NAO_AUTENTICADO", "ACESSO_NEGADO", "RECURSO_NAO_ENCONTRADO", "METODO_NAO_PERMITIDO", "EMAIL_DUPLICADO", "PACIENTE_DUPLICADO", "TRATAMENTO_ATIVO", "DOSE_JA_REGISTRADA", "DOSE_MUITO_CEDO", "DOSE_ENCERRADA", "PERIODO_SEM_REGISTROS", "LIMITE_TENTATIVAS", "ERRO_INTERNO" ],
+            "enum" : [ "VALIDACAO", "CORPO_INVALIDO", "REQUISICAO_INVALIDA", "SENHA_FRACA", "CONSENTIMENTO_OBRIGATORIO", "TOKEN_DISPOSITIVO_INVALIDO", "CODIGO_INVALIDO", "DADOS_OBRIGATORIOS_MEDICAMENTO", "TRATAMENTO_INVALIDO", "CREDENCIAIS_INVALIDAS", "SESSAO_INVALIDA", "NAO_AUTENTICADO", "ACESSO_NEGADO", "RECURSO_NAO_ENCONTRADO", "METODO_NAO_PERMITIDO", "EMAIL_DUPLICADO", "PACIENTE_DUPLICADO", "TRATAMENTO_ATIVO", "DOSE_JA_REGISTRADA", "DOSE_MUITO_CEDO", "DOSE_ENCERRADA", "PEDIDO_ENCERRADO", "PERIODO_SEM_REGISTROS", "LIMITE_TENTATIVAS", "ERRO_INTERNO" ],
             "example" : "VALIDACAO"
           },
           "mensagem" : {
@@ -5048,6 +5950,48 @@
             "format" : "date-time",
             "description" : "Só no cadastro e na edição: data e hora da primeira dose a partir de agora (fuso da aplicação). Se a data não é hoje, os horários de hoje já passaram e o app avisa o usuário. null na listagem ou se não houver dose até o mesmo dia da semana seguinte.",
             "example" : "2026-10-09T08:00:00"
+          }
+        }
+      },
+      "PedidoDesconexaoResponseDTO" : {
+        "type" : "object",
+        "description" : "Pedido do paciente para sair da conta no aparelho",
+        "properties" : {
+          "id" : {
+            "type" : "integer",
+            "format" : "int64",
+            "description" : "ID do pedido",
+            "example" : 7
+          },
+          "pacienteId" : {
+            "type" : "integer",
+            "format" : "int64",
+            "description" : "ID do paciente",
+            "example" : 10
+          },
+          "status" : {
+            "type" : "string",
+            "description" : "PENDENTE (aguardando o cuidador), AUTORIZADO, RECUSADO, EXPIRADO (ninguém decidiu no prazo) ou CANCELADO (o paciente desistiu). Um pendente vencido já sai como EXPIRADO.",
+            "enum" : [ "PENDENTE", "AUTORIZADO", "RECUSADO", "EXPIRADO", "CANCELADO" ],
+            "example" : "PENDENTE"
+          },
+          "criadoEm" : {
+            "type" : "string",
+            "format" : "date-time",
+            "description" : "Quando o paciente pediu",
+            "example" : "2026-11-09T14:30:00"
+          },
+          "expiraEm" : {
+            "type" : "string",
+            "format" : "date-time",
+            "description" : "Prazo para o cuidador decidir",
+            "example" : "2026-11-10T14:30:00"
+          },
+          "decididoEm" : {
+            "type" : [ "string", "null" ],
+            "format" : "date-time",
+            "description" : "Quando deixou de estar pendente; nulo enquanto PENDENTE",
+            "example" : "2026-11-09T14:35:00"
           }
         }
       },
@@ -5683,6 +6627,41 @@
             "format" : "double",
             "description" : "(confirmadas no horário + confirmadas com atraso) / (total - pendentes) * 100, 1 casa; nulo sem dose encerrada no dia",
             "example" : 75.0
+          }
+        }
+      },
+      "PedidoDesconexaoPendenteResponseDTO" : {
+        "type" : "object",
+        "description" : "Pedido de um paciente do cuidador para sair da conta, aguardando a decisão",
+        "properties" : {
+          "id" : {
+            "type" : "integer",
+            "format" : "int64",
+            "description" : "ID do pedido",
+            "example" : 7
+          },
+          "pacienteId" : {
+            "type" : "integer",
+            "format" : "int64",
+            "description" : "ID do paciente",
+            "example" : 10
+          },
+          "pacienteNome" : {
+            "type" : "string",
+            "description" : "Nome do paciente",
+            "example" : "Maria Oliveira"
+          },
+          "criadoEm" : {
+            "type" : "string",
+            "format" : "date-time",
+            "description" : "Quando o paciente pediu",
+            "example" : "2026-11-09T14:30:00"
+          },
+          "expiraEm" : {
+            "type" : "string",
+            "format" : "date-time",
+            "description" : "Prazo para decidir; depois disso o pedido expira",
+            "example" : "2026-11-10T14:30:00"
           }
         }
       },

@@ -207,6 +207,7 @@ public class DocumentacaoPadraoCustomizer implements GlobalOperationCustomizer, 
         m.put("DOSE_JA_REGISTRADA", "Esta dose já foi registrada.");
         m.put("DOSE_MUITO_CEDO", "Ainda é cedo para confirmar esta dose.");
         m.put("DOSE_ENCERRADA", "O prazo para confirmar esta dose terminou.");
+        m.put("PEDIDO_ENCERRADO", "Este pedido já foi decidido, cancelado ou expirou.");
         m.put("PERIODO_SEM_REGISTROS", "Não há doses registradas neste período. Escolha outro período para exportar.");
         m.put("LIMITE_TENTATIVAS", "Muitas tentativas inválidas. Tente novamente mais tarde.");
         m.put("ERRO_INTERNO", "Erro interno. Tente novamente mais tarde.");

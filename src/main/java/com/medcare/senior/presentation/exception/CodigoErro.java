@@ -27,6 +27,7 @@ package com.medcare.senior.presentation.exception;
  *  DOSE_JA_REGISTRADA              409   confirmação de dose que já tem status registrado (RN-008), inclusive corrida
  *  DOSE_MUITO_CEDO                 409   confirmação antes da abertura da janela
  *  DOSE_ENCERRADA                  409   confirmação depois do encerramento da janela
+ *  PEDIDO_ENCERRADO                409   decisão de pedido de desconexão já decidido de outro jeito, cancelado ou vencido
  *  PERIODO_SEM_REGISTROS           422   exportação do histórico em PDF de período sem nenhuma dose (UC-012, 4a)
  *  LIMITE_TENTATIVAS               429   rate limiting do pareamento (header Retry-After)
  *  ERRO_INTERNO                    500   erro inesperado (sem detalhes na resposta)
@@ -54,6 +55,7 @@ public enum CodigoErro {
     DOSE_JA_REGISTRADA,
     DOSE_MUITO_CEDO,
     DOSE_ENCERRADA,
+    PEDIDO_ENCERRADO,
     PERIODO_SEM_REGISTROS,
     LIMITE_TENTATIVAS,
     ERRO_INTERNO

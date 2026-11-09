@@ -68,6 +68,9 @@ public class SecurityConfig {
                             .requestMatchers(HttpMethod.DELETE, "/api/cuidadores/me/fcm-token").hasRole(Role.CUIDADOR.name())
                             // Rotas do aparelho do paciente: ANTES de /api/pacientes/** (a primeira regra que casa vence)
                             .requestMatchers(HttpMethod.GET, "/api/pacientes/me", "/api/pacientes/me/doses").hasRole(Role.PACIENTE.name())
+                            .requestMatchers(HttpMethod.POST, "/api/pacientes/me/pedido-desconexao").hasRole(Role.PACIENTE.name())
+                            .requestMatchers(HttpMethod.GET, "/api/pacientes/me/pedido-desconexao").hasRole(Role.PACIENTE.name())
+                            .requestMatchers(HttpMethod.DELETE, "/api/pacientes/me/pedido-desconexao").hasRole(Role.PACIENTE.name())
                             .requestMatchers("/api/pacientes/**").hasRole(Role.CUIDADOR.name())
                             // Confirmação de dose: o paciente (a própria) ou o cuidador (dos pacientes dele); o dono fica no use case
                             .requestMatchers(HttpMethod.PUT, "/api/doses/*/confirmar").hasAnyRole(Role.PACIENTE.name(), Role.CUIDADOR.name())

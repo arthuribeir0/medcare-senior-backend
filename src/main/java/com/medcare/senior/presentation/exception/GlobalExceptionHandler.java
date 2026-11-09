@@ -7,6 +7,7 @@ import com.medcare.senior.domain.exception.ConsentimentoLgpdObrigatorioException
 import com.medcare.senior.domain.exception.CredenciaisInvalidasException;
 import com.medcare.senior.domain.exception.EmailJaCadastradoException;
 import com.medcare.senior.domain.exception.PacienteJaCadastradoException;
+import com.medcare.senior.domain.exception.PedidoDesconexaoEncerradoException;
 import com.medcare.senior.domain.exception.RecursoNaoEncontradoException;
 import com.medcare.senior.domain.exception.SenhaFracaException;
 import com.medcare.senior.domain.configuracao.ToleranciaInvalidaException;
@@ -113,6 +114,11 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErroResponse> handlePeriodoSemRegistros(PeriodoSemRegistrosException ex) {
         return construirResposta(HttpStatus.UNPROCESSABLE_CONTENT, CodigoErro.PERIODO_SEM_REGISTROS, ex.getMessage(),
                 List.of());
+    }
+
+    @ExceptionHandler(PedidoDesconexaoEncerradoException.class)
+    public ResponseEntity<ErroResponse> handlePedidoDesconexaoEncerrado(PedidoDesconexaoEncerradoException ex) {
+        return construirResposta(HttpStatus.CONFLICT, CodigoErro.PEDIDO_ENCERRADO, ex.getMessage(), List.of());
     }
 
     @ExceptionHandler(AcessoNegadoException.class)

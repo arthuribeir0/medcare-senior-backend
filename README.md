@@ -139,8 +139,23 @@ Cobertura atual: 99,6% das linhas e 97,6% dos ramos em domain+application; 93% n
 | `JOBS_ENABLED` | true | Varredura de doses, retentativa e reabastecimento |
 | `SWAGGER_ENABLED` | true fora do `prod`; false no `prod` | Swagger UI e `/v3/api-docs` |
 
+## Apresentação no PC
+
+Backend e banco em contêineres no próprio PC, publicados por um túnel ngrok com domínio estático (HTTPS), para os
+dois celulares da apresentação funcionarem em qualquer rede. Um comando sobe tudo:
+
+```powershell
+cd deploy\apresentacao
+.\iniciar-apresentacao.ps1        # PRONTO: https://<domínio> | backend OK | banco OK | push OK | túnel OK
+.\preparar-demonstracao.ps1       # dados de demonstração e códigos de pareamento
+```
+
+Roteiro, scripts e solução de problemas em [docs/apresentacao-local.md](docs/apresentacao-local.md).
+
 ## Mais documentação
 
+- [docs/apresentacao-local.md](docs/apresentacao-local.md): apresentação no PC com túnel HTTPS, dados de
+  demonstração e solução de problemas.
 - [docs/implantacao.md](docs/implantacao.md): Oracle Cloud, DuckDNS, `instalar-vm.sh`, backup e restauração e
   checklist de produção.
 - [docs/capacidade.md](docs/capacidade.md): capacidade estimada, pool de conexões, planos das consultas, cache e plano B.

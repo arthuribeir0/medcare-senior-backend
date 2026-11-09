@@ -1,0 +1,91 @@
+# Apresentação no PC: backend + PostgreSQL em contêineres, publicados na internet por um túnel ngrok com domínio
+# estático (HTTPS terminado no ngrok). Os dois celulares chamam https://<NGROK_DOMAIN> em qualquer rede, sem abrir
+# porta no roteador. Roteiro completo: docs/apresentacao-local.md.
+#
+# Use os scripts desta pasta (eles geram o .env.apresentacao e definem as variáveis abaixo):
+#   .\iniciar-apresentacao.ps1      .\status-apresentacao.ps1      .\parar-apresentacao.ps1
+#
+# Nada aqui conflita com o desenvolvimento: o medcare_postgres (5432) e o backend do IntelliJ (8080) continuam
+# intocados. Este projeto tem nome, volume, redes e porta próprios.
+#
+# Redes: "banco" é interna (sem saída nem entrada de fora): só o backend enxerga o PostgreSQL, que não publica porta.
+# "borda" liga o ngrok ao backend e dá saída para a internet (túnel e Firebase Cloud Messaging).
+name: medcare-apresentacao
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    env_file: .env.apresentacao
+    volumes:
+      - medcare_apresentacao_pgdata:/var/lib/postgresql/data
+    networks:
+      - banco
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    mem_limit: 256m
+    # Sem "ports": o banco não fica acessível nem pelo host
+
+  backend:
+    # Compilado do código local (Dockerfile do repositório: JDK 17 no build, JRE 17 e usuário sem privilégios)
+    build:
+      context: ../..
+      labels:
+        medcare.commit: ${MEDCARE_COMMIT:-desconhecido}
+    image: medcare-senior-backend:apresentacao
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    # Banco, JWT e as regras opcionais (gerado por iniciar-apresentacao.ps1, fora do git)
+    env_file: .env.apresentacao
+    environment:
+      # Perfil prod: recusa segredos fracos, Swagger desligado e IP do cliente pelo X-Forwarded-For (só de proxy em
+      # rede interna, como o contêiner do ngrok; ver docs/apresentacao-local.md)
+      SPRING_PROFILES_ACTIVE: prod
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      TZ: America/Sao_Paulo
+      FCM_ENABLED: ${FCM_ENABLED:-false}
+      # Caminho DENTRO do contêiner; o arquivo vem do volume somente leitura abaixo
+      FIREBASE_CREDENTIALS_PATH: /run/secrets/firebase-adminsdk.json
+      # PC com pouca memória: heap em 60% do limite do contêiner
+      JAVA_TOOL_OPTIONS: -XX:MaxRAMPercentage=60 -XX:+ExitOnOutOfMemoryError
+    volumes:
+      # Credencial do Firebase Admin, fora do repositório (C:\Users\arthu\segredos). Sem o arquivo, o script aponta
+      # para credencial-ausente.json e desliga o push.
+      - ${FIREBASE_ADMIN_JSON:?rode iniciar-apresentacao.ps1}:/run/secrets/firebase-adminsdk.json:ro
+    networks:
+      - banco
+      - borda
+    # Só para checagens no próprio PC (o IntelliJ usa a 8080 e o Metro a 8081)
+    ports:
+      - "127.0.0.1:8085:8080"
+    mem_limit: 768m
+
+  ngrok:
+    image: ngrok/ngrok:3.39.13-alpine
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    # NGROK_AUTHTOKEN e NGROK_DOMAIN, lidos pelo contêiner; o arquivo fica fora do repositório
+    env_file: ${NGROK_ENV_FILE:?rode iniciar-apresentacao.ps1}
+    # O domínio vem do env_file na hora de subir (o compose não precisa conhecê-lo). O painel de inspeção do agente
+    # (porta 4040) fica dentro do contêiner, sem porta publicada.
+    entrypoint: ["/bin/sh", "-c", "exec ngrok http http://backend:8080 --url \"https://$${NGROK_DOMAIN}\" --log stdout --log-format logfmt"]
+    networks:
+      - borda
+    mem_limit: 64m
+
+volumes:
+  medcare_apresentacao_pgdata:
+    name: medcare_apresentacao_pgdata
+
+networks:
+  banco:
+    internal: true
+  borda:

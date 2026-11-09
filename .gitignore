@@ -59,3 +59,8 @@ backups/
 ### Análise de qualidade (SonarQube) ###
 .scannerwork/
 .sonar/
+
+### Apresentação no PC (deploy/apresentacao; o exemplo .env.apresentacao.example é versionado) ###
+deploy/apresentacao/.env.apresentacao
+CREDENCIAIS_DEMO*
+entrega/

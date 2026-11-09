@@ -62,10 +62,12 @@ $disco = Get-PSDrive -Name ($env:SystemDrive.TrimEnd(':'))
 $livreGb = [Math]::Round($disco.Free / 1GB, 1)
 Linha 'disco livre' $(if ($livreGb -ge 5) { 'OK' } else { 'AVISO' }) "$livreGb GB em $($env:SystemDrive)"
 
-$imagem = docker image inspect medcare-senior-backend:apresentacao --format '{{index .Config.Labels "medcare.commit"}}|{{.Created}}' 2>$null
+# Template sem aspas: o PowerShell 5.1 as remove ao chamar programas externos
+$ErrorActionPreference = 'Continue'
+$imagem = docker image inspect medcare-senior-backend:apresentacao --format '{{json .}}' 2>$null | ConvertFrom-Json
 if ($imagem) {
-    $partes = $imagem -split '\|'
-    Linha 'imagem do backend' 'INFO' "commit $($partes[0]), compilada em $(([DateTime]::Parse($partes[1])).ToLocalTime().ToString('dd/MM HH:mm'))"
+    $compilada = ([DateTime]::Parse($imagem.Created)).ToLocalTime().ToString('dd/MM HH:mm')
+    Linha 'imagem do backend' 'INFO' "commit $($imagem.Config.Labels.'medcare.commit'), compilada em $compilada"
 } else { Linha 'imagem do backend' 'FALHA' 'não compilada (rode iniciar-apresentacao.ps1)' }
 
 $linhas | Format-Table -AutoSize -Wrap

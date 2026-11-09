@@ -71,7 +71,7 @@ o token do aparelho e o conteúdo do aviso só para entregá-lo. Os servidores d
 |---|---|
 | Dado pessoal | O **token FCM** do aparelho do cuidador (`cuidador.fcm_token`): identifica um aparelho de uma pessoa e permite enviar mensagens a ele |
 | Finalidade única | Avisar o cuidador de que uma dose não foi confirmada até o fim da tolerância (RN-009) |
-| O que vai ao Google | Título "Dose não confirmada"; texto "{nome do paciente} ainda não confirmou a dose das HH:mm" (com a data quando não é de hoje); dados para o app abrir a dose: `tipo`, `doseId`, `pacienteId` e `data` |
+| O que vai ao Google | Título "Dose não confirmada"; texto "{nome do paciente} ainda não confirmou a dose das HH:mm" (com a data quando não é de hoje); dados para o app abrir a dose: `tipo`, `doseId`, `pacienteId` e `data`. No pedido do paciente para sair da conta: título "Pedido para sair do app", texto "{nome do paciente} pediu para sair da conta no celular. Toque para autorizar ou recusar." e dados `tipo`, `pacienteId` e `pedidoId` |
 | O que **não** vai | Nome do remédio, dosagem, cor, tipo ou qualquer outro dado de saúde; e-mail, telefone e data de nascimento |
 | Retenção do token | Enquanto a conta existir e o app estiver instalado. É trocado quando o app recebe um token novo, apagado na saída da conta no app (`DELETE /api/cuidadores/me/fcm-token`), apagado quando o FCM o recusa como inválido e apagado na exclusão da conta |
 | Retenção dos avisos | O evento de cada aviso (`evento_notificacao`: status, tentativas, motivo da falha) fica até a exclusão da conta, quando é apagado |
@@ -97,9 +97,10 @@ cuidador do token, que não existe mais:
 - rotas de pacientes, medicamentos e tratamentos → 404 (o recurso não é encontrado para aquele cuidador);
 - os IDs são `BIGSERIAL` e nunca são reutilizados, então o token antigo nunca passa a apontar para outra conta.
 
-Tokens de **pacientes** pareados com essa conta também continuam com assinatura válida até expirar (180 dias), mas as
-rotas do paciente (dados do próprio paciente, doses do dia, confirmação e mensagens) conferem se o paciente ainda existe e
-respondem 401 `SESSAO_INVALIDA`; o app então volta à tela de pareamento. Tokens de cuidador de conta excluída também
+Tokens de **pacientes** pareados com essa conta também continuam com assinatura válida até expirar (180 dias), mas
+toda requisição do paciente confere se ele ainda existe e responde 401 `SESSAO_INVALIDA`; o app então volta à tela de
+pareamento. O mesmo vale para o aparelho do paciente desconectado pelo cuidador (pedido de saída autorizado ou
+desconexão direta): a coluna `paciente.sessao_valida_desde` invalida os tokens emitidos antes dela. Tokens de cuidador de conta excluída também
 recebem 401 `SESSAO_INVALIDA` em qualquer rota.
 
 ## Consentimento

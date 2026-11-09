@@ -111,6 +111,7 @@ Cobertura atual: 99,6% das linhas e 97,6% dos ramos em domain+application; 93% n
 | Histórico: início não posterior ao fim; período vazio é página vazia | `FiltroHistorico` | `FiltroHistoricoTest`, `HistoricoApiTest` |
 | PDF de até 12 meses, com taxa de adesão; período sem doses = 422 | `GerarRelatorioPdfUseCase`, `TotaisDoDia` | `GerarRelatorioPdfUseCaseTest`, `TotaisDoDiaTest`, `RelatorioPdfApiTest` |
 | Exclusão de conta apaga os dados pessoais; o histórico fica anônimo | `ExcluirContaUseCase` | `ExcluirContaUseCaseTest`, `PersistenciaPostgresTest` |
+| Paciente só sai da conta com autorização do cuidador vinculado; um pedido pendente por vez, válido por 24 h; decisão única mesmo simultânea; autorizar desconecta o aparelho e mantém o vínculo | `PedirDesconexaoUseCase`, `DecidirPedidoDesconexaoUseCase`, `PedidoDesconexao`, `SessaoDoPacienteInterceptor` | `PedidoDesconexaoTest`, `PedirDesconexaoUseCaseTest`, `DecidirPedidoDesconexaoUseCaseTest`, `DesconexaoApiTest`, `DesconexaoConcorrentePostgresTest` |
 
 ## Segredos
 

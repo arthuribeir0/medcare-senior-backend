@@ -44,10 +44,36 @@ O app decide pelo `codigo`, que nunca muda de nome; a `mensagem` é para pessoas
 | 401 | `NAO_AUTENTICADO` (sem token, token inválido ou expirado), `SESSAO_INVALIDA` (conta do token não existe mais), `CREDENCIAIS_INVALIDAS` (login) |
 | 403 | `ACESSO_NEGADO` (token de outro perfil, ou paciente tentando outra conversa) |
 | 404 | `RECURSO_NAO_ENCONTRADO` (inexistente, removido ou de outro dono, sem distinção) |
-| 409 | `EMAIL_DUPLICADO`, `PACIENTE_DUPLICADO`, `TRATAMENTO_ATIVO`, `DOSE_JA_REGISTRADA`, `DOSE_MUITO_CEDO`, `DOSE_ENCERRADA` |
+| 409 | `EMAIL_DUPLICADO`, `PACIENTE_DUPLICADO`, `TRATAMENTO_ATIVO`, `DOSE_JA_REGISTRADA`, `DOSE_MUITO_CEDO`, `DOSE_ENCERRADA`, `PEDIDO_ENCERRADO` |
 | 422 | `PERIODO_SEM_REGISTROS` (PDF de período sem doses) |
 | 429 | `LIMITE_TENTATIVAS`, com o cabeçalho `Retry-After` |
 | 500 | `ERRO_INTERNO`, sem detalhes na resposta |
+
+## Saída da conta do paciente com autorização do cuidador
+
+O paciente não sai da conta sozinho: ele pede, o cuidador vinculado autoriza ou recusa, e só a autorização desconecta
+o aparelho.
+
+| Quem | Rota | Resposta |
+|---|---|---|
+| Paciente | `POST /api/pacientes/me/pedido-desconexao` | 201 com o pedido novo; 200 com o pendente que já existia (sem duplicar) |
+| Paciente | `GET /api/pacientes/me/pedido-desconexao` | 200 com o pedido mais recente; 404 se nunca pediu |
+| Paciente | `DELETE /api/pacientes/me/pedido-desconexao` | 204 (idempotente) |
+| Cuidador | `GET /api/pacientes/pedidos-desconexao` | 200 com os pendentes dos pacientes dele (`id`, `pacienteId`, `pacienteNome`, `criadoEm`, `expiraEm`) |
+| Cuidador | `PUT /api/pacientes/{id}/pedidos-desconexao/{pedidoId}/autorizar` | 200 `AUTORIZADO`; 409 `PEDIDO_ENCERRADO` se já recusado, cancelado ou vencido |
+| Cuidador | `PUT /api/pacientes/{id}/pedidos-desconexao/{pedidoId}/recusar` | 200 `RECUSADO`; 409 `PEDIDO_ENCERRADO` se já autorizado, cancelado ou vencido |
+| Cuidador | `POST /api/pacientes/{id}/desconectar-aparelho` | 204; desconecta sem pedido (um pendente fica `AUTORIZADO`) |
+
+O pedido (`id`, `pacienteId`, `status`, `criadoEm`, `expiraEm`, `decididoEm`) tem `status` `PENDENTE`, `AUTORIZADO`,
+`RECUSADO`, `EXPIRADO` ou `CANCELADO`. Vale 24 horas (`DESCONEXAO_VALIDADE_HORAS`, de 1 a 72); um pendente vencido já
+sai como `EXPIRADO`, e um job marca isso no banco a cada 5 minutos. Repetir a mesma decisão devolve o pedido como está.
+Paciente ou pedido de outro cuidador: 404, como nas demais rotas.
+
+Depois da autorização (ou da desconexão pelo cuidador), **qualquer** rota chamada com o token antigo do aparelho
+responde 401 `SESSAO_INVALIDA`: o app trata isso como saída concluída. Os códigos de vínculo não usados deixam de valer;
+o vínculo, os remédios e o histórico continuam, e o paciente volta com um código novo. Ao criar o pedido, o cuidador
+recebe um push com `tipo` `PEDIDO_DESCONEXAO`, `pacienteId` e `pedidoId` (uma tentativa só; uma falha no push não
+desfaz o pedido, que aparece no Painel de qualquer forma).
 
 ## Horário do tratamento: antecedência mínima e primeira dose
 

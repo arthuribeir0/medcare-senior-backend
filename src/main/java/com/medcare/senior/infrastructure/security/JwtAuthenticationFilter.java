@@ -21,6 +21,9 @@ import java.util.List;
  */
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
+    /** Atributo da requisição com o "emitido em" do token autenticado (Instant), lido pelo SessaoDoPacienteInterceptor. */
+    public static final String ATRIBUTO_TOKEN_EMITIDO_EM = "medcare.tokenEmitidoEm";
+
     private static final String BEARER_PREFIX = "Bearer ";
 
     private final JwtTokenProvider jwtTokenProvider;
@@ -37,17 +40,18 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         if (header != null && header.startsWith(BEARER_PREFIX)) {
             String token = header.substring(BEARER_PREFIX.length()).trim();
             if (jwtTokenProvider.validateToken(token)) {
-                autenticar(token);
+                autenticar(token, request);
             }
         }
 
         filterChain.doFilter(request, response);
     }
 
-    private void autenticar(String token) {
+    private void autenticar(String token, HttpServletRequest request) {
         try {
             Long userId = jwtTokenProvider.getUserId(token);
             Role role = jwtTokenProvider.getRole(token);
+            request.setAttribute(ATRIBUTO_TOKEN_EMITIDO_EM, jwtTokenProvider.getEmitidoEm(token));
 
             // O principal carrega ID + papel, recuperado nos controllers via @AuthenticationPrincipal AuthenticatedUser
             AuthenticatedUser principal = new AuthenticatedUser(userId, role);

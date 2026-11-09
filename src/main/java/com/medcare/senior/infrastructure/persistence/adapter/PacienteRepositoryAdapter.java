@@ -10,7 +10,9 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 
@@ -51,6 +53,17 @@ public class PacienteRepositoryAdapter implements PacienteRepositoryPort {
         return pacienteRepository.findAllByCuidadorIdOrderByNome(cuidadorId).stream()
                 .map(pacienteMapper::toDomain)
                 .toList();
+    }
+
+    @Override
+    @Transactional
+    public void invalidarSessoes(Long pacienteId, Instant desde) {
+        pacienteRepository.invalidarSessoes(pacienteId, desde.atOffset(ZoneOffset.UTC));
+    }
+
+    @Override
+    public boolean sessaoValida(Long pacienteId, Instant tokenEmitidoEm) {
+        return pacienteRepository.contarComSessaoValida(pacienteId, tokenEmitidoEm.atOffset(ZoneOffset.UTC)) > 0;
     }
 
     @Override

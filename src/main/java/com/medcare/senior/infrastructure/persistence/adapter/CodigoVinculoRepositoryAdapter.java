@@ -42,6 +42,12 @@ public class CodigoVinculoRepositoryAdapter implements CodigoVinculoRepositoryPo
 
     @Override
     @Transactional
+    public void inutilizarCodigosDoPaciente(Long pacienteId) {
+        codigoVinculoRepository.inutilizarCodigosDoPaciente(pacienteId);
+    }
+
+    @Override
+    @Transactional
     public void deleteAllByCuidadorId(Long cuidadorId) {
         codigoVinculoRepository.deleteAllByCuidadorId(cuidadorId);
     }

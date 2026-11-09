@@ -52,8 +52,16 @@ class MigracoesDoZeroPostgresTest {
                 .migrate();
 
         assertThat(resultado.success).isTrue();
-        assertThat(resultado.targetSchemaVersion).isEqualTo("16");
-        assertThat(resultado.migrationsExecuted).isEqualTo(16);
+        assertThat(resultado.targetSchemaVersion).isEqualTo("17");
+        assertThat(resultado.migrationsExecuted).isEqualTo(17);
+
+        List<String> indicesDoPedido = jdbc.queryForList("SELECT indexname FROM pg_indexes WHERE schemaname = ? "
+                + "AND tablename = 'pedido_desconexao'", String.class, schema);
+        assertThat(indicesDoPedido).contains("uk_pedido_desconexao_pendente", "idx_pedido_desconexao_paciente",
+                "idx_pedido_desconexao_pendente_expira");
+        assertThat(jdbc.queryForObject("SELECT data_type FROM information_schema.columns WHERE table_schema = ? "
+                + "AND table_name = 'paciente' AND column_name = 'sessao_valida_desde'", String.class, schema))
+                .isEqualTo("timestamp with time zone");
 
         List<String> colunas = jdbc.queryForList("SELECT column_name FROM information_schema.columns "
                 + "WHERE table_schema = ? AND table_name = 'mensagem' ORDER BY ordinal_position", String.class, schema);

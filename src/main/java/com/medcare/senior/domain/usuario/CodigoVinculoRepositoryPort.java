@@ -28,6 +28,11 @@ public interface CodigoVinculoRepositoryPort {
     boolean marcarComoUsado(Long id, LocalDateTime agora);
 
     /**
+     * Inutiliza os códigos ainda não usados do paciente (desconexão do aparelho): para voltar, só um código novo.
+     */
+    void inutilizarCodigosDoPaciente(Long pacienteId);
+
+    /**
      * Remove todos os códigos de vínculo gerados pelo cuidador (exclusão de conta, LGPD).
      */
     void deleteAllByCuidadorId(Long cuidadorId);

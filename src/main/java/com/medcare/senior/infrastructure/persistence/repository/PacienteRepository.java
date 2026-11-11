@@ -36,4 +36,8 @@ public interface PacienteRepository extends JpaRepository<PacienteEntity, Long> 
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("DELETE FROM PacienteEntity i WHERE i.cuidador.id = :cuidadorId")
     void deleteAllByCuidadorId(@Param("cuidadorId") Long cuidadorId);
+
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("DELETE FROM PacienteEntity i WHERE i.id = :id AND i.cuidador.id = :cuidadorId")
+    int deleteByIdAndCuidadorId(@Param("id") Long id, @Param("cuidadorId") Long cuidadorId);
 }

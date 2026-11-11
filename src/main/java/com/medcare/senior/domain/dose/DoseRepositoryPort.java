@@ -124,4 +124,10 @@ public interface DoseRepositoryPort {
      * As registradas ficam e são anonimizadas pelo banco (ON DELETE SET NULL) quando os tratamentos são apagados.
      */
     void deletePendentesByCuidadorId(Long cuidadorId);
+
+    /**
+     * Apaga TODAS as doses PENDENTES (passadas e futuras) dos tratamentos do paciente (desvinculação do paciente).
+     * As registradas ficam e são anonimizadas pelo banco (ON DELETE SET NULL) quando os tratamentos são apagados.
+     */
+    void deletePendentesByPacienteId(Long pacienteId);
 }

@@ -56,4 +56,8 @@ public interface MensagemRepository extends JpaRepository<MensagemEntity, Long> 
     @Query("DELETE FROM MensagemEntity m WHERE m.pacienteId IN "
             + "(SELECT i.id FROM PacienteEntity i WHERE i.cuidador.id = :cuidadorId)")
     int deleteAllByCuidadorId(@Param("cuidadorId") Long cuidadorId);
+
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("DELETE FROM MensagemEntity m WHERE m.pacienteId = :pacienteId")
+    int deleteAllByPacienteId(@Param("pacienteId") Long pacienteId);
 }

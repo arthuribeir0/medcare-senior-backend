@@ -86,6 +86,11 @@ public class MensagemRepositoryAdapter implements MensagemRepositoryPort {
         repository.deleteAllByCuidadorId(cuidadorId);
     }
 
+    @Override
+    public void deleteAllByPacienteId(Long pacienteId) {
+        repository.deleteAllByPacienteId(pacienteId);
+    }
+
     private static Mensagem toDomain(MensagemEntity entity) {
         return new Mensagem(entity.getId(), entity.getPacienteId(), entity.getRemetente(), entity.getConteudo(),
                 entity.getCriadaEm(), entity.getLidaEm());

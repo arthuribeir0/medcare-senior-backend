@@ -52,4 +52,9 @@ public class MedicamentoRepositoryAdapter implements MedicamentoRepositoryPort {
     public void deleteAllByCuidadorId(Long cuidadorId) {
         medicamentoRepository.deleteAllByCuidadorId(cuidadorId);
     }
+
+    @Override
+    public void deleteAllByPacienteId(Long pacienteId) {
+        medicamentoRepository.deleteAllByPacienteId(pacienteId);
+    }
 }

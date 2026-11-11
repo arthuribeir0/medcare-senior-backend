@@ -51,4 +51,9 @@ public class CodigoVinculoRepositoryAdapter implements CodigoVinculoRepositoryPo
     public void deleteAllByCuidadorId(Long cuidadorId) {
         codigoVinculoRepository.deleteAllByCuidadorId(cuidadorId);
     }
+
+    @Override
+    public void deleteAllByPacienteId(Long pacienteId) {
+        codigoVinculoRepository.deleteAllByPacienteId(pacienteId);
+    }
 }

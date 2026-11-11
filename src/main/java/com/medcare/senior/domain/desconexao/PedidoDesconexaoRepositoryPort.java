@@ -49,4 +49,7 @@ public interface PedidoDesconexaoRepositoryPort {
 
     /** Marca como EXPIRADO todos os PENDENTES que passaram do prazo (job). */
     int expirarTodosVencidos(LocalDateTime agora);
+
+    /** Apaga todos os pedidos do paciente, de qualquer status (desvinculação do paciente). */
+    void deleteAllByPacienteId(Long pacienteId);
 }

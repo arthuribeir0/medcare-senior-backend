@@ -46,4 +46,9 @@ public interface MensagemRepositoryPort {
      * Apaga as mensagens de todos os pacientes do cuidador (exclusão de conta, LGPD).
      */
     void deleteAllByCuidadorId(Long cuidadorId);
+
+    /**
+     * Apaga a conversa do paciente (desvinculação do paciente).
+     */
+    void deleteAllByPacienteId(Long pacienteId);
 }

@@ -71,4 +71,9 @@ public class PacienteRepositoryAdapter implements PacienteRepositoryPort {
     public void deleteAllByCuidadorId(Long cuidadorId) {
         pacienteRepository.deleteAllByCuidadorId(cuidadorId);
     }
+
+    @Override
+    public boolean deleteByIdAndCuidadorId(Long id, Long cuidadorId) {
+        return pacienteRepository.deleteByIdAndCuidadorId(id, cuidadorId) > 0;
+    }
 }

@@ -36,4 +36,9 @@ public interface CodigoVinculoRepositoryPort {
      * Remove todos os códigos de vínculo gerados pelo cuidador (exclusão de conta, LGPD).
      */
     void deleteAllByCuidadorId(Long cuidadorId);
+
+    /**
+     * Remove todos os códigos de vínculo do paciente, usados ou não (desvinculação do paciente).
+     */
+    void deleteAllByPacienteId(Long pacienteId);
 }

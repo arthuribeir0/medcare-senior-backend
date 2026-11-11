@@ -45,4 +45,11 @@ public interface PacienteRepositoryPort {
      * Remove todos os pacientes do cuidador (exclusão de conta, LGPD).
      */
     void deleteAllByCuidadorId(Long cuidadorId);
+
+    /**
+     * Remove o paciente, se for do cuidador (desvinculação do paciente).
+     *
+     * @return true se removeu
+     */
+    boolean deleteByIdAndCuidadorId(Long id, Long cuidadorId);
 }

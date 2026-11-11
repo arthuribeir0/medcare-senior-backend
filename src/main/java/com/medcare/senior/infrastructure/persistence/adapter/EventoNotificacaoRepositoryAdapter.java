@@ -69,4 +69,9 @@ public class EventoNotificacaoRepositoryAdapter implements EventoNotificacaoRepo
     public void deleteByCuidadorId(Long cuidadorId) {
         repository.deleteByCuidadorId(cuidadorId);
     }
+
+    @Override
+    public void deleteByPacienteId(Long pacienteId) {
+        repository.deleteByPacienteId(pacienteId);
+    }
 }

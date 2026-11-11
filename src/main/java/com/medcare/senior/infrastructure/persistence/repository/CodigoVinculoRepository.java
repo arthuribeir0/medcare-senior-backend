@@ -36,4 +36,8 @@ public interface CodigoVinculoRepository extends JpaRepository<CodigoVinculoEnti
     @Query("DELETE FROM CodigoVinculoEntity c WHERE c.cuidador.id = :cuidadorId "
             + "OR c.paciente.id IN (SELECT i.id FROM PacienteEntity i WHERE i.cuidador.id = :cuidadorId)")
     void deleteAllByCuidadorId(@Param("cuidadorId") Long cuidadorId);
+
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("DELETE FROM CodigoVinculoEntity c WHERE c.paciente.id = :pacienteId")
+    int deleteAllByPacienteId(@Param("pacienteId") Long pacienteId);
 }

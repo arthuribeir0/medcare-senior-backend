@@ -167,6 +167,11 @@ class RetentativaConcorrentePostgresTest {
                 public void deleteByCuidadorId(Long cuidadorId) {
                     real.deleteByCuidadorId(cuidadorId);
                 }
+
+                @Override
+                public void deleteByPacienteId(Long pacienteId) {
+                    real.deleteByPacienteId(pacienteId);
+                }
             };
         }
     }

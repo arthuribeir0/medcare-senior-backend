@@ -191,4 +191,9 @@ public class DoseRepositoryAdapter implements DoseRepositoryPort {
     public void deletePendentesByCuidadorId(Long cuidadorId) {
         doseRepository.deleteByCuidadorIdAndStatus(cuidadorId, StatusDose.PENDENTE);
     }
+
+    @Override
+    public void deletePendentesByPacienteId(Long pacienteId) {
+        doseRepository.deleteByPacienteIdAndStatus(pacienteId, StatusDose.PENDENTE);
+    }
 }

@@ -66,4 +66,9 @@ public interface EventoNotificacaoRepository extends JpaRepository<EventoNotific
     @Query("DELETE FROM EventoNotificacaoEntity e WHERE e.doseId IN (SELECT d.id FROM DoseEntity d "
             + "WHERE d.tratamento.medicamento.paciente.cuidador.id = :cuidadorId)")
     int deleteByCuidadorId(@Param("cuidadorId") Long cuidadorId);
+
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("DELETE FROM EventoNotificacaoEntity e WHERE e.doseId IN (SELECT d.id FROM DoseEntity d "
+            + "WHERE d.tratamento.medicamento.paciente.id = :pacienteId)")
+    int deleteByPacienteId(@Param("pacienteId") Long pacienteId);
 }

@@ -199,4 +199,9 @@ public interface DoseRepository extends JpaRepository<DoseEntity, Long> {
     @Query("DELETE FROM DoseEntity d WHERE d.status = :status AND d.tratamento.id IN ("
             + "SELECT t.id FROM TratamentoEntity t WHERE t.medicamento.paciente.cuidador.id = :cuidadorId)")
     int deleteByCuidadorIdAndStatus(@Param("cuidadorId") Long cuidadorId, @Param("status") StatusDose status);
+
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("DELETE FROM DoseEntity d WHERE d.status = :status AND d.tratamento.id IN ("
+            + "SELECT t.id FROM TratamentoEntity t WHERE t.medicamento.paciente.id = :pacienteId)")
+    int deleteByPacienteIdAndStatus(@Param("pacienteId") Long pacienteId, @Param("status") StatusDose status);
 }

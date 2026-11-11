@@ -90,6 +90,11 @@ public class PedidoDesconexaoRepositoryAdapter implements PedidoDesconexaoReposi
         return repository.expirarTodosVencidos(agora);
     }
 
+    @Override
+    public void deleteAllByPacienteId(Long pacienteId) {
+        repository.deleteAllByPacienteId(pacienteId);
+    }
+
     private PedidoDesconexao toDomain(PedidoDesconexaoEntity e) {
         return new PedidoDesconexao(e.getId(), e.getPacienteId(), e.getStatus(), e.getCriadoEm(), e.getExpiraEm(),
                 e.getDecididoEm(), e.getDecididoPorCuidadorId());

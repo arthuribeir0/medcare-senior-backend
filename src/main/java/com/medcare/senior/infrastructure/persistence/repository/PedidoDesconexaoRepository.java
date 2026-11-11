@@ -58,4 +58,8 @@ public interface PedidoDesconexaoRepository extends JpaRepository<PedidoDesconex
             + "com.medcare.senior.domain.desconexao.StatusPedidoDesconexao.EXPIRADO, p.decididoEm = p.expiraEm "
             + "WHERE p.status = " + PENDENTE + " AND p.expiraEm <= :agora")
     int expirarTodosVencidos(@Param("agora") LocalDateTime agora);
+
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("DELETE FROM PedidoDesconexaoEntity p WHERE p.pacienteId = :pacienteId")
+    int deleteAllByPacienteId(@Param("pacienteId") Long pacienteId);
 }

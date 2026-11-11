@@ -55,4 +55,10 @@ public interface EventoNotificacaoRepositoryPort {
      * Precisa rodar antes de os tratamentos serem apagados, enquanto as doses ainda apontam para eles.
      */
     void deleteByCuidadorId(Long cuidadorId);
+
+    /**
+     * Apaga os eventos de todas as doses (de qualquer status) dos tratamentos do paciente (desvinculação do paciente).
+     * Precisa rodar antes de os tratamentos serem apagados, enquanto as doses ainda apontam para eles.
+     */
+    void deleteByPacienteId(Long pacienteId);
 }

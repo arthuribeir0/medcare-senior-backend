@@ -56,4 +56,9 @@ public class TratamentoRepositoryAdapter implements TratamentoRepositoryPort {
     public void deleteAllByCuidadorId(Long cuidadorId) {
         tratamentoRepository.deleteAllByCuidadorId(cuidadorId);
     }
+
+    @Override
+    public void deleteAllByPacienteId(Long pacienteId) {
+        tratamentoRepository.deleteAllByPacienteId(pacienteId);
+    }
 }

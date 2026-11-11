@@ -4,6 +4,7 @@ import com.medcare.senior.infrastructure.docs.PerfilExigido;
 import com.medcare.senior.infrastructure.docs.PerfilExigido.Perfil;
 import com.medcare.senior.application.usecase.BuscarPacienteUseCase;
 import com.medcare.senior.application.usecase.CadastrarPacienteUseCase;
+import com.medcare.senior.application.usecase.DesvincularPacienteUseCase;
 import com.medcare.senior.application.usecase.GerarCodigoVinculoUseCase;
 import com.medcare.senior.application.usecase.ListarDosesDoDiaUseCase;
 import com.medcare.senior.application.usecase.ListarPacientesUseCase;
@@ -27,6 +28,7 @@ import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -53,6 +55,7 @@ public class PacienteController {
     private final ListarPacientesUseCase listarPacientesUseCase;
     private final BuscarPacienteUseCase buscarPacienteUseCase;
     private final ListarDosesDoDiaUseCase listarDosesDoDiaUseCase;
+    private final DesvincularPacienteUseCase desvincularPacienteUseCase;
 
     @PostMapping
     @PerfilExigido(Perfil.CUIDADOR)
@@ -95,6 +98,24 @@ public class PacienteController {
                                                    @Parameter(hidden = true)
                                                    @AuthenticationPrincipal AuthenticatedUser usuario) {
         return ResponseEntity.ok(PacienteResponseDTO.from(buscarPacienteUseCase.executar(id, usuario.cuidadorId())));
+    }
+
+    @DeleteMapping("/{id}")
+    @PerfilExigido(Perfil.CUIDADOR)
+    @Operation(summary = "Desvincula (remove) um paciente do cuidador autenticado",
+            description = "Mesma política da exclusão de conta, para um paciente só, em uma transação: apaga o paciente, "
+                    + "remédios, tratamentos, doses pendentes, avisos, códigos de vínculo, mensagens e pedidos de "
+                    + "desconexão. Doses já registradas ficam anonimizadas (sem paciente). O aparelho do paciente "
+                    + "passa a receber 401 SESSAO_INVALIDA. O cuidador e os outros pacientes não mudam. Não pode ser "
+                    + "desfeito; repetir responde 404.")
+    @ApiResponse(responseCode = "204", description = "Paciente desvinculado")
+    @ApiResponse(responseCode = "404", description = "Paciente inexistente, já desvinculado ou de outro cuidador",
+            content = @Content(schema = @Schema(implementation = ErroResponse.class)))
+    public ResponseEntity<Void> desvincular(@Parameter(description = "ID do paciente", example = "1") @PathVariable Long id,
+                                            @Parameter(hidden = true)
+                                            @AuthenticationPrincipal AuthenticatedUser usuario) {
+        desvincularPacienteUseCase.executar(id, usuario.cuidadorId());
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/{id}/doses")

@@ -10,6 +10,7 @@ compartilhado, por quanto tempo e como é apagado. O texto mostrado ao usuário 
 |---|---|---|---|
 | Remover um medicamento | **Lógica** (preenche `removido_em`) | Cuidador, no dia a dia | `RemoverMedicamentoUseCase` |
 | Excluir a conta | **Física** (apaga as linhas) + anonimização das doses registradas | Cuidador, direito do titular (LGPD, art. 18, VI) | `ExcluirContaUseCase` |
+| Desvincular um paciente | **Física** (apaga as linhas do paciente) + anonimização das doses registradas dele | Cuidador, para um paciente da conta | `DesvincularPacienteUseCase` |
 
 ### Remoção lógica de medicamento e tratamento
 
@@ -23,7 +24,7 @@ isso, "remover" um medicamento **não apaga** nada do histórico:
 - tratamento removido não gera mais doses.
 
 A remoção lógica **não é** uma forma de reter dados pessoais contra a vontade do titular: quem quer apagar os
-dados exclui a conta, e aí tudo é apagado de fato (abaixo).
+dados exclui a conta (ou desvincula o paciente), e aí tudo é apagado de fato (abaixo).
 
 ## Exclusão de conta
 
@@ -46,12 +47,39 @@ Ordem de remoção (respeita as chaves estrangeiras): códigos de vínculo → e
 tratamentos → medicamentos → mensagens → pacientes → cuidador. A chave estrangeira `mensagem.paciente_id` também tem
 `ON DELETE CASCADE`, como garantia.
 
+## Desvinculação de paciente
+
+Exposta em `DELETE /api/pacientes/{id}` (somente o cuidador dono do paciente, papel CUIDADOR; resposta 204). É a
+mesma política da exclusão de conta aplicada a **um paciente só** (`DesvincularPacienteUseCase`), **definitiva** e em
+**uma única transação**: ou o paciente inteiro some, ou nada muda (coberto por
+`DesvinculacaoAtomicaTest.falhaNoMeioNaoDeixaEstadoParcial`). O cuidador e os outros pacientes dele não mudam.
+
+| Dado | Tratamento |
+|---|---|
+| O paciente (nome, data de nascimento, telefone) | Apagado |
+| Medicamentos do paciente, **inclusive os removidos logicamente** | Apagados |
+| Tratamentos desses medicamentos, **inclusive os removidos logicamente** | Apagados |
+| Códigos de vínculo do paciente | Apagados |
+| Mensagens da conversa com o paciente | Apagadas |
+| Pedidos de desconexão (saída da conta no aparelho) | Apagados |
+| Doses PENDENTES (passadas e futuras) | Apagadas |
+| Eventos de notificação das doses do paciente | Apagados |
+| Doses registradas (CONFIRMADA_NO_HORARIO, NAO_TOMADA, CONFIRMADA_COM_ATRASO) | **Anonimizadas**: mantidas com `tratamento_id = NULL` |
+| Sessão do aparelho do paciente | Deixa de valer: a próxima requisição com o token antigo recebe 401 `SESSAO_INVALIDA` (o mesmo controle da desconexão do aparelho) |
+| Relatório diário do paciente em cache | Descartado |
+
+Ordem de remoção (respeita as chaves estrangeiras): códigos de vínculo → eventos de notificação → doses pendentes →
+tratamentos → medicamentos → mensagens → pedidos de desconexão → paciente. O paciente não tem token de push no
+servidor (o push vai só para o cuidador), então não há token a apagar. Paciente inexistente, já desvinculado ou de
+outro cuidador responde 404; o token de PACIENTE recebe 403.
+
 ## Mensagens
 
 O conteúdo das mensagens entre cuidador e paciente (`mensagem.conteudo`) é dado pessoal: nunca é escrito em log e só é
 devolvido aos dois lados da conversa (o cuidador dono do paciente e o próprio paciente). Na exclusão da conta, as mensagens
 de todos os pacientes do cuidador são apagadas fisicamente (coberto por
-`MensagemPostgresTest.exclusaoDeContaApagaAsMensagensDosPacientesDoCuidadorSemQuebrarPorFk`).
+`MensagemPostgresTest.exclusaoDeContaApagaAsMensagensDosPacientesDoCuidadorSemQuebrarPorFk`). Na desvinculação de um
+paciente, só a conversa dele é apagada (coberto por `DesvinculacaoApiTest`).
 
 ### Por que as doses registradas são anonimizadas, e não apagadas
 
@@ -74,7 +102,7 @@ o token do aparelho e o conteúdo do aviso só para entregá-lo. Os servidores d
 | O que vai ao Google | Título "Dose não confirmada"; texto "{nome do paciente} ainda não confirmou a dose das HH:mm" (com a data quando não é de hoje); dados para o app abrir a dose: `tipo`, `doseId`, `pacienteId` e `data`. No pedido do paciente para sair da conta: título "Pedido para sair do app", texto "{nome do paciente} pediu para sair da conta no celular. Toque para autorizar ou recusar." e dados `tipo`, `pacienteId` e `pedidoId` |
 | O que **não** vai | Nome do remédio, dosagem, cor, tipo ou qualquer outro dado de saúde; e-mail, telefone e data de nascimento |
 | Retenção do token | Enquanto a conta existir e o app estiver instalado. É trocado quando o app recebe um token novo, apagado na saída da conta no app (`DELETE /api/cuidadores/me/fcm-token`), apagado quando o FCM o recusa como inválido e apagado na exclusão da conta |
-| Retenção dos avisos | O evento de cada aviso (`evento_notificacao`: status, tentativas, motivo da falha) fica até a exclusão da conta, quando é apagado |
+| Retenção dos avisos | O evento de cada aviso (`evento_notificacao`: status, tentativas, motivo da falha) fica até a exclusão da conta ou a desvinculação do paciente, quando é apagado |
 | Push desligado | Com `FCM_ENABLED=false` nada sai para o Google: o aviso vai só para o log do servidor (com IDs, sem nomes) e o evento é gravado como falha com motivo `PUSH_DESLIGADO` |
 
 Outras garantias:
@@ -99,7 +127,7 @@ cuidador do token, que não existe mais:
 
 Tokens de **pacientes** pareados com essa conta também continuam com assinatura válida até expirar (180 dias), mas
 toda requisição do paciente confere se ele ainda existe e responde 401 `SESSAO_INVALIDA`; o app então volta à tela de
-pareamento. O mesmo vale para o aparelho do paciente desconectado pelo cuidador (pedido de saída autorizado ou
+pareamento. O mesmo vale para o aparelho do paciente desvinculado (o paciente deixa de existir) e para o desconectado pelo cuidador (pedido de saída autorizado ou
 desconexão direta): a coluna `paciente.sessao_valida_desde` invalida os tokens emitidos antes dela. Tokens de cuidador de conta excluída também
 recebem 401 `SESSAO_INVALIDA` em qualquer rota.
 

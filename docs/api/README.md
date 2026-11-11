@@ -75,6 +75,21 @@ o vínculo, os remédios e o histórico continuam, e o paciente volta com um có
 recebe um push com `tipo` `PEDIDO_DESCONEXAO`, `pacienteId` e `pedidoId` (uma tentativa só; uma falha no push não
 desfaz o pedido, que aparece no Painel de qualquer forma).
 
+## Desvincular paciente
+
+O cuidador remove um paciente da própria conta com `DELETE /api/pacientes/{id}` (somente CUIDADOR). Mesma política da
+exclusão de conta, para um paciente só e em uma transação (detalhes em [../lgpd.md](../lgpd.md)).
+
+| Situação | Resposta |
+|---|---|
+| Paciente do cuidador | 204; remédios, tratamentos, doses pendentes, avisos, códigos, mensagens e pedidos apagados; doses registradas anonimizadas |
+| Paciente inexistente, já desvinculado ou de outro cuidador | 404 `RECURSO_NAO_ENCONTRADO` |
+| Token de PACIENTE | 403 `ACESSO_NEGADO` |
+| Sem token ou token inválido | 401 `NAO_AUTENTICADO` |
+| Aparelho do paciente desvinculado, em qualquer rota depois | 401 `SESSAO_INVALIDA` |
+
+O cuidador e os outros pacientes dele não mudam. Não pode ser desfeito.
+
 ## Horário do tratamento: antecedência mínima e primeira dose
 
 No cadastro (`POST /api/medicamentos/{medicamentoId}/tratamentos`) e na edição (`PUT /api/tratamentos/{id}`), se hoje

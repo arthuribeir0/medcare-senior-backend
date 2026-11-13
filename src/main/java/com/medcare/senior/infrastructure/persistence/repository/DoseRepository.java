@@ -7,6 +7,7 @@ import com.medcare.senior.infrastructure.persistence.entity.DoseEntity;
 import com.medcare.senior.infrastructure.persistence.projection.DoseDetalhadaProjection;
 import com.medcare.senior.infrastructure.persistence.projection.DoseEncerradaView;
 import com.medcare.senior.infrastructure.persistence.projection.DoseParaAvisoView;
+import com.medcare.senior.infrastructure.persistence.projection.DoseParaLembreteView;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -36,7 +37,8 @@ public interface DoseRepository extends JpaRepository<DoseEntity, Long> {
     // por linha: a do cuidador dono do paciente (configuracao_alerta, LEFT JOIN pela chave primária cuidador_id) ou a
     // padrão (COALESCE com o parâmetro). Avisa quando horário + tolerância <= agora e a dose ainda não encerrou
     // (horário + tolerância + margem > agora). ":horarioMinimo" (agora - margem - maior tolerância possível) só limita a
-    // faixa lida no índice (status, horario_programado) da V11. O NOT EXISTS usa o UNIQUE de evento_notificacao.dose_id.
+    // faixa lida no índice (status, horario_programado) da V11. O NOT EXISTS usa o UNIQUE (dose_id, tipo) de
+    // evento_notificacao e olha só o aviso ao cuidador: o lembrete ao paciente da mesma dose não conta.
     // JOINs internos: dose anonimizada (sem tratamento) fica de fora. Da mais antiga para a mais nova.
     @Query(value = "SELECT d.id AS doseId, d.horario_programado AS horarioProgramado, i.cuidador_id AS cuidadorId, "
             + "i.id AS pacienteId, i.nome AS nomePaciente "
@@ -49,13 +51,37 @@ public interface DoseRepository extends JpaRepository<DoseEntity, Long> {
             + "<= :agora "
             + "AND d.horario_programado + make_interval(mins => COALESCE(c.tolerancia_minutos, :toleranciaPadraoMinutos) "
             + "+ :margemMinutos) > :agora "
-            + "AND NOT EXISTS (SELECT 1 FROM evento_notificacao e WHERE e.dose_id = d.id) "
+            + "AND NOT EXISTS (SELECT 1 FROM evento_notificacao e WHERE e.dose_id = d.id AND e.tipo = 'AVISO_CUIDADOR') "
             + "ORDER BY d.horario_programado, d.id LIMIT :limite", nativeQuery = true)
     List<DoseParaAvisoView> findParaAviso(@Param("agora") LocalDateTime agora,
                                           @Param("toleranciaPadraoMinutos") int toleranciaPadraoMinutos,
                                           @Param("margemMinutos") int margemMinutos,
                                           @Param("horarioMinimo") LocalDateTime horarioMinimo,
                                           @Param("limite") int limite);
+
+    // Lembrete ao PACIENTE (reforço do lembrete do aparelho). Dose PENDENTE de paciente com aparelho registrado, cujo
+    // horário passou há pelo menos o atraso mínimo (horário <= :horarioMaximo, que é agora - atraso) e que ainda não
+    // chegou ao aviso ao cuidador (horário + tolerância do cuidador, ou a padrão, > agora): a mesma conta do aviso em
+    // findParaAviso, com a comparação invertida, então o lembrete termina exatamente quando o aviso começa.
+    // ":horarioMinimo" (agora - maior tolerância possível) só limita a faixa lida no índice da V11. O NOT EXISTS olha
+    // só o lembrete: o aviso ao cuidador da mesma dose não conta. Da mais antiga para a mais nova.
+    @Query(value = "SELECT d.id AS doseId, d.horario_programado AS horarioProgramado, i.id AS pacienteId, "
+            + "m.nome AS nomeMedicamento, c.tolerancia_minutos AS toleranciaMinutos "
+            + "FROM dose d JOIN tratamento t ON t.id = d.tratamento_id JOIN medicamento m ON m.id = t.medicamento_id "
+            + "JOIN paciente i ON i.id = m.paciente_id "
+            + "LEFT JOIN configuracao_alerta c ON c.cuidador_id = i.cuidador_id "
+            + "WHERE d.status = 'PENDENTE' AND t.removido_em IS NULL AND m.removido_em IS NULL "
+            + "AND i.token_fcm IS NOT NULL "
+            + "AND d.horario_programado > :horarioMinimo AND d.horario_programado <= :horarioMaximo "
+            + "AND d.horario_programado + make_interval(mins => COALESCE(c.tolerancia_minutos, :toleranciaPadraoMinutos)) "
+            + "> :agora "
+            + "AND NOT EXISTS (SELECT 1 FROM evento_notificacao e WHERE e.dose_id = d.id AND e.tipo = 'LEMBRETE_PACIENTE') "
+            + "ORDER BY d.horario_programado, d.id LIMIT :limite", nativeQuery = true)
+    List<DoseParaLembreteView> findParaLembrete(@Param("agora") LocalDateTime agora,
+                                                @Param("toleranciaPadraoMinutos") int toleranciaPadraoMinutos,
+                                                @Param("horarioMinimo") LocalDateTime horarioMinimo,
+                                                @Param("horarioMaximo") LocalDateTime horarioMaximo,
+                                                @Param("limite") int limite);
 
     // Fase de ENCERRAMENTO da varredura, em UM comando (sem ler e depois gravar): a CTE escolhe até :limite doses
     // PENDENTES com horário + tolerância do cuidador (ou a padrão) + margem <= agora, e o UPDATE as marca NAO_TOMADA

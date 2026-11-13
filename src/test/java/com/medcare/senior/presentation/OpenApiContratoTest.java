@@ -106,6 +106,16 @@ class OpenApiContratoTest {
     }
 
     @Test
+    void contratoPublicaAsQuarentaEQuatroOperacoesComOTokenDoAparelhoDoPaciente() {
+        // 42 até o lembrete do paciente, mais PUT e DELETE /api/pacientes/me/fcm-token
+        assertThat(operacoes()).hasSize(44)
+                .containsKeys("PUT /api/pacientes/me/fcm-token", "DELETE /api/pacientes/me/fcm-token",
+                        "PUT /api/cuidadores/me/fcm-token", "DELETE /api/cuidadores/me/fcm-token");
+        assertThat(texto(operacoes().get("PUT /api/pacientes/me/fcm-token"), "description"))
+                .startsWith("**Perfil exigido:** PACIENTE");
+    }
+
+    @Test
     void todaOperacaoTemResumoPerfilTagEErroNoCorpoPadrao() {
         List<String> problemas = new ArrayList<>();
         Set<String> tagsUsadas = new HashSet<>();

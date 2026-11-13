@@ -5,9 +5,13 @@ import com.medcare.senior.application.usecase.ReenviarAvisosPendentesUseCase;
 import com.medcare.senior.domain.notificacao.EventoNotificacaoRepositoryPort;
 import com.medcare.senior.domain.notificacao.EventoParaRetentativa;
 import com.medcare.senior.domain.notificacao.MotivoFalhaNotificacao;
+import com.medcare.senior.domain.dose.PoliticaDeJanela;
 import com.medcare.senior.domain.notificacao.NotificacaoPushPort;
+import com.medcare.senior.domain.notificacao.OpcoesDeEntrega;
+import com.medcare.senior.domain.notificacao.TipoEventoNotificacao;
 import com.medcare.senior.domain.notificacao.ResultadoEnvioPush;
 import com.medcare.senior.domain.usuario.CuidadorRepositoryPort;
+import com.medcare.senior.infrastructure.notificacao.LogNotificadorDeLembreteDoPacienteAdapter;
 import com.medcare.senior.infrastructure.notificacao.PushNotificadorDeDoseNaoTomadaAdapter;
 import com.medcare.senior.infrastructure.persistence.adapter.CuidadorRepositoryAdapter;
 import com.medcare.senior.infrastructure.persistence.adapter.DoseRepositoryAdapter;
@@ -60,6 +64,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
 @Import({EventoNotificacaoRepositoryAdapter.class, DoseRepositoryAdapter.class, CuidadorRepositoryAdapter.class,
         DoseMapper.class, CuidadorMapper.class, EnvioDeAvisoService.class, ReenviarAvisosPendentesUseCase.class,
+        LogNotificadorDeLembreteDoPacienteAdapter.class,
         RetentativaConcorrentePostgresTest.Configuracao.class})
 class RetentativaConcorrentePostgresTest {
 
@@ -98,7 +103,8 @@ class RetentativaConcorrentePostgresTest {
         volatile ResultadoEnvioPush resposta = ResultadoEnvioPush.ENVIADO;
 
         @Override
-        public ResultadoEnvioPush enviar(String tokenDestino, String titulo, String corpo, Map<String, String> dados) {
+        public ResultadoEnvioPush enviar(String tokenDestino, String titulo, String corpo, Map<String, String> dados,
+                                         OpcoesDeEntrega opcoes) {
             envios.incrementAndGet();
             return resposta;
         }
@@ -112,6 +118,11 @@ class RetentativaConcorrentePostgresTest {
         @Bean
         RelogioAjustavel clock() {
             return new RelogioAjustavel();
+        }
+
+        @Bean
+        PoliticaDeJanela politicaDeJanela() {
+            return new PoliticaDeJanela(Duration.ofMinutes(60), Duration.ofMinutes(30), Duration.ofMinutes(30));
         }
 
         @Bean
@@ -135,8 +146,8 @@ class RetentativaConcorrentePostgresTest {
         EventoNotificacaoRepositoryPort somenteEventosDoTeste(EventoNotificacaoRepositoryAdapter real) {
             return new EventoNotificacaoRepositoryPort() {
                 @Override
-                public Optional<Long> criarSeAusente(Long doseId) {
-                    return real.criarSeAusente(doseId);
+                public Optional<Long> criarSeAusente(Long doseId, TipoEventoNotificacao tipo) {
+                    return real.criarSeAusente(doseId, tipo);
                 }
 
                 @Override
@@ -213,8 +224,8 @@ class RetentativaConcorrentePostgresTest {
         doseId = jdbc.queryForObject("INSERT INTO dose (tratamento_id, horario_programado, status) "
                 + "VALUES (?, ?, 'PENDENTE') RETURNING id", Long.class, tratamentoId, T0.minusMinutes(30));
         // Primeira tentativa (da varredura) feita em T0 e com falha temporária
-        eventoId = jdbc.queryForObject("INSERT INTO evento_notificacao (status, tentativas, ultima_tentativa, dose_id) "
-                + "VALUES ('PENDENTE', 1, ?, ?) RETURNING id", Long.class, T0, doseId);
+        eventoId = jdbc.queryForObject("INSERT INTO evento_notificacao (status, tentativas, ultima_tentativa, dose_id, tipo) "
+                + "VALUES ('PENDENTE', 1, ?, ?, 'AVISO_CUIDADOR') RETURNING id", Long.class, T0, doseId);
         EVENTOS_DO_TESTE.add(eventoId);
     }
 

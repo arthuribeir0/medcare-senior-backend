@@ -42,6 +42,33 @@ public interface PacienteRepositoryPort {
     boolean sessaoValida(Long pacienteId, Instant tokenEmitidoEm);
 
     /**
+     * Grava (ou troca) o token de dispositivo FCM do aparelho do paciente, com o instante do registro.
+     *
+     * @return false se o paciente não existe (ex.: desvinculado com o token ainda válido)
+     */
+    boolean atualizarTokenFcm(Long pacienteId, String token, Instant agora);
+
+    /**
+     * Tira o mesmo token de qualquer OUTRO paciente: um aparelho pertence a um paciente por vez.
+     */
+    void removerTokenFcmDosOutrosPacientes(String token, Long pacienteId);
+
+    /**
+     * Token de dispositivo do aparelho do paciente, se houver.
+     */
+    Optional<String> findTokenFcm(Long pacienteId);
+
+    /**
+     * Apaga o token do aparelho do paciente (saída da conta, desconexão do aparelho). Idempotente.
+     */
+    void removerTokenFcm(Long pacienteId);
+
+    /**
+     * Apaga o token só se ainda for {@code token} (o provedor o recusou; um token novo, registrado no meio, fica).
+     */
+    void removerTokenFcmSeIgual(Long pacienteId, String token);
+
+    /**
      * Remove todos os pacientes do cuidador (exclusão de conta, LGPD).
      */
     void deleteAllByCuidadorId(Long cuidadorId);

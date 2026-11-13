@@ -9,6 +9,7 @@ import com.medcare.senior.domain.dose.StatusDose;
 import com.medcare.senior.domain.notificacao.DoseNaoTomadaNotificacao;
 import com.medcare.senior.domain.notificacao.NotificadorDeDoseNaoTomadaPort;
 import com.medcare.senior.domain.notificacao.ResultadoEnvioPush;
+import com.medcare.senior.infrastructure.notificacao.LogNotificadorDeLembreteDoPacienteAdapter;
 import com.medcare.senior.infrastructure.persistence.adapter.DoseRepositoryAdapter;
 import com.medcare.senior.infrastructure.persistence.adapter.EventoNotificacaoRepositoryAdapter;
 import com.medcare.senior.infrastructure.persistence.adapter.PacienteRepositoryAdapter;
@@ -56,7 +57,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
 @Import({CacheDeRelatorioDiarioCaffeine.class, DoseRepositoryAdapter.class, PacienteRepositoryAdapter.class, EventoNotificacaoRepositoryAdapter.class,
         DoseMapper.class, PacienteMapper.class, ConfirmarDoseUseCase.class, EnvioDeAvisoService.class,
-        VerificarDosesVencidasUseCase.class, VarreduraConcorrentePostgresTest.Configuracao.class})
+        VerificarDosesVencidasUseCase.class, LogNotificadorDeLembreteDoPacienteAdapter.class,
+        VarreduraConcorrentePostgresTest.Configuracao.class})
 class VarreduraConcorrentePostgresTest {
 
     private static final ZoneId FUSO = ZoneId.of("America/Sao_Paulo");

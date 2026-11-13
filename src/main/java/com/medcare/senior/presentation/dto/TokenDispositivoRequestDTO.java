@@ -4,7 +4,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
-@Schema(description = "Token de dispositivo (Firebase Cloud Messaging) do aparelho do cuidador")
+@Schema(description = "Token de dispositivo (Firebase Cloud Messaging) do aparelho do cuidador ou do paciente")
 public record TokenDispositivoRequestDTO(
 
         @Schema(description = "Token de registro FCM obtido pelo app no aparelho", example = "dQw4w9WgXcQ:APA91bH...",

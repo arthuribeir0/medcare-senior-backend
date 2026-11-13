@@ -8,6 +8,7 @@ import com.medcare.senior.domain.dose.PoliticaDeJanela;
 import com.medcare.senior.domain.notificacao.DoseNaoTomadaNotificacao;
 import com.medcare.senior.domain.notificacao.EventoNotificacaoRepositoryPort;
 import com.medcare.senior.domain.notificacao.ResultadoEnvioPush;
+import com.medcare.senior.domain.notificacao.TipoEventoNotificacao;
 import com.medcare.senior.domain.relatorio.CacheDeRelatorioDiarioPort;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -127,7 +128,7 @@ class VerificarDosesVencidasUseCaseTest {
                 .thenThrow(new IllegalStateException("falha simulada"));
         when(doseRepository.findPendentesParaAviso(AGORA, TOLERANCIA, MARGEM, LOTE))
                 .thenReturn(List.of(paraAviso(20L, AGORA.minusMinutes(40))));
-        when(eventos.criarSeAusente(20L)).thenReturn(Optional.of(200L));
+        when(eventos.criarSeAusente(20L, TipoEventoNotificacao.AVISO_CUIDADOR)).thenReturn(Optional.of(200L));
         when(eventos.reivindicar(200L, 0, AGORA)).thenReturn(true);
         when(envioDeAviso.enviar(eq(200L), any())).thenReturn(ResultadoEnvioPush.ENVIADO);
 
@@ -144,7 +145,7 @@ class VerificarDosesVencidasUseCaseTest {
         semEncerradas();
         when(doseRepository.findPendentesParaAviso(AGORA, TOLERANCIA, MARGEM, LOTE))
                 .thenReturn(List.of(paraAviso(10L, horario)));
-        when(eventos.criarSeAusente(10L)).thenReturn(Optional.of(100L));
+        when(eventos.criarSeAusente(10L, TipoEventoNotificacao.AVISO_CUIDADOR)).thenReturn(Optional.of(100L));
         when(eventos.reivindicar(100L, 0, AGORA)).thenReturn(true);
         when(envioDeAviso.enviar(eq(100L), any())).thenReturn(ResultadoEnvioPush.ENVIADO);
 
@@ -162,7 +163,7 @@ class VerificarDosesVencidasUseCaseTest {
         semEncerradas();
         when(doseRepository.findPendentesParaAviso(AGORA, TOLERANCIA, MARGEM, LOTE))
                 .thenReturn(List.of(paraAviso(10L, AGORA.minusMinutes(40))));
-        when(eventos.criarSeAusente(10L)).thenReturn(Optional.empty());
+        when(eventos.criarSeAusente(10L, TipoEventoNotificacao.AVISO_CUIDADOR)).thenReturn(Optional.empty());
 
         assertThat(useCase.executar()).isEqualTo(new VerificarDosesVencidasUseCase.Resultado(0, 0, 0, 0));
         verify(eventos, never()).reivindicar(anyLong(), eq(0), any());
@@ -175,7 +176,7 @@ class VerificarDosesVencidasUseCaseTest {
         semEncerradas();
         when(doseRepository.findPendentesParaAviso(AGORA, TOLERANCIA, MARGEM, LOTE))
                 .thenReturn(List.of(paraAviso(10L, AGORA.minusMinutes(40))));
-        when(eventos.criarSeAusente(10L)).thenReturn(Optional.of(100L));
+        when(eventos.criarSeAusente(10L, TipoEventoNotificacao.AVISO_CUIDADOR)).thenReturn(Optional.of(100L));
         when(eventos.reivindicar(100L, 0, AGORA)).thenReturn(false);
 
         assertThat(useCase.executar()).isEqualTo(new VerificarDosesVencidasUseCase.Resultado(0, 0, 0, 0));
@@ -188,7 +189,7 @@ class VerificarDosesVencidasUseCaseTest {
         when(doseRepository.findPendentesParaAviso(AGORA, TOLERANCIA, MARGEM, LOTE))
                 .thenReturn(List.of(paraAviso(10L, AGORA.minusMinutes(40)), paraAviso(11L, AGORA.minusMinutes(35)),
                         paraAviso(12L, AGORA.minusMinutes(32))));
-        when(eventos.criarSeAusente(anyLong())).thenAnswer(chamada -> Optional.of((Long) chamada.getArgument(0) * 10));
+        when(eventos.criarSeAusente(anyLong(), eq(TipoEventoNotificacao.AVISO_CUIDADOR))).thenAnswer(chamada -> Optional.of((Long) chamada.getArgument(0) * 10));
         when(eventos.reivindicar(anyLong(), eq(0), eq(AGORA))).thenReturn(true);
         when(envioDeAviso.enviar(eq(100L), any())).thenReturn(ResultadoEnvioPush.FALHA_TEMPORARIA);
         when(envioDeAviso.enviar(eq(110L), any())).thenReturn(ResultadoEnvioPush.SEM_TOKEN);
@@ -205,8 +206,8 @@ class VerificarDosesVencidasUseCaseTest {
         semEncerradas();
         when(doseRepository.findPendentesParaAviso(AGORA, TOLERANCIA, MARGEM, LOTE))
                 .thenReturn(List.of(paraAviso(10L, AGORA.minusMinutes(40)), paraAviso(11L, AGORA.minusMinutes(35))));
-        when(eventos.criarSeAusente(10L)).thenThrow(new IllegalStateException("falha simulada"));
-        when(eventos.criarSeAusente(11L)).thenReturn(Optional.of(110L));
+        when(eventos.criarSeAusente(10L, TipoEventoNotificacao.AVISO_CUIDADOR)).thenThrow(new IllegalStateException("falha simulada"));
+        when(eventos.criarSeAusente(11L, TipoEventoNotificacao.AVISO_CUIDADOR)).thenReturn(Optional.of(110L));
         when(eventos.reivindicar(110L, 0, AGORA)).thenReturn(true);
         when(envioDeAviso.enviar(eq(110L), any())).thenReturn(ResultadoEnvioPush.ENVIADO);
 

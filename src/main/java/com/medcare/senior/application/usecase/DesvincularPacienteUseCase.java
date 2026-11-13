@@ -22,13 +22,13 @@ import org.springframework.transaction.annotation.Transactional;
  *  - O cuidador remove um paciente da própria conta. O cuidador e os outros pacientes dele não mudam.
  *  - Dados pessoais do paciente são REMOVIDOS fisicamente: o paciente, os medicamentos e tratamentos dele (INCLUSIVE
  *    os já removidos logicamente), os códigos de vínculo, a conversa com o cuidador e os pedidos de desconexão.
- *  - Eventos de notificação (avisos de dose) de TODAS as doses do paciente são apagados.
+ *  - Eventos de notificação (avisos ao cuidador e lembretes ao paciente) de TODAS as doses do paciente são apagados.
  *  - Doses PENDENTES (nunca registradas) são apagadas.
  *  - Doses já registradas NÃO são apagadas: são ANONIMIZADAS pela FK dose.tratamento_id (ON DELETE SET NULL) quando
  *    os tratamentos são apagados.
  *  - O aparelho do paciente perde a sessão: o paciente deixa de existir e o SessaoDoPacienteInterceptor (o mesmo
- *    controle da desconexão do aparelho) responde 401 SESSAO_INVALIDA ao próximo pedido com o token antigo. O
- *    paciente não tem token de push no servidor (o push vai só para o cuidador): não há token a apagar.
+ *    controle da desconexão do aparelho) responde 401 SESSAO_INVALIDA ao próximo pedido com o token antigo. O token
+ *    de push do aparelho do paciente (paciente.token_fcm) some junto com a linha do paciente.
  *  - O relatório diário do paciente em cache é descartado.
  *  - Tudo acontece em uma única transação: ou o paciente inteiro some, ou nada muda.
  *  - Ordem (respeita as chaves estrangeiras):

@@ -52,8 +52,8 @@ class MigracoesDoZeroPostgresTest {
                 .migrate();
 
         assertThat(resultado.success).isTrue();
-        assertThat(resultado.targetSchemaVersion).isEqualTo("17");
-        assertThat(resultado.migrationsExecuted).isEqualTo(17);
+        assertThat(resultado.targetSchemaVersion).isEqualTo("18");
+        assertThat(resultado.migrationsExecuted).isEqualTo(18);
 
         List<String> indicesDoPedido = jdbc.queryForList("SELECT indexname FROM pg_indexes WHERE schemaname = ? "
                 + "AND tablename = 'pedido_desconexao'", String.class, schema);
@@ -121,6 +121,69 @@ class MigracoesDoZeroPostgresTest {
                 .isInstanceOf(DataIntegrityViolationException.class);
         assertThat(jdbc.queryForObject("INSERT INTO " + schema + ".paciente (nome, data_nascimento, cuidador_id) "
                 + "VALUES ('Helena', '1950-07-01', ?) RETURNING id", Long.class, cuidador)).isGreaterThan(idoso);
+    }
+
+    @Test
+    void aV18PreservaOsAvisosExistentesComoAvisoAoCuidadorEAUnicidadePassaASerPorDoseETipo() {
+        flyway("17").migrate();
+        Long cuidador = jdbc.queryForObject("INSERT INTO " + schema + ".cuidador (nome, email, senha_hash, data_cadastro) "
+                + "VALUES ('Ana', 'ana@teste.com', 'hash', '2000-01-10 08:00') RETURNING id", Long.class);
+        Long paciente = jdbc.queryForObject("INSERT INTO " + schema + ".paciente (nome, data_nascimento, cuidador_id) "
+                + "VALUES ('José', '1945-03-12', ?) RETURNING id", Long.class, cuidador);
+        Long dose = jdbc.queryForObject("INSERT INTO " + schema + ".dose (horario_programado, status) "
+                + "VALUES ('2000-01-10 08:00', 'PENDENTE') RETURNING id", Long.class);
+        Long outraDose = jdbc.queryForObject("INSERT INTO " + schema + ".dose (horario_programado, status) "
+                + "VALUES ('2000-01-10 09:00', 'PENDENTE') RETURNING id", Long.class);
+        // Avisos gravados antes da V18, em estados diferentes (sem a coluna tipo)
+        Long enviado = jdbc.queryForObject("INSERT INTO " + schema + ".evento_notificacao (status, tentativas, dose_id) "
+                + "VALUES ('ENVIADO', 1, ?) RETURNING id", Long.class, dose);
+        Long falha = jdbc.queryForObject("INSERT INTO " + schema + ".evento_notificacao (status, tentativas, dose_id, "
+                + "motivo_falha) VALUES ('FALHA', 5, ?, 'TENTATIVAS_ESGOTADAS') RETURNING id", Long.class, outraDose);
+
+        flyway(null).migrate();
+
+        // Nenhum dado perdido: os avisos existentes viram AVISO_CUIDADOR, com o status e as tentativas de antes
+        assertThat(jdbc.queryForList("SELECT tipo || ':' || status || ':' || tentativas FROM " + schema
+                + ".evento_notificacao ORDER BY id", String.class))
+                .containsExactly("AVISO_CUIDADOR:ENVIADO:1", "AVISO_CUIDADOR:FALHA:5");
+        assertThat(jdbc.queryForObject("SELECT id FROM " + schema + ".evento_notificacao WHERE dose_id = ?", Long.class,
+                dose)).isEqualTo(enviado);
+        assertThat(jdbc.queryForObject("SELECT id FROM " + schema + ".evento_notificacao WHERE dose_id = ?", Long.class,
+                outraDose)).isEqualTo(falha);
+
+        // A mesma dose aceita um lembrete ao paciente, mas não um segundo evento do mesmo tipo
+        String inserir = "INSERT INTO " + schema + ".evento_notificacao (status, tentativas, dose_id, tipo) "
+                + "VALUES ('PENDENTE', 0, ?, ?)";
+        jdbc.update(inserir, dose, "LEMBRETE_PACIENTE");
+        assertThatThrownBy(() -> jdbc.update(inserir, dose, "AVISO_CUIDADOR"))
+                .isInstanceOf(DataIntegrityViolationException.class)
+                .hasMessageContaining("uk_evento_notificacao_dose_tipo");
+        assertThatThrownBy(() -> jdbc.update(inserir, dose, "LEMBRETE_PACIENTE"))
+                .isInstanceOf(DataIntegrityViolationException.class)
+                .hasMessageContaining("uk_evento_notificacao_dose_tipo");
+        // O ON CONFLICT do adapter continua idempotente com a chave nova
+        assertThat(jdbc.queryForList("INSERT INTO " + schema + ".evento_notificacao (status, tentativas, dose_id, tipo) "
+                + "VALUES ('PENDENTE', 0, ?, 'LEMBRETE_PACIENTE') ON CONFLICT (dose_id, tipo) DO NOTHING RETURNING id",
+                Long.class, dose)).isEmpty();
+        // Tipo desconhecido ou ausente é recusado (sem valor padrão depois da migração)
+        assertThatThrownBy(() -> jdbc.update(inserir, outraDose, "SMS"))
+                .isInstanceOf(DataIntegrityViolationException.class)
+                .hasMessageContaining("ck_evento_notificacao_tipo");
+        assertThatThrownBy(() -> jdbc.update("INSERT INTO " + schema + ".evento_notificacao (status, tentativas, dose_id) "
+                + "VALUES ('PENDENTE', 0, ?)", outraDose))
+                .isInstanceOf(DataIntegrityViolationException.class);
+
+        // Token do aparelho do paciente: começa vazio; token e data andam juntos
+        assertThat(jdbc.queryForObject("SELECT token_fcm FROM " + schema + ".paciente WHERE id = ?", String.class,
+                paciente)).isNull();
+        jdbc.update("UPDATE " + schema + ".paciente SET token_fcm = 'token', token_atualizado_em = now() WHERE id = ?",
+                paciente);
+        assertThatThrownBy(() -> jdbc.update("UPDATE " + schema + ".paciente SET token_atualizado_em = NULL WHERE id = ?",
+                paciente))
+                .isInstanceOf(DataIntegrityViolationException.class)
+                .hasMessageContaining("ck_paciente_token_fcm");
+        assertThat(jdbc.queryForList("SELECT indexname FROM pg_indexes WHERE schemaname = ? AND tablename = 'paciente'",
+                String.class, schema)).contains("idx_paciente_token_fcm");
     }
 
     @Test

@@ -44,7 +44,7 @@ final class DadosDeDesvinculacao {
         Long registrada = jdbc.queryForObject("INSERT INTO dose (tratamento_id, horario_programado, hora_confirmacao, "
                         + "status, confirmado_por) VALUES (?, ?, ?, 'CONFIRMADA_NO_HORARIO', 'PACIENTE') RETURNING id",
                 Long.class, tratamentoId, agora.minusDays(1), agora.minusDays(1).plusMinutes(5));
-        jdbc.update("INSERT INTO evento_notificacao (status, tentativas, dose_id) VALUES ('ENVIADO', 1, ?)", registrada);
+        jdbc.update("INSERT INTO evento_notificacao (status, tentativas, dose_id, tipo) VALUES ('ENVIADO', 1, ?, 'AVISO_CUIDADOR')", registrada);
         jdbc.update("INSERT INTO codigo_vinculo (codigo_unico, cuidador_id, paciente_id, expira_em, usado) "
                 + "VALUES ('123456', ?, ?, ?, false)", cuidadorId, pacienteId, agora.plusDays(1));
         jdbc.update("INSERT INTO mensagem (paciente_id, remetente, conteudo, criada_em) VALUES (?, 'PACIENTE', 'Oi', ?)",

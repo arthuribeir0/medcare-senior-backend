@@ -70,8 +70,11 @@ app:
       # margem-pos-aviso-minutos depois do aviso. Padrao: segundo 0 de cada minuto.
       cron: ${VERIFICAR_DOSES_CRON:0 * * * * *}
     retentativa-avisos:
-      # Reenvio dos avisos que falharam temporariamente (RN-010). Padrao: a cada 5 minutos, no segundo 30.
+      # Reenvio dos avisos e lembretes que falharam temporariamente (RN-010). Padrao: a cada 5 minutos, no segundo 30.
       cron: ${RETENTATIVA_AVISOS_CRON:30 */5 * * * *}
+    lembrete-paciente:
+      # Reforco, pelo push, do lembrete da dose no aparelho do paciente. Padrao: segundo 15 de cada minuto.
+      cron: ${LEMBRETE_PACIENTE_CRON:15 * * * * *}
     expirar-pedidos-desconexao:
       # Marca como EXPIRADO os pedidos de desconexao vencidos (as leituras ja os tratam assim). Padrao: a cada 5 minutos.
       cron: ${EXPIRAR_PEDIDOS_DESCONEXAO_CRON:0 */5 * * * *}
@@ -94,8 +97,14 @@ app:
     margem-pos-aviso-minutos: ${ALERTAS_MARGEM_POS_AVISO_MINUTOS:30}
     # Maximo de doses tratadas por fase (encerramento e aviso) em cada execucao da varredura; o resto fica para a proxima
     lote-maximo: ${ALERTAS_LOTE_MAXIMO:500}
+    lembrete-paciente:
+      # O servidor reforca o lembrete do aparelho do paciente N minutos depois do horario, se a dose continua PENDENTE.
+      # Vale ate o aviso ao cuidador (horario + tolerancia); dali em diante quem cuida e o aviso.
+      atraso-minutos: ${ALERTAS_LEMBRETE_PACIENTE_ATRASO_MINUTOS:2}
+      # Maximo de doses lembradas por execucao; o resto fica para a proxima
+      lote-maximo: ${ALERTAS_LEMBRETE_PACIENTE_LOTE_MAXIMO:500}
     retentativa:
-      # Tentativas de envio por aviso, contando a primeira (feita pela varredura). Esgotadas: evento FALHA.
+      # Tentativas de envio por aviso ou lembrete, contando a primeira. Esgotadas: evento FALHA.
       max-tentativas: ${ALERTAS_RETENTATIVA_MAX_TENTATIVAS:5}
       # Espera depois da 1a tentativa; dobra a cada nova (5 -> 5, 10, 20 e 40 minutos)
       intervalo-base-minutos: ${ALERTAS_RETENTATIVA_INTERVALO_BASE_MINUTOS:5}

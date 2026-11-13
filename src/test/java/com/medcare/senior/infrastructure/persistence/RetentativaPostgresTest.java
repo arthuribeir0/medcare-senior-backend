@@ -81,8 +81,8 @@ class RetentativaPostgresTest {
     }
 
     private long eventoComDose(long doseId, int tentativas, LocalDateTime ultimaTentativa) {
-        return jdbc.queryForObject("INSERT INTO evento_notificacao (status, tentativas, ultima_tentativa, dose_id) "
-                + "VALUES ('PENDENTE', ?, ?, ?) RETURNING id", Long.class, tentativas, ultimaTentativa, doseId);
+        return jdbc.queryForObject("INSERT INTO evento_notificacao (status, tentativas, ultima_tentativa, dose_id, tipo) "
+                + "VALUES ('PENDENTE', ?, ?, ?, 'AVISO_CUIDADOR') RETURNING id", Long.class, tentativas, ultimaTentativa, doseId);
     }
 
     private List<Long> elegiveis() {

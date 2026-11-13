@@ -71,6 +71,8 @@ public class SecurityConfig {
                             .requestMatchers(HttpMethod.POST, "/api/pacientes/me/pedido-desconexao").hasRole(Role.PACIENTE.name())
                             .requestMatchers(HttpMethod.GET, "/api/pacientes/me/pedido-desconexao").hasRole(Role.PACIENTE.name())
                             .requestMatchers(HttpMethod.DELETE, "/api/pacientes/me/pedido-desconexao").hasRole(Role.PACIENTE.name())
+                            .requestMatchers(HttpMethod.PUT, "/api/pacientes/me/fcm-token").hasRole(Role.PACIENTE.name())
+                            .requestMatchers(HttpMethod.DELETE, "/api/pacientes/me/fcm-token").hasRole(Role.PACIENTE.name())
                             .requestMatchers("/api/pacientes/**").hasRole(Role.CUIDADOR.name())
                             // Confirmação de dose: o paciente (a própria) ou o cuidador (dos pacientes dele); o dono fica no use case
                             .requestMatchers(HttpMethod.PUT, "/api/doses/*/confirmar").hasAnyRole(Role.PACIENTE.name(), Role.CUIDADOR.name())

@@ -19,7 +19,9 @@ import org.springframework.transaction.annotation.Transactional;
  * =========================================================================================================
  *  - Dados pessoais são REMOVIDOS fisicamente: o cuidador e todos os pacientes, medicamentos, tratamentos e
  *    códigos de vínculo ligados a ele, INCLUSIVE medicamentos e tratamentos já removidos logicamente.
- *  - Eventos de notificação (avisos de dose) de TODAS as doses do cuidador são apagados.
+ *  - Os tokens de push do aparelho do cuidador (cuidador.fcm_token) e dos aparelhos dos pacientes
+ *    (paciente.token_fcm) somem junto com as linhas.
+ *  - Eventos de notificação (avisos ao cuidador e lembretes aos pacientes) de TODAS as doses do cuidador são apagados.
  *  - Mensagens das conversas com todos os pacientes do cuidador são apagadas.
  *  - Doses PENDENTES (nunca registradas) são apagadas.
  *  - Doses já registradas (CONFIRMADA_NO_HORARIO, NAO_TOMADA, CONFIRMADA_COM_ATRASO) NÃO são apagadas: são ANONIMIZADAS.

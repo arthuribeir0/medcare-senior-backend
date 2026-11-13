@@ -580,6 +580,229 @@
         } ]
       }
     },
+    "/api/pacientes/me/fcm-token" : {
+      "put" : {
+        "tags" : [ "Push/Token" ],
+        "summary" : "Registra o token de dispositivo do paciente autenticado",
+        "description" : "**Perfil exigido:** PACIENTE.\n\nGrava (ou troca) o token FCM do aparelho do paciente, usado pelo servidor para reforçar o lembrete de dose (o lembrete principal é agendado no próprio aparelho). O paciente vem sempre do token JWT; o corpo só traz o token do aparelho. Um aparelho pertence a um paciente por vez: o mesmo token é retirado de qualquer outro paciente. O token é dado pessoal e é apagado ao sair da conta, na desconexão do aparelho, na desvinculação do paciente e na exclusão da conta.",
+        "operationId" : "registrarTokenDispositivo",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/TokenDispositivoRequestDTO"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "204" : {
+            "description" : "Token registrado"
+          },
+          "400" : {
+            "description" : "Token ausente, vazio ou maior que 512 caracteres (TOKEN_DISPOSITIVO_INVALIDO)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErroResponse"
+                },
+                "examples" : {
+                  "TOKEN_DISPOSITIVO_INVALIDO" : {
+                    "summary" : "TOKEN_DISPOSITIVO_INVALIDO",
+                    "value" : {
+                      "timestamp" : "2026-10-08T14:30:00",
+                      "status" : 400,
+                      "erro" : "Bad Request",
+                      "codigo" : "TOKEN_DISPOSITIVO_INVALIDO",
+                      "mensagem" : "O token do dispositivo é obrigatório e deve ter no máximo 512 caracteres",
+                      "campos" : [ ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Sem token, ou token inválido ou expirado (NAO_AUTENTICADO); ou token de conta que não existe mais (SESSAO_INVALIDA)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErroResponse"
+                },
+                "examples" : {
+                  "NAO_AUTENTICADO" : {
+                    "summary" : "NAO_AUTENTICADO",
+                    "value" : {
+                      "timestamp" : "2026-10-08T14:30:00",
+                      "status" : 401,
+                      "erro" : "Unauthorized",
+                      "codigo" : "NAO_AUTENTICADO",
+                      "mensagem" : "Autenticação necessária. Envie um token válido no cabeçalho Authorization.",
+                      "campos" : [ ]
+                    }
+                  },
+                  "SESSAO_INVALIDA" : {
+                    "summary" : "SESSAO_INVALIDA",
+                    "value" : {
+                      "timestamp" : "2026-10-08T14:30:00",
+                      "status" : 401,
+                      "erro" : "Unauthorized",
+                      "codigo" : "SESSAO_INVALIDA",
+                      "mensagem" : "Sessão inválida. Entre na sua conta de novo.",
+                      "campos" : [ ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "Token válido de outro perfil (ACESSO_NEGADO)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErroResponse"
+                },
+                "examples" : {
+                  "ACESSO_NEGADO" : {
+                    "summary" : "ACESSO_NEGADO",
+                    "value" : {
+                      "timestamp" : "2026-10-08T14:30:00",
+                      "status" : 403,
+                      "erro" : "Forbidden",
+                      "codigo" : "ACESSO_NEGADO",
+                      "mensagem" : "Acesso negado para este perfil.",
+                      "campos" : [ ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Erro inesperado, sem detalhes na resposta (ERRO_INTERNO)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErroResponse"
+                },
+                "examples" : {
+                  "ERRO_INTERNO" : {
+                    "summary" : "ERRO_INTERNO",
+                    "value" : {
+                      "timestamp" : "2026-10-08T14:30:00",
+                      "status" : 500,
+                      "erro" : "Internal Server Error",
+                      "codigo" : "ERRO_INTERNO",
+                      "mensagem" : "Erro interno. Tente novamente mais tarde.",
+                      "campos" : [ ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      },
+      "delete" : {
+        "tags" : [ "Push/Token" ],
+        "summary" : "Apaga o token de dispositivo do paciente autenticado",
+        "description" : "**Perfil exigido:** PACIENTE.\n\nUsado quando o app sai da conta do paciente: o aparelho deixa de receber o lembrete do servidor. Idempotente: responde 204 mesmo se não houver token gravado.",
+        "operationId" : "removerTokenDispositivo",
+        "responses" : {
+          "204" : {
+            "description" : "Token apagado (ou já não havia token)"
+          },
+          "401" : {
+            "description" : "Sem token, ou token inválido ou expirado (NAO_AUTENTICADO); ou token de conta que não existe mais (SESSAO_INVALIDA)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErroResponse"
+                },
+                "examples" : {
+                  "NAO_AUTENTICADO" : {
+                    "summary" : "NAO_AUTENTICADO",
+                    "value" : {
+                      "timestamp" : "2026-10-08T14:30:00",
+                      "status" : 401,
+                      "erro" : "Unauthorized",
+                      "codigo" : "NAO_AUTENTICADO",
+                      "mensagem" : "Autenticação necessária. Envie um token válido no cabeçalho Authorization.",
+                      "campos" : [ ]
+                    }
+                  },
+                  "SESSAO_INVALIDA" : {
+                    "summary" : "SESSAO_INVALIDA",
+                    "value" : {
+                      "timestamp" : "2026-10-08T14:30:00",
+                      "status" : 401,
+                      "erro" : "Unauthorized",
+                      "codigo" : "SESSAO_INVALIDA",
+                      "mensagem" : "Sessão inválida. Entre na sua conta de novo.",
+                      "campos" : [ ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "Token válido de outro perfil (ACESSO_NEGADO)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErroResponse"
+                },
+                "examples" : {
+                  "ACESSO_NEGADO" : {
+                    "summary" : "ACESSO_NEGADO",
+                    "value" : {
+                      "timestamp" : "2026-10-08T14:30:00",
+                      "status" : 403,
+                      "erro" : "Forbidden",
+                      "codigo" : "ACESSO_NEGADO",
+                      "mensagem" : "Acesso negado para este perfil.",
+                      "campos" : [ ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Erro inesperado, sem detalhes na resposta (ERRO_INTERNO)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErroResponse"
+                },
+                "examples" : {
+                  "ERRO_INTERNO" : {
+                    "summary" : "ERRO_INTERNO",
+                    "value" : {
+                      "timestamp" : "2026-10-08T14:30:00",
+                      "status" : 500,
+                      "erro" : "Internal Server Error",
+                      "codigo" : "ERRO_INTERNO",
+                      "mensagem" : "Erro interno. Tente novamente mais tarde.",
+                      "campos" : [ ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
     "/api/mensagens/lidas" : {
       "put" : {
         "tags" : [ "Mensagens" ],
@@ -1405,7 +1628,7 @@
         "tags" : [ "Push/Token" ],
         "summary" : "Registra o token de dispositivo do cuidador autenticado",
         "description" : "**Perfil exigido:** CUIDADOR.\n\nGrava (ou troca) o token FCM do aparelho do cuidador, usado para avisos push de dose não confirmada. Um aparelho pertence a uma conta por vez: o mesmo token é retirado de qualquer outra conta. O token é dado pessoal e é apagado na exclusão de conta.",
-        "operationId" : "registrarTokenDispositivo",
+        "operationId" : "registrarTokenDispositivo_1",
         "requestBody" : {
           "content" : {
             "application/json" : {
@@ -1532,7 +1755,7 @@
         "tags" : [ "Push/Token" ],
         "summary" : "Apaga o token de dispositivo do cuidador autenticado",
         "description" : "**Perfil exigido:** CUIDADOR.\n\nUsado no logout: o aparelho deixa de receber avisos push desta conta. Idempotente: responde 204 mesmo se não houver token gravado.",
-        "operationId" : "removerTokenDispositivo",
+        "operationId" : "removerTokenDispositivo_1",
         "responses" : {
           "204" : {
             "description" : "Token apagado (ou já não havia token)"
@@ -6123,6 +6346,20 @@
           }
         }
       },
+      "TokenDispositivoRequestDTO" : {
+        "type" : "object",
+        "description" : "Token de dispositivo (Firebase Cloud Messaging) do aparelho do cuidador ou do paciente",
+        "properties" : {
+          "token" : {
+            "type" : "string",
+            "description" : "Token de registro FCM obtido pelo app no aparelho",
+            "example" : "dQw4w9WgXcQ:APA91bH...",
+            "maxLength" : 512,
+            "minLength" : 0
+          }
+        },
+        "required" : [ "token" ]
+      },
       "MensagensLidasResponseDTO" : {
         "type" : "object",
         "description" : "Resultado de marcar a conversa como lida",
@@ -6358,20 +6595,6 @@
             "example" : "2026-10-08T09:00:00"
           }
         }
-      },
-      "TokenDispositivoRequestDTO" : {
-        "type" : "object",
-        "description" : "Token de dispositivo (Firebase Cloud Messaging) do aparelho do cuidador",
-        "properties" : {
-          "token" : {
-            "type" : "string",
-            "description" : "Token de registro FCM obtido pelo app no aparelho",
-            "example" : "dQw4w9WgXcQ:APA91bH...",
-            "maxLength" : 512,
-            "minLength" : 0
-          }
-        },
-        "required" : [ "token" ]
       },
       "ToleranciaRequestDTO" : {
         "type" : "object",

@@ -68,6 +68,36 @@ public class PacienteRepositoryAdapter implements PacienteRepositoryPort {
 
     @Override
     @Transactional
+    public boolean atualizarTokenFcm(Long pacienteId, String token, Instant agora) {
+        return pacienteRepository.atualizarTokenFcm(pacienteId, token, agora.atOffset(ZoneOffset.UTC)) > 0;
+    }
+
+    @Override
+    @Transactional
+    public void removerTokenFcmDosOutrosPacientes(String token, Long pacienteId) {
+        pacienteRepository.removerTokenFcmDosOutros(token, pacienteId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<String> findTokenFcm(Long pacienteId) {
+        return pacienteRepository.findTokenFcm(pacienteId);
+    }
+
+    @Override
+    @Transactional
+    public void removerTokenFcm(Long pacienteId) {
+        pacienteRepository.removerTokenFcm(pacienteId);
+    }
+
+    @Override
+    @Transactional
+    public void removerTokenFcmSeIgual(Long pacienteId, String token) {
+        pacienteRepository.removerTokenFcmSeIgual(pacienteId, token);
+    }
+
+    @Override
+    @Transactional
     public void deleteAllByCuidadorId(Long cuidadorId) {
         pacienteRepository.deleteAllByCuidadorId(cuidadorId);
     }

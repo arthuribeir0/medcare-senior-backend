@@ -5,6 +5,7 @@ import com.medcare.senior.domain.dose.Dose;
 import com.medcare.senior.domain.dose.DoseDetalhada;
 import com.medcare.senior.domain.dose.DoseEncerrada;
 import com.medcare.senior.domain.dose.DoseParaAviso;
+import com.medcare.senior.domain.dose.DoseParaLembrete;
 import com.medcare.senior.domain.dose.DoseRepositoryPort;
 import com.medcare.senior.domain.dose.StatusDose;
 import com.medcare.senior.domain.historico.FiltroHistorico;
@@ -80,6 +81,20 @@ public class DoseRepositoryAdapter implements DoseRepositoryPort {
                         limite)
                 .stream()
                 .map(linha -> new DoseEncerrada(linha.getDoseId(), linha.getPacienteId()))
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<DoseParaLembrete> findPendentesParaLembrete(LocalDateTime agora, Duration atrasoMinimo,
+                                                            Duration toleranciaPadrao, int limite) {
+        // Nenhuma dose com horário antes disto ainda está antes do aviso, qualquer que seja a tolerância do cuidador
+        LocalDateTime horarioMinimo = agora.minus(maiorTolerancia(toleranciaPadrao));
+        return doseRepository.findParaLembrete(agora, minutos(toleranciaPadrao), horarioMinimo, agora.minus(atrasoMinimo),
+                        limite)
+                .stream()
+                .map(linha -> new DoseParaLembrete(linha.getDoseId(), linha.getHorarioProgramado(), linha.getPacienteId(),
+                        linha.getNomeMedicamento(), linha.getToleranciaMinutos()))
                 .toList();
     }
 

@@ -8,6 +8,7 @@ import com.medcare.senior.domain.dose.PoliticaDeJanela;
 import com.medcare.senior.domain.notificacao.DoseNaoTomadaNotificacao;
 import com.medcare.senior.domain.notificacao.EventoNotificacaoRepositoryPort;
 import com.medcare.senior.domain.notificacao.ResultadoEnvioPush;
+import com.medcare.senior.domain.notificacao.TipoEventoNotificacao;
 import com.medcare.senior.domain.relatorio.CacheDeRelatorioDiarioPort;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,9 +28,9 @@ import java.util.Optional;
  *       tempo, a confirmação vence). Sem push: o cuidador já foi avisado no fim da tolerância. Dose que chega aqui sem
  *       ter sido avisada (aplicação parada) é encerrada sem aviso.</li>
  *   <li><b>Aviso</b>: dose PENDENTE com horário + tolerância <= agora, ainda antes do encerramento e sem evento de
- *       notificação: cria o evento ({@code INSERT ... ON CONFLICT DO NOTHING}) e, SÓ se esta execução o criou e
- *       ganhou a primeira tentativa, envia o push. A dose CONTINUA PENDENTE: ainda pode ser confirmada (com
- *       atraso) até o encerramento.</li>
+ *       notificação do tipo AVISO_CUIDADOR: cria o evento ({@code INSERT ... ON CONFLICT DO NOTHING}) e, SÓ se esta
+ *       execução o criou e ganhou a primeira tentativa, envia o push. A dose CONTINUA PENDENTE: ainda pode ser
+ *       confirmada (com atraso) até o encerramento.</li>
  * </ol>
  * Cada fase trata no máximo {@code loteMaximo} doses por execução; o restante fica para a próxima.
  *
@@ -100,7 +101,7 @@ public class VerificarDosesVencidasUseCase {
                 politicaDeJanela.margemPosAviso(), parametros.loteMaximo());
         for (DoseParaAviso dose : doses) {
             try {
-                Optional<Long> evento = eventos.criarSeAusente(dose.doseId());
+                Optional<Long> evento = eventos.criarSeAusente(dose.doseId(), TipoEventoNotificacao.AVISO_CUIDADOR);
                 // Vazio = outra execução criou o evento antes; não reivindicou = a retentativa pegou a primeira
                 // tentativa. Nos dois casos, quem venceu envia.
                 if (evento.isEmpty() || !eventos.reivindicar(evento.get(), 0, agora)) {

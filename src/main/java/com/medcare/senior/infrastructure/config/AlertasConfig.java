@@ -1,5 +1,6 @@
 package com.medcare.senior.infrastructure.config;
 
+import com.medcare.senior.application.usecase.LembrarPacienteDaDoseUseCase;
 import com.medcare.senior.application.usecase.ReenviarAvisosPendentesUseCase;
 import com.medcare.senior.application.usecase.VerificarDosesVencidasUseCase;
 import com.medcare.senior.domain.dose.PoliticaDeJanela;
@@ -23,8 +24,19 @@ public class AlertasConfig {
     }
 
     /**
-     * Retentativa de avisos (RN-010): tentativas no total (contando a 1ª, da varredura), espera base que dobra a cada
-     * tentativa e lote por execução.
+     * Lembrete do servidor ao paciente: quanto depois do horário o servidor reforça o lembrete do aparelho (o lembrete
+     * vale até o aviso ao cuidador, pela PoliticaDeJanela) e lote por execução.
+     */
+    @Bean
+    public LembrarPacienteDaDoseUseCase.Parametros parametrosDeLembreteAoPaciente(
+            @Value("${app.alertas.lembrete-paciente.atraso-minutos:2}") long atrasoMinutos,
+            @Value("${app.alertas.lembrete-paciente.lote-maximo:500}") int loteMaximo) {
+        return new LembrarPacienteDaDoseUseCase.Parametros(Duration.ofMinutes(atrasoMinutos), loteMaximo);
+    }
+
+    /**
+     * Retentativa de avisos e lembretes (RN-010): tentativas no total (contando a 1ª, da varredura ou do job de
+     * lembrete), espera base que dobra a cada tentativa e lote por execução.
      */
     @Bean
     public ReenviarAvisosPendentesUseCase.Parametros parametrosDeRetentativa(

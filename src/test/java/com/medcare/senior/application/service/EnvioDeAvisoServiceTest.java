@@ -2,8 +2,10 @@ package com.medcare.senior.application.service;
 
 import com.medcare.senior.domain.notificacao.DoseNaoTomadaNotificacao;
 import com.medcare.senior.domain.notificacao.EventoNotificacaoRepositoryPort;
+import com.medcare.senior.domain.notificacao.LembreteDoPacienteNotificacao;
 import com.medcare.senior.domain.notificacao.MotivoFalhaNotificacao;
 import com.medcare.senior.domain.notificacao.NotificadorDeDoseNaoTomadaPort;
+import com.medcare.senior.domain.notificacao.NotificadorDeLembreteDoPacientePort;
 import com.medcare.senior.domain.notificacao.ResultadoEnvioPush;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -32,13 +34,19 @@ class EnvioDeAvisoServiceTest {
     private NotificadorDeDoseNaoTomadaPort notificador;
 
     @Mock
+    private NotificadorDeLembreteDoPacientePort notificadorDoPaciente;
+
+    @Mock
     private EventoNotificacaoRepositoryPort eventos;
 
     private EnvioDeAvisoService service;
 
+    private static final LembreteDoPacienteNotificacao LEMBRETE = new LembreteDoPacienteNotificacao(10L, 2L, "Losartana",
+            LocalDateTime.of(2026, 10, 16, 8, 0), LocalDateTime.of(2026, 10, 16, 8, 30));
+
     @BeforeEach
     void setUp() {
-        service = new EnvioDeAvisoService(notificador, eventos);
+        service = new EnvioDeAvisoService(notificador, notificadorDoPaciente, eventos);
     }
 
     @Test
@@ -97,6 +105,42 @@ class EnvioDeAvisoServiceTest {
         when(notificador.notificar(NOTIFICACAO)).thenReturn(null);
 
         assertThat(service.enviar(EVENTO_ID, NOTIFICACAO)).isEqualTo(ResultadoEnvioPush.FALHA_TEMPORARIA);
+        verifyNoInteractions(eventos);
+    }
+
+    // ---- lembrete ao paciente: mesmo registro do resultado, pelo notificador do paciente ----------------------------
+
+    @Test
+    void lembreteEnviadoMarcaOEventoComoEnviadoSemTocarNoNotificadorDoCuidador() {
+        when(notificadorDoPaciente.notificar(LEMBRETE)).thenReturn(ResultadoEnvioPush.ENVIADO);
+
+        assertThat(service.enviarLembrete(EVENTO_ID, LEMBRETE)).isEqualTo(ResultadoEnvioPush.ENVIADO);
+        verify(eventos).marcarEnviado(EVENTO_ID);
+        verifyNoInteractions(notificador);
+    }
+
+    @Test
+    void lembreteComTokenInvalidoSemTokenOuPushDesligadoEncerraOEventoComOMotivo() {
+        when(notificadorDoPaciente.notificar(LEMBRETE)).thenReturn(ResultadoEnvioPush.TOKEN_INVALIDO,
+                ResultadoEnvioPush.SEM_TOKEN, ResultadoEnvioPush.PUSH_DESLIGADO);
+
+        service.enviarLembrete(1L, LEMBRETE);
+        service.enviarLembrete(2L, LEMBRETE);
+        service.enviarLembrete(3L, LEMBRETE);
+
+        verify(eventos).marcarFalha(1L, MotivoFalhaNotificacao.TOKEN_INVALIDO);
+        verify(eventos).marcarFalha(2L, MotivoFalhaNotificacao.SEM_TOKEN);
+        verify(eventos).marcarFalha(3L, MotivoFalhaNotificacao.PUSH_DESLIGADO);
+        verify(eventos, never()).marcarEnviado(anyLong());
+    }
+
+    @Test
+    void lembreteComFalhaTemporariaOuExcecaoFicaPendenteParaARetentativa() {
+        when(notificadorDoPaciente.notificar(LEMBRETE)).thenReturn(ResultadoEnvioPush.FALHA_TEMPORARIA)
+                .thenThrow(new IllegalStateException("FCM fora do ar"));
+
+        assertThat(service.enviarLembrete(EVENTO_ID, LEMBRETE)).isEqualTo(ResultadoEnvioPush.FALHA_TEMPORARIA);
+        assertThat(service.enviarLembrete(EVENTO_ID, LEMBRETE)).isEqualTo(ResultadoEnvioPush.FALHA_TEMPORARIA);
         verifyNoInteractions(eventos);
     }
 }

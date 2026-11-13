@@ -8,6 +8,7 @@ import com.google.firebase.messaging.Message;
 import com.google.firebase.messaging.MessagingErrorCode;
 import com.google.firebase.messaging.Notification;
 import com.medcare.senior.domain.notificacao.NotificacaoPushPort;
+import com.medcare.senior.domain.notificacao.OpcoesDeEntrega;
 import com.medcare.senior.domain.notificacao.ResultadoEnvioPush;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,28 +43,21 @@ public class FCMService implements NotificacaoPushPort {
             log.warn("Push pelo FCM ativo em DRY-RUN (app.fcm.dry-run=true): o Firebase valida as mensagens, mas "
                     + "NÃO as entrega aos aparelhos");
         } else {
-            log.info("Push pelo FCM ativo: avisos de dose não confirmada são entregues aos aparelhos dos cuidadores");
+            log.info("Push pelo FCM ativo: avisos aos cuidadores e lembretes aos pacientes são entregues aos aparelhos");
         }
     }
 
     /**
-     * Canal de notificação do Android criado pelo app (importância alta, "Alertas de dose"). Se o app ainda não o
-     * criou, o Android usa o canal padrão.
+     * Canal de notificação do Android dos avisos ao cuidador, criado pelo app (importância alta, "Alertas de dose").
+     * Se o app ainda não o criou, o Android usa o canal padrão. O lembrete ao paciente usa o canal "lembrete-dose"
+     * (OpcoesDeEntrega).
      */
-    static final String CANAL_ANDROID = "alertas-dose";
+    static final String CANAL_ANDROID = OpcoesDeEntrega.CANAL_ALERTAS_DOSE;
 
     @Override
-    public ResultadoEnvioPush enviar(String tokenDestino, String titulo, String corpo, Map<String, String> dados) {
-        Message mensagem = Message.builder()
-                .setToken(tokenDestino)
-                .setNotification(Notification.builder().setTitle(titulo).setBody(corpo).build())
-                .putAllData(dados == null ? Map.of() : dados)
-                // Prioridade alta: entrega imediata mesmo com o aparelho em economia de bateria (Doze)
-                .setAndroidConfig(AndroidConfig.builder()
-                        .setPriority(AndroidConfig.Priority.HIGH)
-                        .setNotification(AndroidNotification.builder().setChannelId(CANAL_ANDROID).build())
-                        .build())
-                .build();
+    public ResultadoEnvioPush enviar(String tokenDestino, String titulo, String corpo, Map<String, String> dados,
+                                     OpcoesDeEntrega opcoes) {
+        Message mensagem = montar(tokenDestino, titulo, corpo, dados, opcoes == null ? OpcoesDeEntrega.PADRAO : opcoes);
         try {
             firebaseMessaging.send(mensagem, dryRun);
             log.debug("Push aceito pelo FCM (dryRun={})", dryRun);
@@ -77,6 +71,38 @@ public class FCMService implements NotificacaoPushPort {
             log.warn("Falha inesperada ao enviar push pelo FCM: {}", e.getClass().getName());
             return ResultadoEnvioPush.FALHA_TEMPORARIA;
         }
+    }
+
+    /**
+     * Prioridade alta do FCM em todos: entrega imediata mesmo com o aparelho em economia de bateria (Doze). O canal
+     * define som e vibração. Com tag, a notificação substitui a anterior de mesma tag no aparelho. Prioridade máxima e
+     * visibilidade pública (conteúdo na tela bloqueada) só no lembrete ao paciente. Validade (TTL): o FCM descarta o
+     * push se o aparelho não voltar à rede a tempo.
+     */
+    static Message montar(String tokenDestino, String titulo, String corpo, Map<String, String> dados,
+                          OpcoesDeEntrega opcoes) {
+        AndroidNotification.Builder notificacao = AndroidNotification.builder().setChannelId(opcoes.canalAndroid());
+        if (opcoes.tag() != null) {
+            notificacao.setTag(opcoes.tag());
+        }
+        if (opcoes.prioridadeMaxima()) {
+            notificacao.setPriority(AndroidNotification.Priority.MAX)
+                    .setVisibility(AndroidNotification.Visibility.PUBLIC)
+                    .setDefaultSound(true)
+                    .setDefaultVibrateTimings(true);
+        }
+        AndroidConfig.Builder android = AndroidConfig.builder()
+                .setPriority(AndroidConfig.Priority.HIGH)
+                .setNotification(notificacao.build());
+        if (opcoes.validade() != null) {
+            android.setTtl(opcoes.validade().toMillis());
+        }
+        return Message.builder()
+                .setToken(tokenDestino)
+                .setNotification(Notification.builder().setTitle(titulo).setBody(corpo).build())
+                .putAllData(dados == null ? Map.of() : dados)
+                .setAndroidConfig(android.build())
+                .build();
     }
 
     /**

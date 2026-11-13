@@ -42,6 +42,16 @@ public interface DoseRepositoryPort {
                                                int limite);
 
     /**
+     * Até {@code limite} doses PENDENTES que devem receber o lembrete do servidor em {@code agora}: paciente com aparelho
+     * registrado, horário + {@code atrasoMinimo} <= agora e agora antes do aviso ao cuidador (horário + tolerância do
+     * cuidador, ou {@code toleranciaPadrao}), sem lembrete já criado. Das mais antigas para as mais novas. Ignora doses
+     * anonimizadas e de tratamento ou medicamento removido logicamente. Quem chama confere de novo a janela com a
+     * {@link PoliticaDeJanela}, a fonte da verdade.
+     */
+    List<DoseParaLembrete> findPendentesParaLembrete(LocalDateTime agora, Duration atrasoMinimo, Duration toleranciaPadrao,
+                                                     int limite);
+
+    /**
      * Encerra como NAO_TOMADA até {@code limite} doses PENDENTES vencidas em {@code agora} (horário + tolerância do
      * cuidador, ou a padrão, + {@code margemPosAviso} <= agora), das mais antigas para as mais novas, em um único
      * UPDATE atômico condicionado a status = 'PENDENTE': uma confirmação gravada antes vence e a dose fica de fora.

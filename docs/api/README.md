@@ -90,6 +90,28 @@ exclusão de conta, para um paciente só e em uma transação (detalhes em [../l
 
 O cuidador e os outros pacientes dele não mudam. Não pode ser desfeito.
 
+## Token do aparelho do paciente (lembrete de dose)
+
+O app do paciente registra o token FCM do próprio aparelho para o servidor reforçar o lembrete de dose (o lembrete
+principal é agendado no aparelho). Mesmo formato das rotas do cuidador (`/api/cuidadores/me/fcm-token`), tag
+"Push/Token".
+
+| Rota | Quem | Resposta |
+|---|---|---|
+| `PUT /api/pacientes/me/fcm-token` com `{ "token": "..." }` | PACIENTE | 204; o mesmo token sai de qualquer outro paciente |
+| `DELETE /api/pacientes/me/fcm-token` | PACIENTE | 204, idempotente |
+| Token vazio, só espaços ou maior que 512 caracteres | PACIENTE | 400 `VALIDACAO` |
+| Token de CUIDADOR | — | 403 `ACESSO_NEGADO` |
+| Sem token | — | 401 `NAO_AUTENTICADO` |
+| Aparelho desconectado ou paciente desvinculado | — | 401 `SESSAO_INVALIDA` |
+
+O paciente vem **sempre do JWT**: nada no corpo escolhe de quem é o aparelho (um `pacienteId` no corpo é ignorado). O
+token é apagado também na desconexão do aparelho, na desvinculação e na exclusão da conta (ver [../lgpd.md](../lgpd.md)).
+
+Push enviado ao paciente: título "Hora do remédio", texto "Tomar {remédio} às HH:mm", dados `tipo=LEMBRETE_DOSE`,
+`doseId`, `pacienteId` e `data`; Android com prioridade alta, canal `lembrete-dose`, tag `dose-{id}-1` e validade até o
+aviso ao cuidador.
+
 ## Horário do tratamento: antecedência mínima e primeira dose
 
 No cadastro (`POST /api/medicamentos/{medicamentoId}/tratamentos`) e na edição (`PUT /api/tratamentos/{id}`), se hoje

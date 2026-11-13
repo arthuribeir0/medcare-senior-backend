@@ -8,14 +8,17 @@
     - cuidador banca@exemplo.com (senha forte gerada na primeira vez e guardada em CREDENCIAIS_DEMO.txt, fora dos
       repositórios), com tolerância curta para o aviso de push aparecer ao vivo;
     - pacientes "Dona Maria" e "Seu José", com 3 remédios cada e horários espalhados no dia;
-    - um remédio "ao vivo" da Dona Maria cuja dose cai daqui a -MinutosAteAPrimeiraDose minutos;
+    - um remédio "ao vivo" da Dona Maria cuja dose cai daqui a -MinutosAteAPrimeiraDose minutos (padrão 4), para ver
+      o lembrete tocar no celular do paciente;
     - um código de pareamento novo para cada paciente (rode de novo minutos antes da banca para códigos frescos).
   Por SQL, no contêiner do banco de apresentação: o histórico dos últimos 14 dias (a API só cria doses futuras), com
   confirmações no horário, com atraso e doses não tomadas, confirmadas pelo paciente ou pelo cuidador.
   Idempotente: rodar de novo não duplica nada; só renova o horário ao vivo e os códigos.
 
 .PARAMETER MinutosAteAPrimeiraDose
-  Daqui a quantos minutos cai a dose ao vivo (padrão 8; mínimo 6, porque horário de hoje exige 5 minutos de antecedência).
+  Daqui a quantos minutos cai a dose ao vivo (padrão 4; de 3 a 600). A API só aceita horário de hoje com 5 minutos de
+  antecedência: abaixo de 6, o tratamento é criado pela API para daqui a 6 minutos e o horário é aproximado por SQL,
+  só no banco da apresentação (o mesmo caminho do histórico).
 
 .PARAMETER ToleranciaMinutos
   Tolerância do cuidador de demonstração (padrão 10): o push de dose não confirmada chega esse tempo depois do horário.
@@ -26,7 +29,7 @@
   .\preparar-demonstracao.ps1 -MinutosAteAPrimeiraDose 12
 #>
 param(
-    [ValidateRange(6, 600)] [int] $MinutosAteAPrimeiraDose = 8,
+    [ValidateRange(3, 600)] [int] $MinutosAteAPrimeiraDose = 4,
     [ValidateRange(5, 120)] [int] $ToleranciaMinutos = 10,
     [string] $ArquivoCredenciais = (Join-Path $PSScriptRoot '..\..\..\CREDENCIAIS_DEMO.txt')
 )
@@ -183,11 +186,15 @@ try {
         Escrever-Ok "$($p.Nome): $($p.Remedios.Count) remédios com tratamento"
     }
 
-    # 3. Remédio ao vivo: uma dose hoje daqui a N minutos (renovada a cada execução)
+    # 3. Remédio ao vivo: uma dose hoje daqui a N minutos (renovada a cada execução). A API exige 5 minutos de
+    # antecedência: o tratamento vai pela API para daqui a pelo menos 6 minutos e, se N for menor, o horário é trazido
+    # para mais perto por SQL (só no banco da apresentação)
     $horaAoVivo = (Get-Date).AddMinutes($MinutosAteAPrimeiraDose)
     $horaAoVivo = $horaAoVivo.AddSeconds(-$horaAoVivo.Second)
-    if ($horaAoVivo.Date -ne (Get-Date).Date) { throw 'a dose ao vivo cairia amanhã; rode antes das 23:50 ou diminua -MinutosAteAPrimeiraDose.' }
-    $horario = $horaAoVivo.ToString('HH:mm')
+    $horaPelaApi = (Get-Date).AddMinutes([Math]::Max($MinutosAteAPrimeiraDose, 6))
+    $horaPelaApi = $horaPelaApi.AddSeconds(-$horaPelaApi.Second)
+    if ($horaPelaApi.Date -ne (Get-Date).Date) { throw 'a dose ao vivo cairia amanhã; rode antes das 23:50 ou diminua -MinutosAteAPrimeiraDose.' }
+    $horario = $horaPelaApi.ToString('HH:mm')
     $idMaria = $idsPacientes['Dona Maria']
     $remediosMaria = @(Exigir (Api 'GET' "/api/medicamentos?pacienteId=$idMaria" $null $token) 200 'remédios da Dona Maria')
     $aoVivo = $remediosMaria | Where-Object { $_.nome -eq $RemedioAoVivo.Nome } | Select-Object -First 1
@@ -201,6 +208,19 @@ try {
         $tratamentoAoVivo = Exigir (Api 'PUT' "/api/tratamentos/$($tratamentoAoVivo.id)" $corpoAoVivo $token) 200 'horário ao vivo'
     } else {
         $tratamentoAoVivo = Exigir (Api 'POST' "/api/medicamentos/$($aoVivo.id)/tratamentos" $corpoAoVivo $token) 201 'tratamento ao vivo'
+    }
+    if ($horaAoVivo -ne $horaPelaApi) {
+        $horarioCurto = $horaAoVivo.ToString('HH:mm')
+        $quando = $horaAoVivo.ToString('yyyy-MM-dd HH:mm')
+        $sqlAoVivo = @"
+UPDATE tratamento SET horarios = '["$horarioCurto"]'::jsonb WHERE id = $($tratamentoAoVivo.id);
+UPDATE dose SET horario_programado = '$quando'
+ WHERE tratamento_id = $($tratamentoAoVivo.id) AND status = 'PENDENTE' AND horario_programado::date = DATE '$hojeTexto';
+SELECT count(*) FROM dose WHERE tratamento_id = $($tratamentoAoVivo.id) AND horario_programado = '$quando';
+"@
+        $movidas = ("$(Invocar-Sql $sqlAoVivo)" -split "`n" | Where-Object { $_ -match '^\d+$' } | Select-Object -Last 1)
+        if ($movidas -ne '1') { throw "não foi possível aproximar a dose ao vivo para $horarioCurto." }
+        $horario = $horarioCurto
     }
     Escrever-Ok "dose ao vivo: Dipirona da Dona Maria hoje às $horario"
 
@@ -236,6 +256,8 @@ try {
     $codigos | ForEach-Object { Write-Host "  $($_.Nome): $($_.Codigo)  (até $($_.Validade))" }
     Write-Host 'Próximas doses:'
     $proximas | Sort-Object Quando | Select-Object -First 6 | ForEach-Object { Write-Host "  $($_.Texto)" }
+    Write-Host "Lembrete no celular do paciente: às $horario (abra o app do paciente uma vez antes, para ele agendar)."
+    Write-Host "Reforço do servidor ao paciente: 2 min depois do horário, se a dose continuar pendente."
     Write-Host "Push ao cuidador: $ToleranciaMinutos min depois do horário, se a dose não for confirmada."
     Write-Host "Credenciais salvas em $([IO.Path]::GetFullPath($ArquivoCredenciais))"
     Write-Host '======================================================' -ForegroundColor Green

@@ -60,7 +60,7 @@ Na pasta `deploy\apresentacao` (PowerShell). Todos aceitam `-?` para ajuda.
 | Script | O que faz |
 |---|---|
 | `iniciar-apresentacao.ps1` | Confere o Docker, cria o `.env.apresentacao` na primeira vez (senha do banco e JWT aleatórios, nada na tela), compila e sobe, espera a saúde local e a pública e imprime `PRONTO: https://... \| backend OK \| banco OK \| push OK \| túnel OK`. `-SemBuild` reaproveita a imagem. |
-| `preparar-demonstracao.ps1` | Cuidador `banca@exemplo.com`, Dona Maria e Seu José com remédios, 14 dias de histórico, uma dose "ao vivo" daqui a `-MinutosAteAPrimeiraDose` (padrão 8, mínimo 6) e códigos de pareamento novos. Idempotente. Salva as credenciais em `C:\Users\arthu\Projetos\CREDENCIAIS_DEMO.txt`. |
+| `preparar-demonstracao.ps1` | Cuidador `banca@exemplo.com`, Dona Maria e Seu José com remédios, 14 dias de histórico, uma dose "ao vivo" daqui a `-MinutosAteAPrimeiraDose` (padrão 4, de 3 a 600; abaixo de 6 o horário é aproximado por SQL, porque a API exige 5 minutos de antecedência), para ver o lembrete tocar no celular do paciente, e códigos de pareamento novos. Idempotente. Salva as credenciais em `C:\Users\arthu\Projetos\CREDENCIAIS_DEMO.txt`. |
 | `status-apresentacao.ps1` | Tabela de saúde: contêineres, saúde local e pública, último evento de push, relógio do PC contra o UTC, disco e versão da imagem. |
 | `parar-apresentacao.ps1` | Para tudo sem apagar dados. |
 | `resetar-demonstracao.ps1` | Apaga **só** o volume do banco de apresentação (pede `APAGAR`) e recria os dados de demonstração. |

@@ -48,6 +48,16 @@ sequenceDiagram
     J->>B: doses com a janela encerrada passam a NAO_TOMADA (UPDATE atômico só se ainda PENDENTE)
 ```
 
+Lembrete de dose do paciente, em duas camadas (detalhes em `docs/lembrete-do-paciente.md`, no repositório do app):
+
+- **No aparelho** (principal): o app agenda alarmes locais no horário e 10 minutos depois, e funciona sem internet.
+- **No servidor** (reserva): o job `LembreteDoPacienteJob`, a cada minuto (segundo 15), procura doses PENDENTES cujo
+  horário passou há pelo menos 2 minutos e que ainda não chegaram ao aviso ao cuidador (`PoliticaDeJanela`), de
+  pacientes com aparelho registrado (`PUT /api/pacientes/me/fcm-token`). Grava o evento `LEMBRETE_PACIENTE` (um por
+  dose, `ON CONFLICT DO NOTHING`) e envia "Hora do remédio" pelo mesmo `EnvioDeAvisoService` e a mesma retentativa
+  do aviso ao cuidador. O push usa o canal `lembrete-dose` e a tag `dose-{id}-1`, a mesma do lembrete local, para o
+  Android substituir em vez de empilhar.
+
 ## Rodar no PC
 
 Pré-requisitos: Docker Desktop, JDK 17 (no IntelliJ: *File → Project Structure → SDK*) e o arquivo `.env` na raiz
@@ -108,6 +118,8 @@ Cobertura atual: 99,6% das linhas e 97,6% dos ramos em domain+application; 93% n
 | Tolerância do cuidador de 5 a 120 minutos | `Tolerancia` | `ToleranciaUseCasesTest`, `PoliticaDeJanelaTest` |
 | Cada um só vê o que é seu (404 igual a inexistente) | casos de uso + `SecurityConfig` | `SegurancaApiTest`, `OpenApiContratoTest` |
 | Aviso push sem o nome do remédio, com retentativa | `EnvioDeAvisoService`, `PushNotificadorDeDoseNaoTomadaAdapter` | `EnvioDeAvisoServiceTest`, `PushNotificadorDeDoseNaoTomadaAdapterTest`, `RetentativaPostgresTest` |
+| Lembrete do servidor ao paciente: só dose PENDENTE, de 2 min depois do horário até o aviso ao cuidador, uma vez por dose e tipo | `LembrarPacienteDaDoseUseCase`, `PoliticaDeJanela`, `PushNotificadorDeLembreteDoPacienteAdapter` | `LembrarPacienteDaDoseUseCaseTest`, `LembreteDoPacientePostgresTest`, `PoliticaDeJanelaTest`, `MigracoesDoZeroPostgresTest` |
+| Token do aparelho do paciente: paciente sempre do JWT; apagado ao sair, desconectar, desvincular e excluir a conta | `RegistrarTokenDoPacienteUseCase`, `DesconexaoDoAparelhoService` | `TokenDoPacienteUseCasesTest`, `TokenDoPacienteApiTest` |
 | Histórico: início não posterior ao fim; período vazio é página vazia | `FiltroHistorico` | `FiltroHistoricoTest`, `HistoricoApiTest` |
 | PDF de até 12 meses, com taxa de adesão; período sem doses = 422 | `GerarRelatorioPdfUseCase`, `TotaisDoDia` | `GerarRelatorioPdfUseCaseTest`, `TotaisDoDiaTest`, `RelatorioPdfApiTest` |
 | Exclusão de conta apaga os dados pessoais; o histórico fica anônimo | `ExcluirContaUseCase` | `ExcluirContaUseCaseTest`, `PersistenciaPostgresTest` |
@@ -137,7 +149,9 @@ Cobertura atual: 99,6% das linhas e 97,6% dos ramos em domain+application; 93% n
 | `DOSES_HORIZONTE_DIAS` | 30 | Doses geradas à frente, em dias (de 1 a 90) |
 | `CACHE_RELATORIO_DIARIO_SEGUNDOS` | 30 | Cache do relatório diário (0 desliga) |
 | `FCM_ENABLED`, `FCM_DRY_RUN`, `FIREBASE_CREDENTIALS_PATH` | false, false, vazio | Push |
-| `JOBS_ENABLED` | true | Varredura de doses, retentativa e reabastecimento |
+| `ALERTAS_LEMBRETE_PACIENTE_ATRASO_MINUTOS` | 2 | Quanto depois do horário o servidor reforça o lembrete do paciente |
+| `LEMBRETE_PACIENTE_CRON` | `15 * * * * *` | Frequência do job de lembrete ao paciente |
+| `JOBS_ENABLED` | true | Varredura de doses, lembrete ao paciente, retentativa e reabastecimento |
 | `SWAGGER_ENABLED` | true fora do `prod`; false no `prod` | Swagger UI e `/v3/api-docs` |
 
 ## Apresentação no PC

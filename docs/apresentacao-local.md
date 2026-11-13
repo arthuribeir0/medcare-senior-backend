@@ -69,6 +69,16 @@ Na pasta `deploy\apresentacao` (PowerShell). Todos aceitam `-?` para ajuda.
 O histórico de 14 dias é gravado por SQL direto no contêiner do banco de apresentação, porque a API só cria doses
 futuras. Isso existe **somente no script de demonstração**: não há rota nem perfil do servidor que faça isso.
 
+## Modo de teste
+
+O `docker-compose.apresentacao.yml` sobe o backend com `APP_MODO_TESTE=true`, para testar o app no aparelho sem
+esperar: a tolerância aceita a partir de **1 minuto** (o app gerado com `EXPO_PUBLIC_MODO_TESTE=true` mostra a opção "1 min")
+e o tratamento aceita **qualquer horário**, sem a antecedência mínima de 5 minutos. O log do backend avisa ao subir.
+Para voltar às regras normais: `$env:APP_MODO_TESTE="false"` antes de `.\iniciar-apresentacao.ps1` (ou mude o padrão no
+compose) e gere o app sem `EXPO_PUBLIC_MODO_TESTE`. Fora da apresentação (`application.yml`), o padrão é desligado.
+Com 1 minuto de tolerância, o aviso ao cuidador sai 1 minuto depois do horário; o reforço do servidor ao paciente
+(2 minutos depois) não chega a sair, porque vale só até o aviso.
+
 ## Atualizar o backend
 
 Depois de mudar o código: `.\iniciar-apresentacao.ps1` (recompila e recria só o backend; os dados ficam). As

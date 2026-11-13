@@ -52,8 +52,8 @@ class MigracoesDoZeroPostgresTest {
                 .migrate();
 
         assertThat(resultado.success).isTrue();
-        assertThat(resultado.targetSchemaVersion).isEqualTo("18");
-        assertThat(resultado.migrationsExecuted).isEqualTo(18);
+        assertThat(resultado.targetSchemaVersion).isEqualTo("19");
+        assertThat(resultado.migrationsExecuted).isEqualTo(19);
 
         List<String> indicesDoPedido = jdbc.queryForList("SELECT indexname FROM pg_indexes WHERE schemaname = ? "
                 + "AND tablename = 'pedido_desconexao'", String.class, schema);
@@ -184,6 +184,23 @@ class MigracoesDoZeroPostgresTest {
                 .hasMessageContaining("ck_paciente_token_fcm");
         assertThat(jdbc.queryForList("SELECT indexname FROM pg_indexes WHERE schemaname = ? AND tablename = 'paciente'",
                 String.class, schema)).contains("idx_paciente_token_fcm");
+    }
+
+    @Test
+    void aV19AceitaToleranciaDeUmACentoEVinteMinutos() {
+        flyway(null).migrate();
+        Long cuidador = jdbc.queryForObject("INSERT INTO " + schema + ".cuidador (nome, email, senha_hash, data_cadastro) "
+                + "VALUES ('Ana', 'ana@teste.com', 'hash', '2000-01-10 08:00') RETURNING id", Long.class);
+        String gravar = "INSERT INTO " + schema + ".configuracao_alerta (cuidador_id, tolerancia_minutos) VALUES (?, ?) "
+                + "ON CONFLICT (cuidador_id) DO UPDATE SET tolerancia_minutos = EXCLUDED.tolerancia_minutos";
+
+        jdbc.update(gravar, cuidador, 1);
+        jdbc.update(gravar, cuidador, 120);
+        assertThatThrownBy(() -> jdbc.update(gravar, cuidador, 0))
+                .isInstanceOf(DataIntegrityViolationException.class)
+                .hasMessageContaining("ck_configuracao_alerta_tolerancia");
+        assertThatThrownBy(() -> jdbc.update(gravar, cuidador, 121))
+                .isInstanceOf(DataIntegrityViolationException.class);
     }
 
     @Test

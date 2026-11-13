@@ -1,8 +1,10 @@
 package com.medcare.senior.domain.tratamento;
 
+import com.medcare.senior.domain.configuracao.ModoDeTeste;
 import org.junit.jupiter.api.Test;
 
 import java.time.DayOfWeek;
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -111,6 +113,24 @@ class AntecedenciaDoHorarioTest {
     @Test
     void pertoDaMeiaNoiteUmHorarioDeHojeAMenosDeCincoMinutosContinuaRecusado() {
         recusa(HOJE.atTime(23, 57), LocalTime.of(23, 59));
+    }
+
+    @Test
+    void noModoDeTesteQualquerHorarioEntraAteODoMinutoAtual() {
+        Tratamento t = tratamento(HOJE, QUINTA, LocalTime.of(10, 0), LocalTime.of(10, 1), LocalTime.of(10, 4));
+        assertThatCode(() -> t.validarAntecedencia(HOJE.atTime(10, 0, 30), t.getHorarios(),
+                new ModoDeTeste(true).antecedenciaMinima())).doesNotThrowAnyException();
+        // Desligado, a regra normal continua
+        assertThatThrownBy(() -> t.validarAntecedencia(HOJE.atTime(10, 0, 30), t.getHorarios(),
+                ModoDeTeste.DESLIGADO.antecedenciaMinima())).isInstanceOf(HorarioMuitoProximoException.class);
+    }
+
+    @Test
+    void modoDeTesteSoMudaAToleranciaMinimaEAAntecedencia() {
+        assertThat(ModoDeTeste.DESLIGADO.toleranciaMinima()).isEqualTo(5);
+        assertThat(ModoDeTeste.DESLIGADO.antecedenciaMinima()).isEqualTo(Duration.ofMinutes(5));
+        assertThat(new ModoDeTeste(true).toleranciaMinima()).isEqualTo(1);
+        assertThat(new ModoDeTeste(true).antecedenciaMinima()).isZero();
     }
 
     @Test

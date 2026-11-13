@@ -7,7 +7,11 @@ package com.medcare.senior.domain.configuracao;
 public class ToleranciaInvalidaException extends RuntimeException {
 
     public ToleranciaInvalidaException() {
-        super("A tolerância deve ficar entre " + Tolerancia.MINIMO_MINUTOS + " e " + Tolerancia.MAXIMO_MINUTOS
-                + " minutos");
+        this(Tolerancia.MINIMO_MINUTOS);
+    }
+
+    /** @param minimo menor tolerância aceita no momento (1 no modo de teste) */
+    public ToleranciaInvalidaException(int minimo) {
+        super("A tolerância deve ficar entre " + minimo + " e " + Tolerancia.MAXIMO_MINUTOS + " minutos");
     }
 }

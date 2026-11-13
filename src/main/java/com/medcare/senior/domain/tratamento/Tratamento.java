@@ -102,12 +102,20 @@ public class Tratamento {
      * @throws HorarioMuitoProximoException se algum horário verificado estiver nessa faixa
      */
     public void validarAntecedencia(LocalDateTime agora, Collection<LocalTime> verificados) {
+        validarAntecedencia(agora, verificados, ANTECEDENCIA_MINIMA);
+    }
+
+    /**
+     * Igual a {@link #validarAntecedencia(LocalDateTime, Collection)}, com a antecedência dada; zero (modo de teste)
+     * aceita qualquer horário.
+     */
+    public void validarAntecedencia(LocalDateTime agora, Collection<LocalTime> verificados, Duration antecedencia) {
         LocalDate hoje = agora.toLocalDate();
-        if (!temDoseNoDia(hoje)) {
+        if (antecedencia.isZero() || !temDoseNoDia(hoje)) {
             return;
         }
         LocalDateTime minutoAtual = agora.truncatedTo(ChronoUnit.MINUTES);
-        LocalDateTime limite = agora.plus(ANTECEDENCIA_MINIMA);
+        LocalDateTime limite = agora.plus(antecedencia);
         for (LocalTime horario : verificados) {
             // Pelo LocalDateTime de hoje: perto da meia-noite, um horário da madrugada é do dia seguinte e não conta
             LocalDateTime horarioDeHoje = hoje.atTime(horario);

@@ -57,6 +57,9 @@ jwt:
   # JWT_EXPIRATION_IDOSO_MS e o nome antigo da variavel, aceito para nao quebrar ambientes ja configurados.
   expiration-paciente-ms: ${JWT_EXPIRATION_PACIENTE_MS:${JWT_EXPIRATION_IDOSO_MS:15552000000}}
 app:
+  # Modo de teste: tolerancia a partir de 1 minuto e qualquer horario no tratamento (sem a antecedencia minima de 5
+  # minutos). Só para testar o app no aparelho; desligado por padrao.
+  modo-teste: ${APP_MODO_TESTE:false}
   # Fuso usado pelo Clock da aplicacao para "hoje" e "agora" (geracao de doses, remocao logica etc.)
   timezone: ${APP_TIMEZONE:America/Sao_Paulo}
   jobs:

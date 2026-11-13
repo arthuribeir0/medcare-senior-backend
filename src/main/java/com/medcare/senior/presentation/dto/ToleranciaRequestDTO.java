@@ -9,10 +9,11 @@ import jakarta.validation.constraints.NotNull;
 @Schema(description = "Tolerância do cuidador (RN-009): minutos depois do horário da dose até o aviso")
 public record ToleranciaRequestDTO(
 
-        @Schema(description = "Minutos, de 5 a 120 (inclusive)", example = "30", minimum = "5", maximum = "120",
-                requiredMode = Schema.RequiredMode.REQUIRED)
+        @Schema(description = "Minutos, de 5 a 120 (inclusive); de 1 a 120 com o servidor em modo de teste",
+                example = "30", minimum = "1", maximum = "120", requiredMode = Schema.RequiredMode.REQUIRED)
         @NotNull(message = "A tolerância é obrigatória")
-        @Min(value = Tolerancia.MINIMO_MINUTOS, message = "A tolerância deve ficar entre 5 e 120 minutos")
+        // O piso aqui é o do modo de teste; o mínimo em vigor (5, ou 1 no modo de teste) é conferido no caso de uso
+        @Min(value = Tolerancia.MINIMO_MODO_TESTE_MINUTOS, message = "A tolerância deve ficar entre 5 e 120 minutos")
         @Max(value = Tolerancia.MAXIMO_MINUTOS, message = "A tolerância deve ficar entre 5 e 120 minutos")
         Integer toleranciaMinutos
 ) {

@@ -49,6 +49,9 @@ services:
       POSTGRES_HOST: postgres
       POSTGRES_PORT: "5432"
       TZ: America/Sao_Paulo
+      # Modo de teste: tolerância de 1 minuto e qualquer horário no tratamento, para testar no aparelho sem esperar.
+      # Para voltar às regras normais: APP_MODO_TESTE=false (ou apague a linha) e suba o contêiner de novo.
+      APP_MODO_TESTE: ${APP_MODO_TESTE:-true}
       FCM_ENABLED: ${FCM_ENABLED:-false}
       # Caminho DENTRO do contêiner; o arquivo vem do volume somente leitura abaixo
       FIREBASE_CREDENTIALS_PATH: /run/secrets/firebase-adminsdk.json

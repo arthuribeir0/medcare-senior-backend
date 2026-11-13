@@ -1,6 +1,7 @@
 package com.medcare.senior.application.usecase;
 
 import com.medcare.senior.domain.configuracao.ConfiguracaoAlertaRepositoryPort;
+import com.medcare.senior.domain.configuracao.ModoDeTeste;
 import com.medcare.senior.domain.configuracao.ToleranciaInvalidaException;
 import com.medcare.senior.domain.dose.PoliticaDeJanela;
 import com.medcare.senior.domain.relatorio.CacheDeRelatorioDiarioPort;
@@ -74,6 +75,28 @@ class ToleranciaUseCasesTest {
         assertThatThrownBy(() -> atualizar.executar(CUIDADOR_ID, minutos))
                 .isInstanceOf(ToleranciaInvalidaException.class)
                 .hasMessage("A tolerância deve ficar entre 5 e 120 minutos");
+        verify(configuracoes, never()).salvarToleranciaMinutos(anyLong(), anyInt());
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {1, 4, 120})
+    void noModoDeTesteGravaAPartirDeUmMinuto(int minutos) {
+        AtualizarToleranciaUseCase emTeste = new AtualizarToleranciaUseCase(configuracoes, cacheDeRelatorio,
+                new ModoDeTeste(true));
+
+        assertThat(emTeste.executar(CUIDADOR_ID, minutos)).isEqualTo(minutos);
+        verify(configuracoes).salvarToleranciaMinutos(CUIDADOR_ID, minutos);
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {0, 121})
+    void noModoDeTesteRecusaForaDeUmACentoEVinte(int minutos) {
+        AtualizarToleranciaUseCase emTeste = new AtualizarToleranciaUseCase(configuracoes, cacheDeRelatorio,
+                new ModoDeTeste(true));
+
+        assertThatThrownBy(() -> emTeste.executar(CUIDADOR_ID, minutos))
+                .isInstanceOf(ToleranciaInvalidaException.class)
+                .hasMessage("A tolerância deve ficar entre 1 e 120 minutos");
         verify(configuracoes, never()).salvarToleranciaMinutos(anyLong(), anyInt());
     }
 }

@@ -1,11 +1,14 @@
 package com.medcare.senior.application.usecase;
 
 import com.medcare.senior.application.service.GeradorDeDosesService;
+import com.medcare.senior.domain.configuracao.ModoDeTeste;
 import com.medcare.senior.domain.dose.DoseRepositoryPort;
 import com.medcare.senior.domain.exception.RecursoNaoEncontradoException;
 import com.medcare.senior.domain.tratamento.Tratamento;
 import com.medcare.senior.domain.tratamento.TratamentoRepositoryPort;
 import com.medcare.senior.domain.relatorio.CacheDeRelatorioDiarioPort;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,12 +27,35 @@ public class EditarTratamentoUseCase {
     private final GeradorDeDosesService geradorDeDoses;
     private final CacheDeRelatorioDiarioPort cacheDeRelatorio;
     private final Clock clock;
+    private final ModoDeTeste modoDeTeste;
 
     public EditarTratamentoUseCase(TratamentoRepositoryPort tratamentoRepository,
                                    DoseRepositoryPort doseRepository,
                                    GeradorDeDosesService geradorDeDoses,
                                    CacheDeRelatorioDiarioPort cacheDeRelatorio,
                                    Clock clock) {
+        this(tratamentoRepository, doseRepository, geradorDeDoses, cacheDeRelatorio, clock, ModoDeTeste.DESLIGADO);
+    }
+
+    /** Sem a configuração do modo de teste (contextos parciais de teste), valem as regras normais. */
+    @Autowired
+    public EditarTratamentoUseCase(TratamentoRepositoryPort tratamentoRepository,
+                                   DoseRepositoryPort doseRepository,
+                                   GeradorDeDosesService geradorDeDoses,
+                                   CacheDeRelatorioDiarioPort cacheDeRelatorio,
+                                   Clock clock,
+                                   ObjectProvider<ModoDeTeste> modoDeTeste) {
+        this(tratamentoRepository, doseRepository, geradorDeDoses, cacheDeRelatorio, clock,
+                modoDeTeste.getIfAvailable(() -> ModoDeTeste.DESLIGADO));
+    }
+
+    public EditarTratamentoUseCase(TratamentoRepositoryPort tratamentoRepository,
+                                   DoseRepositoryPort doseRepository,
+                                   GeradorDeDosesService geradorDeDoses,
+                                   CacheDeRelatorioDiarioPort cacheDeRelatorio,
+                                   Clock clock,
+                                   ModoDeTeste modoDeTeste) {
+        this.modoDeTeste = modoDeTeste;
         this.tratamentoRepository = tratamentoRepository;
         this.doseRepository = doseRepository;
         this.geradorDeDoses = geradorDeDoses;
@@ -68,7 +94,7 @@ public class EditarTratamentoUseCase {
         editado.validar();
         LocalDateTime agora = LocalDateTime.now(clock);
         List<LocalTime> novos = horarios.stream().filter(h -> !atual.getHorarios().contains(h)).toList();
-        editado.validarAntecedencia(agora, novos);
+        editado.validarAntecedencia(agora, novos, modoDeTeste.antecedenciaMinima());
 
         Tratamento salvo = tratamentoRepository.save(editado);
         doseRepository.deletePendentesFuturasByTratamentoId(salvo.getId(), agora);

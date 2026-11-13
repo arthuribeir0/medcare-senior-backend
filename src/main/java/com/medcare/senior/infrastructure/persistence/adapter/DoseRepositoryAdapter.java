@@ -102,14 +102,15 @@ public class DoseRepositoryAdapter implements DoseRepositoryPort {
         return Math.toIntExact(duracao.toMinutes());
     }
 
-    // Tolerâncias possíveis: a de cada cuidador (5 a 120 min, garantido pelo CHECK da configuracao_alerta) ou a padrão
+    // Tolerâncias possíveis: a de cada cuidador (5 a 120 min, ou 1 a 120 no modo de teste, garantido pelo CHECK da
+    // configuracao_alerta) ou a padrão
     private static Duration maiorTolerancia(Duration padrao) {
         Duration maxima = Duration.ofMinutes(Tolerancia.MAXIMO_MINUTOS);
         return padrao.compareTo(maxima) > 0 ? padrao : maxima;
     }
 
     private static Duration menorTolerancia(Duration padrao) {
-        Duration minima = Duration.ofMinutes(Tolerancia.MINIMO_MINUTOS);
+        Duration minima = Duration.ofMinutes(Tolerancia.MINIMO_MODO_TESTE_MINUTOS);
         return padrao.compareTo(minima) < 0 ? padrao : minima;
     }
 

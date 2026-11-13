@@ -921,10 +921,12 @@ class PersistenciaPostgresTest {
     }
 
     @Test
-    void checkDaConfiguracaoRecusaToleranciaForaDe5a120() {
+    void checkDaConfiguracaoRecusaToleranciaAbaixoDeUmMinuto() {
         CuidadorEntity cuidador = cuidador();
 
-        assertThatThrownBy(() -> configuracaoAdapter.salvarToleranciaMinutos(cuidador.getId(), 4))
+        // O banco aceita de 1 a 120 (V19, mínimo do modo de teste); o mínimo de 5 fora dele é da aplicação
+        configuracaoAdapter.salvarToleranciaMinutos(cuidador.getId(), 1);
+        assertThatThrownBy(() -> configuracaoAdapter.salvarToleranciaMinutos(cuidador.getId(), 0))
                 .isInstanceOf(DataIntegrityViolationException.class);
     }
 

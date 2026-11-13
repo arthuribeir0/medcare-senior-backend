@@ -6603,10 +6603,10 @@
           "toleranciaMinutos" : {
             "type" : "integer",
             "format" : "int32",
-            "description" : "Minutos, de 5 a 120 (inclusive)",
+            "description" : "Minutos, de 5 a 120 (inclusive); de 1 a 120 com o servidor em modo de teste",
             "example" : 30,
             "maximum" : 120,
-            "minimum" : 5
+            "minimum" : 1
           }
         },
         "required" : [ "toleranciaMinutos" ]

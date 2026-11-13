@@ -83,7 +83,7 @@ Precisam de um PostgreSQL e das variáveis `POSTGRES_*` no ambiente:
 
 ```powershell
 Get-Content .env | ForEach-Object { if ($_ -match '^([^#=]+)=(.*)$') { Set-Item "env:$($Matches[1])" $Matches[2] } }
-.\mvnw.cmd verify       # 710 testes + JaCoCo (o build falha abaixo de 60% de linhas em domain e application)
+.\mvnw.cmd verify       # 718 testes + JaCoCo (o build falha abaixo de 60% de linhas em domain e application)
 ```
 
 - **Unidade** (Mockito) para domínio e casos de uso.

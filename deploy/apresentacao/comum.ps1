@@ -55,6 +55,16 @@ function Obter-CredencialFirebase {
     if ($arquivo) { $arquivo.FullName } else { $null }
 }
 
+# Servidor SMTP do envio dos códigos (smtp.env ou smtp.env.txt em segredos); $null se não houver. O arquivo vai inteiro
+# para o contêiner (env_file); daqui só se lê o NOME.
+function Obter-ArquivoSmtp {
+    foreach ($nome in 'smtp.env', 'smtp.env.txt') {
+        $caminho = Join-Path $script:PastaSegredos $nome
+        if (Test-Path -LiteralPath $caminho) { return $caminho }
+    }
+    return $null
+}
+
 function Gerar-Segredo([int] $tamanho) {
     $alfabeto = [char[]] 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
     $bytes = New-Object byte[] ($tamanho)
@@ -88,6 +98,17 @@ function Definir-VariaveisDoCompose {
     } else {
         $env:FIREBASE_ADMIN_JSON = Join-Path $script:PastaApresentacao 'credencial-ausente.json'
         $env:FCM_ENABLED = 'false'
+    }
+    # E-mail: com smtp.env, os códigos vão por e-mail; sem ele, ficam no log do backend (ultimo-codigo-email.ps1)
+    $smtp = Obter-ArquivoSmtp
+    if ($smtp) {
+        $env:SMTP_ENV_FILE = $smtp
+        $env:EMAIL_ENABLED = 'true'
+        $env:EMAIL_LOG_DO_CODIGO = 'false'
+    } else {
+        $env:SMTP_ENV_FILE = Join-Path $script:PastaApresentacao 'smtp-ausente.env'
+        $env:EMAIL_ENABLED = 'false'
+        $env:EMAIL_LOG_DO_CODIGO = 'true'
     }
     $preferencia = $ErrorActionPreference
     $ErrorActionPreference = 'Continue'

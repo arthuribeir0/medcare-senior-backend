@@ -42,5 +42,10 @@ public interface CuidadorRepositoryPort {
      */
     void removerFcmToken(Long cuidadorId);
 
+    /** Grava a senha nova (já em hash) e marca o e-mail como confirmado: só quem recebeu o código chega aqui. */
+    void redefinirSenha(Long cuidadorId, String senhaHash);
+
+    void marcarEmailVerificado(Long cuidadorId);
+
     void deleteById(Long id);
 }

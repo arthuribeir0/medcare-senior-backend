@@ -75,6 +75,18 @@ public class CuidadorRepositoryAdapter implements CuidadorRepositoryPort {
 
     @Override
     @Transactional
+    public void redefinirSenha(Long cuidadorId, String senhaHash) {
+        cuidadorRepository.redefinirSenha(cuidadorId, senhaHash);
+    }
+
+    @Override
+    @Transactional
+    public void marcarEmailVerificado(Long cuidadorId) {
+        cuidadorRepository.marcarEmailVerificado(cuidadorId);
+    }
+
+    @Override
+    @Transactional
     public void deleteById(Long id) {
         cuidadorRepository.deleteById(id);
     }

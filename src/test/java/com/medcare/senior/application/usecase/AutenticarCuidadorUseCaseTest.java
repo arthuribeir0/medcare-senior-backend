@@ -63,7 +63,7 @@ class AutenticarCuidadorUseCaseTest {
 
         SessaoAutenticada sessao = useCase.executar("  Ana@Email.com ", "SenhaForte1");
 
-        assertThat(sessao).isEqualTo(new SessaoAutenticada("jwt-token", 7L, "Ana Souza"));
+        assertThat(sessao).isEqualTo(new SessaoAutenticada("jwt-token", 7L, "Ana Souza", true));
     }
 
     @Test

@@ -38,6 +38,7 @@ Exposta em `DELETE /api/cuidadores/me` (somente o próprio cuidador, papel CUIDA
 | Medicamentos dos pacientes, **inclusive os removidos logicamente** | Apagados |
 | Tratamentos dos medicamentos, **inclusive os removidos logicamente** | Apagados |
 | Códigos de vínculo | Apagados |
+| Códigos enviados ao e-mail (confirmação e troca de senha; só o hash) | Apagados (`ON DELETE CASCADE`) |
 | Mensagens das conversas com os pacientes do cuidador | Apagadas |
 | Doses PENDENTES (passadas e futuras) | Apagadas |
 | Eventos de notificação (avisos ao cuidador e lembretes aos pacientes) | Apagados |

@@ -16,7 +16,10 @@ services:
   postgres:
     image: postgres:16-alpine
     restart: unless-stopped
-    env_file: .env.apresentacao
+    # Banco e JWT (.env.apresentacao) e o SMTP do envio dos códigos (smtp.env em segredos, ou o vazio smtp-ausente.env)
+    env_file:
+      - .env.apresentacao
+      - ${SMTP_ENV_FILE:?rode iniciar-apresentacao.ps1}
     volumes:
       - medcare_apresentacao_pgdata:/var/lib/postgresql/data
     networks:
@@ -53,6 +56,10 @@ services:
       # Para voltar às regras normais: APP_MODO_TESTE=false (ou apague a linha) e suba o contêiner de novo.
       APP_MODO_TESTE: ${APP_MODO_TESTE:-true}
       FCM_ENABLED: ${FCM_ENABLED:-false}
+      # E-mail com o código de confirmação e de troca de senha: ligado quando há smtp.env em segredos. Sem ele, o código
+      # vai para o log do backend (só nesta apresentação; ver .\ultimo-codigo-email.ps1)
+      EMAIL_ENABLED: ${EMAIL_ENABLED:-false}
+      EMAIL_LOG_DO_CODIGO: ${EMAIL_LOG_DO_CODIGO:-false}
       # Caminho DENTRO do contêiner; o arquivo vem do volume somente leitura abaixo
       FIREBASE_CREDENTIALS_PATH: /run/secrets/firebase-adminsdk.json
       # PC com pouca memória: heap em 60% do limite do contêiner

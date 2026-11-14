@@ -52,8 +52,8 @@ class MigracoesDoZeroPostgresTest {
                 .migrate();
 
         assertThat(resultado.success).isTrue();
-        assertThat(resultado.targetSchemaVersion).isEqualTo("19");
-        assertThat(resultado.migrationsExecuted).isEqualTo(19);
+        assertThat(resultado.targetSchemaVersion).isEqualTo("20");
+        assertThat(resultado.migrationsExecuted).isEqualTo(20);
 
         List<String> indicesDoPedido = jdbc.queryForList("SELECT indexname FROM pg_indexes WHERE schemaname = ? "
                 + "AND tablename = 'pedido_desconexao'", String.class, schema);
@@ -184,6 +184,32 @@ class MigracoesDoZeroPostgresTest {
                 .hasMessageContaining("ck_paciente_token_fcm");
         assertThat(jdbc.queryForList("SELECT indexname FROM pg_indexes WHERE schemaname = ? AND tablename = 'paciente'",
                 String.class, schema)).contains("idx_paciente_token_fcm");
+    }
+
+    @Test
+    void aV20ConsideraConfirmadasAsContasExistentesEGuardaUmCodigoPorFinalidade() {
+        flyway("19").migrate();
+        Long antiga = jdbc.queryForObject("INSERT INTO " + schema + ".cuidador (nome, email, senha_hash, data_cadastro) "
+                + "VALUES ('Ana', 'ana@teste.com', 'hash', '2000-01-10 08:00') RETURNING id", Long.class);
+        flyway(null).migrate();
+
+        assertThat(jdbc.queryForObject("SELECT email_verificado FROM " + schema + ".cuidador WHERE id = ?", Boolean.class,
+                antiga)).isTrue();
+
+        String gravar = "INSERT INTO " + schema + ".codigo_email (cuidador_id, finalidade, codigo_hash, criado_em, expira_em) "
+                + "VALUES (?, ?, 'hash', '2026-11-14 10:00', '2026-11-14 10:15')";
+        jdbc.update(gravar, antiga, "VERIFICACAO");
+        jdbc.update(gravar, antiga, "REDEFINICAO_SENHA");
+        assertThatThrownBy(() -> jdbc.update(gravar, antiga, "VERIFICACAO"))
+                .isInstanceOf(DataIntegrityViolationException.class)
+                .hasMessageContaining("uk_codigo_email_cuidador_finalidade");
+        assertThatThrownBy(() -> jdbc.update(gravar, antiga, "OUTRA"))
+                .isInstanceOf(DataIntegrityViolationException.class)
+                .hasMessageContaining("ck_codigo_email_finalidade");
+
+        // Excluir a conta leva os códigos junto
+        jdbc.update("DELETE FROM " + schema + ".cuidador WHERE id = ?", antiga);
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM " + schema + ".codigo_email", Integer.class)).isZero();
     }
 
     @Test

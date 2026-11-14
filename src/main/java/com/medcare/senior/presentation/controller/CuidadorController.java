@@ -4,11 +4,14 @@ import com.medcare.senior.infrastructure.docs.PerfilExigido;
 import com.medcare.senior.infrastructure.docs.PerfilExigido.Perfil;
 import com.medcare.senior.application.usecase.BuscarCuidadorUseCase;
 import com.medcare.senior.application.usecase.CadastrarCuidadorUseCase;
+import com.medcare.senior.application.usecase.ConfirmarEmailUseCase;
+import com.medcare.senior.application.usecase.ReenviarCodigoDeVerificacaoUseCase;
 import com.medcare.senior.application.usecase.ExcluirContaUseCase;
 import com.medcare.senior.application.usecase.RegistrarTokenDispositivoUseCase;
 import com.medcare.senior.application.usecase.RemoverTokenDispositivoUseCase;
 import com.medcare.senior.domain.autenticacao.AuthenticatedUser;
 import com.medcare.senior.domain.usuario.Cuidador;
+import com.medcare.senior.presentation.dto.CodigoEmailRequestDTO;
 import com.medcare.senior.presentation.dto.CuidadorRequestDTO;
 import com.medcare.senior.presentation.dto.CuidadorResponseDTO;
 import com.medcare.senior.presentation.dto.TokenDispositivoRequestDTO;
@@ -42,15 +45,19 @@ public class CuidadorController {
     private final RegistrarTokenDispositivoUseCase registrarTokenDispositivoUseCase;
     private final BuscarCuidadorUseCase buscarCuidadorUseCase;
     private final RemoverTokenDispositivoUseCase removerTokenDispositivoUseCase;
+    private final ConfirmarEmailUseCase confirmarEmailUseCase;
+    private final ReenviarCodigoDeVerificacaoUseCase reenviarCodigoDeVerificacaoUseCase;
 
     @PostMapping
     @Tag(name = "Cuidador")
     @PerfilExigido(Perfil.PUBLICO)
-    @Operation(summary = "Cadastra um cuidador", description = "O e-mail deve ser único, a senha forte (no mínimo 8 caracteres, com maiúscula, "
-            + "minúscula e número) e o termo de consentimento LGPD aceito (consentimentoLgpd=true).")
-    @ApiResponse(responseCode = "201", description = "Cuidador cadastrado")
-    @ApiResponse(responseCode = "400", description = "Campos inválidos (VALIDACAO), senha fraca (SENHA_FRACA) ou termo LGPD não "
-            + "aceito (CONSENTIMENTO_OBRIGATORIO)",
+    @Operation(summary = "Cadastra um cuidador", description = "O e-mail deve ser único e de um domínio que existe, a "
+            + "senha forte (no mínimo 8 caracteres, com maiúscula, minúscula e número) e o termo de consentimento LGPD "
+            + "aceito (consentimentoLgpd=true). A conta nasce com o e-mail não confirmado (emailVerificado=false) e um "
+            + "código de 6 dígitos é enviado a ele; sem confirmar, o cuidador não cadastra pacientes.")
+    @ApiResponse(responseCode = "201", description = "Cuidador cadastrado; código de confirmação enviado ao e-mail")
+    @ApiResponse(responseCode = "400", description = "Campos inválidos (VALIDACAO), e-mail de domínio que não existe "
+            + "(EMAIL_INVALIDO), senha fraca (SENHA_FRACA) ou termo LGPD não aceito (CONSENTIMENTO_OBRIGATORIO)",
             content = @Content(schema = @Schema(implementation = ErroResponse.class)))
     @ApiResponse(responseCode = "409", description = "E-mail já cadastrado (EMAIL_DUPLICADO)",
             content = @Content(schema = @Schema(implementation = ErroResponse.class)))
@@ -67,6 +74,37 @@ public class CuidadorController {
     @ApiResponse(responseCode = "200", description = "Dados do cuidador")
     public ResponseEntity<CuidadorResponseDTO> buscarMe(@Parameter(hidden = true) @AuthenticationPrincipal AuthenticatedUser usuario) {
         return ResponseEntity.ok(CuidadorResponseDTO.from(buscarCuidadorUseCase.executar(usuario.cuidadorId())));
+    }
+
+    @PostMapping("/me/verificacao-email/confirmar")
+    @Tag(name = "Cuidador")
+    @PerfilExigido(Perfil.CUIDADOR)
+    @Operation(summary = "Confirma o e-mail do cuidador autenticado",
+            description = "Com o código de 6 dígitos enviado ao e-mail no cadastro (ou por /reenviar). Vale 15 minutos; "
+                    + "5 códigos errados invalidam o código. Já confirmado: responde 200 sem conferir nada.")
+    @ApiResponse(responseCode = "200", description = "E-mail confirmado; devolve o cuidador")
+    @ApiResponse(responseCode = "400", description = "Código errado (com as tentativas que restam), vencido ou bloqueado "
+            + "(CODIGO_EMAIL_INVALIDO), ou campo ausente (VALIDACAO)",
+            content = @Content(schema = @Schema(implementation = ErroResponse.class)))
+    public ResponseEntity<CuidadorResponseDTO> confirmarEmail(
+            @Parameter(hidden = true) @AuthenticationPrincipal AuthenticatedUser usuario,
+            @Valid @RequestBody CodigoEmailRequestDTO request) {
+        return ResponseEntity.ok(CuidadorResponseDTO.from(confirmarEmailUseCase.executar(usuario.cuidadorId(), request.codigo())));
+    }
+
+    @PostMapping("/me/verificacao-email/reenviar")
+    @Tag(name = "Cuidador")
+    @PerfilExigido(Perfil.CUIDADOR)
+    @Operation(summary = "Envia outro código de confirmação ao e-mail",
+            description = "Substitui o código anterior. Só depois de 1 minuto do anterior. E-mail já confirmado: nada é "
+                    + "enviado.")
+    @ApiResponse(responseCode = "204", description = "Código enviado (ou e-mail já confirmado)")
+    @ApiResponse(responseCode = "429", description = "Menos de 1 minuto depois do anterior (LIMITE_TENTATIVAS, header "
+            + "Retry-After com os segundos que faltam)",
+            content = @Content(schema = @Schema(implementation = ErroResponse.class)))
+    public ResponseEntity<Void> reenviarCodigo(@Parameter(hidden = true) @AuthenticationPrincipal AuthenticatedUser usuario) {
+        reenviarCodigoDeVerificacaoUseCase.executar(usuario.cuidadorId());
+        return ResponseEntity.noContent().build();
     }
 
     @DeleteMapping("/me")

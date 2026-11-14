@@ -58,6 +58,7 @@ public class SecurityConfig {
                     auth
                             .requestMatchers(HttpMethod.POST, "/api/cuidadores").permitAll()
                             .requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll()
+                            .requestMatchers(HttpMethod.POST, "/api/auth/esqueci-senha", "/api/auth/redefinir-senha").permitAll()
                             .requestMatchers(HttpMethod.POST, "/api/vinculo/validar").permitAll()
                             .requestMatchers("/error").permitAll()
                             // Saúde mínima para o HEALTHCHECK do contêiner: só {"status":"UP"}, sem detalhes
@@ -66,6 +67,8 @@ public class SecurityConfig {
                             .requestMatchers(HttpMethod.DELETE, "/api/cuidadores/me").hasRole(Role.CUIDADOR.name())
                             .requestMatchers(HttpMethod.PUT, "/api/cuidadores/me/fcm-token").hasRole(Role.CUIDADOR.name())
                             .requestMatchers(HttpMethod.DELETE, "/api/cuidadores/me/fcm-token").hasRole(Role.CUIDADOR.name())
+                            .requestMatchers(HttpMethod.POST, "/api/cuidadores/me/verificacao-email/confirmar",
+                                    "/api/cuidadores/me/verificacao-email/reenviar").hasRole(Role.CUIDADOR.name())
                             // Rotas do aparelho do paciente: ANTES de /api/pacientes/** (a primeira regra que casa vence)
                             .requestMatchers(HttpMethod.GET, "/api/pacientes/me", "/api/pacientes/me/doses").hasRole(Role.PACIENTE.name())
                             .requestMatchers(HttpMethod.POST, "/api/pacientes/me/pedido-desconexao").hasRole(Role.PACIENTE.name())

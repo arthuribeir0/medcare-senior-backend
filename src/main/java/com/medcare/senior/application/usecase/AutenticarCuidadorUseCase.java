@@ -48,6 +48,6 @@ public class AutenticarCuidadorUseCase {
 
         Cuidador autenticado = cuidador.get();
         return new SessaoAutenticada(tokenGenerator.generateToken(autenticado.getId(), Role.CUIDADOR),
-                autenticado.getId(), autenticado.getNome());
+                autenticado.getId(), autenticado.getNome(), autenticado.isEmailVerificado());
     }
 }

@@ -193,6 +193,9 @@ public class DocumentacaoPadraoCustomizer implements GlobalOperationCustomizer, 
                 + "cadastro");
         m.put("TOKEN_DISPOSITIVO_INVALIDO", "O token do dispositivo é obrigatório e deve ter no máximo 512 caracteres");
         m.put("CODIGO_INVALIDO", "Código inválido ou expirado");
+        m.put("CODIGO_EMAIL_INVALIDO", "Código incorreto. Você tem mais 4 tentativas.");
+        m.put("EMAIL_INVALIDO", "O domínio \"gmial.com\" não existe. Confira o e-mail.");
+        m.put("EMAIL_NAO_VERIFICADO", "Confirme o seu e-mail com o código que enviamos antes de cadastrar pacientes.");
         m.put("DADOS_OBRIGATORIOS_MEDICAMENTO", "Nome, dosagem e tipo do medicamento são obrigatórios");
         m.put("TRATAMENTO_INVALIDO", "Informe ao menos um horário para o tratamento");
         m.put("CREDENCIAIS_INVALIDAS", "E-mail ou senha inválidos");

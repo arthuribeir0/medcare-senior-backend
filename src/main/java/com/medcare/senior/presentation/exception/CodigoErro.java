@@ -13,12 +13,16 @@ package com.medcare.senior.presentation.exception;
  *  CONSENTIMENTO_OBRIGATORIO       400   termo LGPD não aceito no cadastro
  *  TOKEN_DISPOSITIVO_INVALIDO      400   token FCM vazio ou maior que 512 caracteres
  *  CODIGO_INVALIDO                 400   código de vínculo inexistente, expirado ou já usado (um código só, de propósito)
+ *  CODIGO_EMAIL_INVALIDO           400   código do e-mail errado (mensagem com as tentativas que restam), vencido,
+ *                                        bloqueado depois de 5 erros, ou e-mail sem conta na redefinição de senha
+ *  EMAIL_INVALIDO                  400   e-mail fora do formato ou de domínio que não existe (cadastro; campos[] email)
  *  DADOS_OBRIGATORIOS_MEDICAMENTO  400   RN-005
  *  TRATAMENTO_INVALIDO             400   RN-007 (horários, dias da semana, período)
  *  CREDENCIAIS_INVALIDAS           401   login com e-mail inexistente ou senha errada (mesma mensagem)
  *  NAO_AUTENTICADO                 401   sem token, ou token inválido ou expirado (Spring Security, antes do controller)
  *  SESSAO_INVALIDA                 401   token válido de usuário que não existe mais (o app volta ao pareamento)
  *  ACESSO_NEGADO                   403   papel diferente do exigido pela operação ou rota fora da lista do SecurityConfig
+ *  EMAIL_NAO_VERIFICADO            403   cadastrar paciente antes de confirmar o e-mail com o código
  *  RECURSO_NAO_ENCONTRADO          404   recurso inexistente, removido ou de outro dono
  *  METODO_NAO_PERMITIDO            405   método HTTP não suportado pela rota
  *  EMAIL_DUPLICADO                 409   RN-001
@@ -29,7 +33,8 @@ package com.medcare.senior.presentation.exception;
  *  DOSE_ENCERRADA                  409   confirmação depois do encerramento da janela
  *  PEDIDO_ENCERRADO                409   decisão de pedido de desconexão já decidido de outro jeito, cancelado ou vencido
  *  PERIODO_SEM_REGISTROS           422   exportação do histórico em PDF de período sem nenhuma dose (UC-012, 4a)
- *  LIMITE_TENTATIVAS               429   rate limiting do pareamento (header Retry-After)
+ *  LIMITE_TENTATIVAS               429   rate limiting do pareamento e da troca de senha, e pedido de outro código do
+ *                                        e-mail antes de 1 minuto (header Retry-After)
  *  ERRO_INTERNO                    500   erro inesperado (sem detalhes na resposta)
  * </pre>
  */
@@ -41,6 +46,9 @@ public enum CodigoErro {
     CONSENTIMENTO_OBRIGATORIO,
     TOKEN_DISPOSITIVO_INVALIDO,
     CODIGO_INVALIDO,
+    CODIGO_EMAIL_INVALIDO,
+    EMAIL_INVALIDO,
+    EMAIL_NAO_VERIFICADO,
     DADOS_OBRIGATORIOS_MEDICAMENTO,
     TRATAMENTO_INVALIDO,
     CREDENCIAIS_INVALIDAS,

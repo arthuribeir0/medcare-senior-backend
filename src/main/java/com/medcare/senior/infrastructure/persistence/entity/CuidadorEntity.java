@@ -45,4 +45,7 @@ public class CuidadorEntity {
 
     @Column(name = "fcm_token", length = 512)
     private String fcmToken;
+
+    @Column(name = "email_verificado", nullable = false)
+    private boolean emailVerificado;
 }

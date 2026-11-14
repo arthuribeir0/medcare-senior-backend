@@ -1,7 +1,8 @@
 package com.medcare.senior.presentation.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-import jakarta.validation.constraints.Email;
+import com.medcare.senior.domain.email.FormatoDeEmail;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
@@ -15,7 +16,7 @@ public record CuidadorRequestDTO(
 
         @Schema(description = "E-mail (único no sistema)", example = "ana@email.com")
         @NotBlank(message = "O e-mail é obrigatório")
-        @Email(message = "O e-mail informado é inválido")
+        @Pattern(regexp = FormatoDeEmail.REGEX, message = "O e-mail informado é inválido")
         @Size(max = 255, message = "O e-mail deve ter no máximo 255 caracteres")
         String email,
 

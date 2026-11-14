@@ -41,6 +41,20 @@ spring:
     properties:
       hibernate:
         format_sql: true
+  # Servidor SMTP do envio dos códigos (só com app.email.enabled=true). Serve qualquer provedor: Gmail com senha de
+  # app (smtp.gmail.com, 587), Brevo, Resend etc. Senha SEMPRE por variável de ambiente (ver docs/email.md).
+  mail:
+    host: ${SMTP_HOST:}
+    port: ${SMTP_PORT:587}
+    username: ${SMTP_USUARIO:}
+    password: ${SMTP_SENHA:}
+    properties:
+      mail.smtp.auth: true
+      mail.smtp.starttls.enable: true
+      mail.smtp.starttls.required: true
+      mail.smtp.connectiontimeout: 5000
+      mail.smtp.timeout: 10000
+      mail.smtp.writetimeout: 10000
   flyway:
     enabled: true
     locations: classpath:db/migration
@@ -60,6 +74,17 @@ app:
   # Modo de teste: tolerancia a partir de 1 minuto e qualquer horario no tratamento (sem a antecedencia minima de 5
   # minutos). Só para testar o app no aparelho; desligado por padrao.
   modo-teste: ${APP_MODO_TESTE:false}
+  email:
+    # Envio dos codigos de confirmacao do e-mail e de troca de senha por SMTP (spring.mail). Desligado por padrao: o
+    # codigo nao sai do servidor (ver log-do-codigo).
+    enabled: ${EMAIL_ENABLED:false}
+    # Remetente dos e-mails (ex.: "MedCare Senior <conta@gmail.com>"); obrigatorio com o envio ligado
+    remetente: ${EMAIL_REMETENTE:}
+    # Com o envio desligado, escreve o codigo no log para testar o app sem SMTP. NUNCA em producao de verdade: quem le o
+    # log confirma qualquer conta.
+    log-do-codigo: ${EMAIL_LOG_DO_CODIGO:false}
+    # Confere no DNS se o dominio do e-mail existe no cadastro ("gmial.com" e barrado). Falha aberta.
+    verificar-dominio: ${EMAIL_VERIFICAR_DOMINIO:true}
   # Fuso usado pelo Clock da aplicacao para "hoje" e "agora" (geracao de doses, remocao logica etc.)
   timezone: ${APP_TIMEZONE:America/Sao_Paulo}
   jobs:
@@ -131,6 +156,10 @@ app:
     # respondem 404. DOCS_ENABLED e o nome antigo da variavel, ainda aceito fora do prod.
     enabled: ${SWAGGER_ENABLED:${DOCS_ENABLED:true}}
 management:
+  # O SMTP fora do ar nao derruba a saude do conteiner (o envio do codigo so falha e o app oferece reenviar)
+  health:
+    mail:
+      enabled: false
   # Fail closed: nenhum endpoint do actuator, exceto a saude, so leitura e sem detalhes ({"status":"UP"} ou 503 se o
   # banco cair). Usada pelo HEALTHCHECK do conteiner; liberada sem token so em GET /actuator/health no SecurityConfig.
   endpoints:

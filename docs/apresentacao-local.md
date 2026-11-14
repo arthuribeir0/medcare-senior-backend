@@ -49,6 +49,7 @@ a conexão vem de um proxy em rede interna** (o contêiner do ngrok ou o nginx d
 | Docker Desktop instalado e aberto | *Settings → General → Start Docker Desktop when you sign in* ligado |
 | `ngrok.env` (ou `ngrok.env.txt`) com `NGROK_AUTHTOKEN=` e `NGROK_DOMAIN=` (sem `https://`) | `C:\Users\arthu\segredos\` |
 | Credencial do Firebase Admin (`*adminsdk*.json`) | `C:\Users\arthu\segredos\` (sem ela, o push fica desligado) |
+| Opcional: `smtp.env` com o SMTP do envio dos códigos | `C:\Users\arthu\segredos\` (sem ele, os códigos ficam no log; ver [E-mail](#e-mail)) |
 
 Os scripts leem dos arquivos de segredo só o nome e, do ngrok, só a linha `NGROK_DOMAIN`. Outra pasta: defina
 `MEDCARE_SEGREDOS` antes de rodar.
@@ -64,6 +65,7 @@ Na pasta `deploy\apresentacao` (PowerShell). Todos aceitam `-?` para ajuda.
 | `status-apresentacao.ps1` | Tabela de saúde: contêineres, saúde local e pública, último evento de push, relógio do PC contra o UTC, disco e versão da imagem. |
 | `parar-apresentacao.ps1` | Para tudo sem apagar dados. |
 | `resetar-demonstracao.ps1` | Apaga **só** o volume do banco de apresentação (pede `APAGAR`) e recria os dados de demonstração. |
+| `ultimo-codigo-email.ps1` | Mostra os últimos códigos de confirmação de e-mail e de troca de senha (só com o e-mail desligado, quando eles vão para o log). |
 | `manter-pc-acordado.ps1` | Na tomada, suspensão e hibernação em "nunca" no plano atual; mostra o comando que reverte. |
 
 O histórico de 14 dias é gravado por SQL direto no contêiner do banco de apresentação, porque a API só cria doses
@@ -78,6 +80,24 @@ Para voltar às regras normais: `$env:APP_MODO_TESTE="false"` antes de `.\inicia
 compose) e gere o app sem `EXPO_PUBLIC_MODO_TESTE`. Fora da apresentação (`application.yml`), o padrão é desligado.
 Com 1 minuto de tolerância, o aviso ao cuidador sai 1 minuto depois do horário; o reforço do servidor ao paciente
 (2 minutos depois) não chega a sair, porque vale só até o aviso.
+
+## E-mail
+
+O cadastro de cuidador envia um código de 6 dígitos ao e-mail, e "Esqueci minha senha" também (ver [email.md](email.md)).
+
+- **Com** `smtp.env` em `C:\Users\arthu\segredos\`, o e-mail sai de verdade. Conteúdo (exemplo com Gmail e senha de app):
+  ```text
+  SMTP_HOST=smtp.gmail.com
+  SMTP_PORT=587
+  SMTP_USUARIO=suaconta@gmail.com
+  SMTP_SENHA=senha-de-app-de-16-letras
+  EMAIL_REMETENTE=MedCare Sênior <suaconta@gmail.com>
+  ```
+  O arquivo vai inteiro para o contêiner (`env_file`); os scripts não o leem nem o mostram.
+- **Sem** ele, o código vai para o log do backend (`EMAIL_LOG_DO_CODIGO=true`, só nesta apresentação) e
+  `.\ultimo-codigo-email.ps1` mostra os últimos. O resumo do `iniciar-apresentacao.ps1` diz `e-mail OK` ou
+  `e-mail NO LOG`.
+- A conta da banca (`preparar-demonstracao.ps1`) já fica confirmada: o e-mail dela é de exemplo.
 
 ## Atualizar o backend
 

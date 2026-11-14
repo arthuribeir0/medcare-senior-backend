@@ -83,7 +83,7 @@ Precisam de um PostgreSQL e das variáveis `POSTGRES_*` no ambiente:
 
 ```powershell
 Get-Content .env | ForEach-Object { if ($_ -match '^([^#=]+)=(.*)$') { Set-Item "env:$($Matches[1])" $Matches[2] } }
-.\mvnw.cmd verify       # 718 testes + JaCoCo (o build falha abaixo de 60% de linhas em domain e application)
+.\mvnw.cmd verify       # 761 testes + JaCoCo (o build falha abaixo de 60% de linhas em domain e application)
 ```
 
 - **Unidade** (Mockito) para domínio e casos de uso.
@@ -95,6 +95,7 @@ Cobertura atual: 99,6% das linhas e 97,6% dos ramos em domain+application; 93% n
 | Para | Como | Detalhes |
 |---|---|---|
 | Ver a documentação da API | Swagger UI | [docs/api/README.md](docs/api/README.md) |
+| Confirmar o e-mail e trocar a senha | Código de 6 dígitos por e-mail (SMTP) | [docs/email.md](docs/email.md) |
 | Teste de carga | JMeter por Docker, com massa isolada | [docs/carga/README.md](docs/carga/README.md) e [resultados](docs/carga/resultados.md) |
 | Qualidade | SonarQube local (`docker-compose.sonar.yml`) | [docs/qualidade.md](docs/qualidade.md) |
 | Implantar | Oracle Cloud Always Free + `deploy/instalar-vm.sh` | [docs/implantacao.md](docs/implantacao.md) |

@@ -154,6 +154,8 @@ try {
         $login = Api 'POST' '/api/auth/login' @{ email = $EmailDemo; senha = $senha }
         Escrever-Ok "cuidador $EmailDemo criado"
     }
+    # O e-mail da banca é de exemplo (ninguém recebe o código): a conta de demonstração já fica confirmada
+    Invocar-Sql "UPDATE cuidador SET email_verificado = true WHERE email = '$EmailDemo' AND NOT email_verificado;" | Out-Null
     $token = (Exigir $login 200 'login do cuidador').token
     Exigir (Api 'PUT' '/api/configuracoes/tolerancia' @{ toleranciaMinutos = $ToleranciaMinutos } $token) 200 'tolerância' | Out-Null
     Escrever-Ok "cuidador $EmailDemo pronto (tolerância de $ToleranciaMinutos minutos)"

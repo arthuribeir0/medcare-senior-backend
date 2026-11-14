@@ -4,7 +4,11 @@ import com.medcare.senior.domain.exception.AcessoNegadoException;
 import com.medcare.senior.domain.dose.DoseNaoConfirmavelException;
 import com.medcare.senior.domain.exception.CodigoVinculoInvalidoException;
 import com.medcare.senior.domain.exception.ConsentimentoLgpdObrigatorioException;
+import com.medcare.senior.domain.exception.CodigoPorEmailInvalidoException;
 import com.medcare.senior.domain.exception.CredenciaisInvalidasException;
+import com.medcare.senior.domain.exception.EmailInvalidoException;
+import com.medcare.senior.domain.exception.EmailNaoVerificadoException;
+import com.medcare.senior.domain.exception.EsperaParaReenviarException;
 import com.medcare.senior.domain.exception.EmailJaCadastradoException;
 import com.medcare.senior.domain.exception.PacienteJaCadastradoException;
 import com.medcare.senior.domain.exception.PedidoDesconexaoEncerradoException;
@@ -130,6 +134,32 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(CodigoVinculoInvalidoException.class)
     public ResponseEntity<ErroResponse> handleCodigoVinculoInvalido(CodigoVinculoInvalidoException ex) {
         return construirResposta(HttpStatus.BAD_REQUEST, CodigoErro.CODIGO_INVALIDO, ex.getMessage(), List.of());
+    }
+
+    @ExceptionHandler(CodigoPorEmailInvalidoException.class)
+    public ResponseEntity<ErroResponse> handleCodigoPorEmailInvalido(CodigoPorEmailInvalidoException ex) {
+        return construirResposta(HttpStatus.BAD_REQUEST, CodigoErro.CODIGO_EMAIL_INVALIDO, ex.getMessage(), List.of());
+    }
+
+    @ExceptionHandler(EmailInvalidoException.class)
+    public ResponseEntity<ErroResponse> handleEmailInvalido(EmailInvalidoException ex) {
+        return construirResposta(HttpStatus.BAD_REQUEST, CodigoErro.EMAIL_INVALIDO, ex.getMessage(),
+                List.of(new ErroResponse.CampoInvalido("email", ex.getMessage())));
+    }
+
+    @ExceptionHandler(EmailNaoVerificadoException.class)
+    public ResponseEntity<ErroResponse> handleEmailNaoVerificado(EmailNaoVerificadoException ex) {
+        return construirResposta(HttpStatus.FORBIDDEN, CodigoErro.EMAIL_NAO_VERIFICADO, ex.getMessage(), List.of());
+    }
+
+    // Outro código do e-mail antes de 1 minuto: mesmo 429 com Retry-After do pareamento
+    @ExceptionHandler(EsperaParaReenviarException.class)
+    public ResponseEntity<ErroResponse> handleEsperaParaReenviar(EsperaParaReenviarException ex) {
+        ResponseEntity<ErroResponse> resposta = construirResposta(HttpStatus.TOO_MANY_REQUESTS,
+                CodigoErro.LIMITE_TENTATIVAS, ex.getMessage(), List.of());
+        return ResponseEntity.status(resposta.getStatusCode())
+                .header(HttpHeaders.RETRY_AFTER, String.valueOf(ex.getSegundos()))
+                .body(resposta.getBody());
     }
 
     @ExceptionHandler(MuitasTentativasException.class)

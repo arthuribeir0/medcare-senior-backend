@@ -30,6 +30,8 @@ try {
     Definir-VariaveisDoCompose
     if ($env:FCM_ENABLED -eq 'true') { Escrever-Ok 'credencial do Firebase Admin encontrada (push ligado)' }
     else { Escrever-Aviso "sem *adminsdk*.json em $($script:PastaSegredos): push DESLIGADO (os avisos ficam só no registro)" }
+    if ($env:EMAIL_ENABLED -eq 'true') { Escrever-Ok 'smtp.env encontrado (e-mail com os códigos ligado)' }
+    else { Escrever-Aviso "sem smtp.env em $($script:PastaSegredos): e-mail DESLIGADO (os códigos ficam no log; veja .\ultimo-codigo-email.ps1)" }
     if (Garantir-ArquivoEnv) { Escrever-Ok '.env.apresentacao criado com segredos aleatórios (não exibidos)' }
     else { Escrever-Ok '.env.apresentacao existente reaproveitado' }
 
@@ -45,8 +47,9 @@ try {
     Escrever-Ok "URL pública respondendo em $publica"
 
     $push = if ($env:FCM_ENABLED -eq 'true') { 'push OK' } else { 'push DESLIGADO' }
+    $email = if ($env:EMAIL_ENABLED -eq 'true') { 'e-mail OK' } else { 'e-mail NO LOG' }
     Write-Host ''
-    Write-Host "PRONTO: $publica | backend OK | banco OK | $push | túnel OK" -ForegroundColor Green
+    Write-Host "PRONTO: $publica | backend OK | banco OK | $push | $email | túnel OK" -ForegroundColor Green
     Write-Host 'Próximo passo: .\preparar-demonstracao.ps1 (dados e códigos de pareamento).'
 } catch {
     Escrever-Erro $_.Exception.Message

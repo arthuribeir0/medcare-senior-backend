@@ -64,6 +64,8 @@ public class PacienteController {
     @ApiResponse(responseCode = "201", description = "Paciente cadastrado")
     @ApiResponse(responseCode = "400", description = "Campos inválidos (VALIDACAO)",
             content = @Content(schema = @Schema(implementation = ErroResponse.class)))
+    @ApiResponse(responseCode = "403", description = "E-mail do cuidador ainda não confirmado (EMAIL_NAO_VERIFICADO)",
+            content = @Content(schema = @Schema(implementation = ErroResponse.class)))
     @ApiResponse(responseCode = "409", description = "Mesmo nome (sem diferenciar maiúsculas) e data de nascimento de outro paciente "
             + "do cuidador (PACIENTE_DUPLICADO)",
             content = @Content(schema = @Schema(implementation = ErroResponse.class)))

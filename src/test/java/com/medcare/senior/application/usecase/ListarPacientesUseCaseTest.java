@@ -1,3 +1,7 @@
+/*
+ * Testes automatizados de listar pacientes (2 casos). Cobre: deve listar somente os pacientes do cuidador na ordem
+ * do repositorio; deve retornar lista vazia quando cuidador não tem pacientes.
+ */
 package com.medcare.senior.application.usecase;
 
 import com.medcare.senior.domain.usuario.Paciente;

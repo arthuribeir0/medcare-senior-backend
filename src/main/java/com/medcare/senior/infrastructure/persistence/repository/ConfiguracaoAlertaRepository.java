@@ -1,3 +1,7 @@
+/*
+ * Interface Spring Data JPA de ConfiguracaoAlertaEntity: consultas e atualizações no banco. Métodos:
+ * salvarToleranciaMinutos.
+ */
 package com.medcare.senior.infrastructure.persistence.repository;
 
 import com.medcare.senior.infrastructure.persistence.entity.ConfiguracaoAlertaEntity;

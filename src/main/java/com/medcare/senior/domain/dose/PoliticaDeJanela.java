@@ -13,6 +13,8 @@ import java.time.LocalDateTime;
  *   <li>avisoEm = horário programado + tolerância (fim do "no horário"; o cuidador é avisado e a dose continua
  *       PENDENTE)</li>
  *   <li>encerraEm = avisoEm + margem pós-aviso (a dose passa a NAO_TOMADA e não pode mais ser confirmada)</li>
+ *   <li>lembrete do servidor ao paciente: de horário + atraso mínimo (inclusive) até avisoEm (exclusive). Termina
+ *       exatamente quando o aviso ao cuidador começa: as duas notificações nunca valem no mesmo instante.</li>
  * </ul>
  * A tolerância é informada POR CHAMADA porque pode ser de cada cuidador; {@link #toleranciaPadrao} é o valor
  * global (app.alertas.tolerancia-minutos), usado quando não há outro. Como o encerramento vem depois do aviso por
@@ -71,6 +73,20 @@ public record PoliticaDeJanela(Duration antecedencia, Duration toleranciaPadrao,
      */
     public LocalDateTime encerraEm(LocalDateTime horarioProgramado, Duration tolerancia) {
         return avisoEm(horarioProgramado, tolerancia).plus(margemPosAviso);
+    }
+
+    /**
+     * O lembrete do servidor ao paciente ainda vale em {@code agora}: horário + {@code atrasoMinimo} <= agora < avisoEm.
+     * O atraso dá tempo ao lembrete agendado no próprio aparelho (que toca no horário) e à confirmação logo em seguida.
+     *
+     * @throws IllegalArgumentException se o atraso for negativo ou a tolerância não for positiva
+     */
+    public boolean dentroDoLembreteAoPaciente(LocalDateTime horarioProgramado, LocalDateTime agora, Duration atrasoMinimo,
+                                              Duration tolerancia) {
+        if (atrasoMinimo == null || atrasoMinimo.isNegative()) {
+            throw new IllegalArgumentException("O atraso do lembrete não pode ser negativo");
+        }
+        return !agora.isBefore(horarioProgramado.plus(atrasoMinimo)) && agora.isBefore(avisoEm(horarioProgramado, tolerancia));
     }
 
     public JanelaDose janela(LocalDateTime horarioProgramado, Duration tolerancia) {

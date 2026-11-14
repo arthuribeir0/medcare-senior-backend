@@ -44,10 +44,102 @@ O app decide pelo `codigo`, que nunca muda de nome; a `mensagem` é para pessoas
 | 401 | `NAO_AUTENTICADO` (sem token, token inválido ou expirado), `SESSAO_INVALIDA` (conta do token não existe mais), `CREDENCIAIS_INVALIDAS` (login) |
 | 403 | `ACESSO_NEGADO` (token de outro perfil, ou paciente tentando outra conversa) |
 | 404 | `RECURSO_NAO_ENCONTRADO` (inexistente, removido ou de outro dono, sem distinção) |
-| 409 | `EMAIL_DUPLICADO`, `PACIENTE_DUPLICADO`, `TRATAMENTO_ATIVO`, `DOSE_JA_REGISTRADA`, `DOSE_MUITO_CEDO`, `DOSE_ENCERRADA` |
+| 409 | `EMAIL_DUPLICADO`, `PACIENTE_DUPLICADO`, `TRATAMENTO_ATIVO`, `DOSE_JA_REGISTRADA`, `DOSE_MUITO_CEDO`, `DOSE_ENCERRADA`, `PEDIDO_ENCERRADO` |
 | 422 | `PERIODO_SEM_REGISTROS` (PDF de período sem doses) |
 | 429 | `LIMITE_TENTATIVAS`, com o cabeçalho `Retry-After` |
 | 500 | `ERRO_INTERNO`, sem detalhes na resposta |
+
+## Saída da conta do paciente com autorização do cuidador
+
+O paciente não sai da conta sozinho: ele pede, o cuidador vinculado autoriza ou recusa, e só a autorização desconecta
+o aparelho.
+
+| Quem | Rota | Resposta |
+|---|---|---|
+| Paciente | `POST /api/pacientes/me/pedido-desconexao` | 201 com o pedido novo; 200 com o pendente que já existia (sem duplicar) |
+| Paciente | `GET /api/pacientes/me/pedido-desconexao` | 200 com o pedido mais recente; 404 se nunca pediu |
+| Paciente | `DELETE /api/pacientes/me/pedido-desconexao` | 204 (idempotente) |
+| Cuidador | `GET /api/pacientes/pedidos-desconexao` | 200 com os pendentes dos pacientes dele (`id`, `pacienteId`, `pacienteNome`, `criadoEm`, `expiraEm`) |
+| Cuidador | `PUT /api/pacientes/{id}/pedidos-desconexao/{pedidoId}/autorizar` | 200 `AUTORIZADO`; 409 `PEDIDO_ENCERRADO` se já recusado, cancelado ou vencido |
+| Cuidador | `PUT /api/pacientes/{id}/pedidos-desconexao/{pedidoId}/recusar` | 200 `RECUSADO`; 409 `PEDIDO_ENCERRADO` se já autorizado, cancelado ou vencido |
+| Cuidador | `POST /api/pacientes/{id}/desconectar-aparelho` | 204; desconecta sem pedido (um pendente fica `AUTORIZADO`) |
+
+O pedido (`id`, `pacienteId`, `status`, `criadoEm`, `expiraEm`, `decididoEm`) tem `status` `PENDENTE`, `AUTORIZADO`,
+`RECUSADO`, `EXPIRADO` ou `CANCELADO`. Vale 24 horas (`DESCONEXAO_VALIDADE_HORAS`, de 1 a 72); um pendente vencido já
+sai como `EXPIRADO`, e um job marca isso no banco a cada 5 minutos. Repetir a mesma decisão devolve o pedido como está.
+Paciente ou pedido de outro cuidador: 404, como nas demais rotas.
+
+Depois da autorização (ou da desconexão pelo cuidador), **qualquer** rota chamada com o token antigo do aparelho
+responde 401 `SESSAO_INVALIDA`: o app trata isso como saída concluída. Os códigos de vínculo não usados deixam de valer;
+o vínculo, os remédios e o histórico continuam, e o paciente volta com um código novo. Ao criar o pedido, o cuidador
+recebe um push com `tipo` `PEDIDO_DESCONEXAO`, `pacienteId` e `pedidoId` (uma tentativa só; uma falha no push não
+desfaz o pedido, que aparece no Painel de qualquer forma).
+
+## Desvincular paciente
+
+O cuidador remove um paciente da própria conta com `DELETE /api/pacientes/{id}` (somente CUIDADOR). Mesma política da
+exclusão de conta, para um paciente só e em uma transação (detalhes em [../lgpd.md](../lgpd.md)).
+
+| Situação | Resposta |
+|---|---|
+| Paciente do cuidador | 204; remédios, tratamentos, doses pendentes, avisos, códigos, mensagens e pedidos apagados; doses registradas anonimizadas |
+| Paciente inexistente, já desvinculado ou de outro cuidador | 404 `RECURSO_NAO_ENCONTRADO` |
+| Token de PACIENTE | 403 `ACESSO_NEGADO` |
+| Sem token ou token inválido | 401 `NAO_AUTENTICADO` |
+| Aparelho do paciente desvinculado, em qualquer rota depois | 401 `SESSAO_INVALIDA` |
+
+O cuidador e os outros pacientes dele não mudam. Não pode ser desfeito.
+
+## Token do aparelho do paciente (lembrete de dose)
+
+O app do paciente registra o token FCM do próprio aparelho para o servidor reforçar o lembrete de dose (o lembrete
+principal é agendado no aparelho). Mesmo formato das rotas do cuidador (`/api/cuidadores/me/fcm-token`), tag
+"Push/Token".
+
+| Rota | Quem | Resposta |
+|---|---|---|
+| `PUT /api/pacientes/me/fcm-token` com `{ "token": "..." }` | PACIENTE | 204; o mesmo token sai de qualquer outro paciente |
+| `DELETE /api/pacientes/me/fcm-token` | PACIENTE | 204, idempotente |
+| Token vazio, só espaços ou maior que 512 caracteres | PACIENTE | 400 `VALIDACAO` |
+| Token de CUIDADOR | — | 403 `ACESSO_NEGADO` |
+| Sem token | — | 401 `NAO_AUTENTICADO` |
+| Aparelho desconectado ou paciente desvinculado | — | 401 `SESSAO_INVALIDA` |
+
+O paciente vem **sempre do JWT**: nada no corpo escolhe de quem é o aparelho (um `pacienteId` no corpo é ignorado). O
+token é apagado também na desconexão do aparelho, na desvinculação e na exclusão da conta (ver [../lgpd.md](../lgpd.md)).
+
+Push enviado ao paciente: título "Hora do remédio", texto "Tomar {remédio} às HH:mm", dados `tipo=LEMBRETE_DOSE`,
+`doseId`, `pacienteId` e `data`; Android com prioridade alta, canal `lembrete-dose`, tag `dose-{id}-1` e validade até o
+aviso ao cuidador.
+
+## Horário do tratamento: antecedência mínima e primeira dose
+
+No cadastro (`POST /api/medicamentos/{medicamentoId}/tratamentos`) e na edição (`PUT /api/tratamentos/{id}`), se hoje
+é um dia do tratamento (dentro do período e num dos dias da semana escolhidos), nenhum horário pode cair entre o
+minuto atual (inclusive) e daqui a 5 minutos. Exemplo às 10:00: 10:00 e 10:04 são recusados; 10:05 é aceito. Na
+edição, só os horários adicionados ou alterados são verificados.
+
+```json
+{
+  "timestamp": "2026-10-08T14:30:00",
+  "status": 400,
+  "erro": "Bad Request",
+  "codigo": "VALIDACAO",
+  "mensagem": "Não é possível cadastrar um horário que seja agora ou daqui a menos de 5 minutos. Escolha um horário com pelo menos 5 minutos de diferença do horário atual.",
+  "campos": [
+    {
+      "campo": "horarios",
+      "mensagem": "Não é possível cadastrar um horário que seja agora ou daqui a menos de 5 minutos. Escolha um horário com pelo menos 5 minutos de diferença do horário atual."
+    }
+  ]
+}
+```
+
+Horários que já passaram hoje são aceitos; a dose de hoje não é gerada e a primeira fica para o próximo dia válido.
+A resposta do cadastro e da edição traz o campo novo `primeiraDose` (data e hora local, por exemplo
+`"2026-10-09T08:00:00"`) para o app avisar quando ela não é hoje. Na listagem o campo vem `null`, e também quando não
+há dose até o mesmo dia da semana seguinte (tratamento que termina antes). O campo é aditivo: quem não o conhece
+continua funcionando.
 
 ## Quando a documentação fica exposta
 

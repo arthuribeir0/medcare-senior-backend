@@ -1,3 +1,8 @@
+/*
+ * Status GRAVADO da dose: PENDENTE, CONFIRMADA_NO_HORARIO, CONFIRMADA_COM_ATRASO e NAO_TOMADA. Só PENDENTE pode
+ * mudar; as demais formam o histórico imutável (RN-008). "Atrasada" e "aguardando" não são gravados: são derivados
+ * da janela no momento da consulta.
+ */
 package com.medcare.senior.domain.dose;
 
 public enum StatusDose {

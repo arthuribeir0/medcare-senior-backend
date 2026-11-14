@@ -1,3 +1,8 @@
+/*
+ * Testes automatizados de tratamento (5 casos). Cobre: tratamento sem data fim esta ativo; tratamento que termina
+ * hoje ainda esta ativo; tratamento que termina no futuro esta ativo; tratamento que terminou ontem não esta
+ * ativo; tratamento removido não esta ativo mesmo sem data fim.
+ */
 package com.medcare.senior.domain.tratamento;
 
 import org.junit.jupiter.api.Test;

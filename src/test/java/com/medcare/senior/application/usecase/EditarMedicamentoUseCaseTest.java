@@ -1,3 +1,8 @@
+/*
+ * Testes automatizados de editar medicamento (6 casos). Cobre: deve editar medicamento; deve rejeitar nome
+ * ausente; deve rejeitar dosagem ausente; deve rejeitar tipo ausente; deve rejeitar medicamento de outro cuidador;
+ * deve rejeitar transferencia para paciente de outro cuidador.
+ */
 package com.medcare.senior.application.usecase;
 
 import com.medcare.senior.domain.exception.RecursoNaoEncontradoException;

@@ -1,3 +1,7 @@
+/*
+ * UC-004: cadastro de medicamento. Confere que o paciente é do cuidador autenticado (RN-004) e valida os campos
+ * obrigatórios nome, dosagem e tipo (RN-005) antes de gravar.
+ */
 package com.medcare.senior.application.usecase;
 
 import com.medcare.senior.domain.exception.RecursoNaoEncontradoException;

@@ -4,6 +4,7 @@ import com.medcare.senior.application.service.EnvioDeAvisoService;
 import com.medcare.senior.application.usecase.ReenviarAvisosPendentesUseCase;
 import com.medcare.senior.application.usecase.VerificarDosesVencidasUseCase;
 import com.medcare.senior.domain.dose.PoliticaDeJanela;
+import com.medcare.senior.infrastructure.notificacao.LogNotificadorDeLembreteDoPacienteAdapter;
 import com.medcare.senior.infrastructure.notificacao.LogNotificadorDeDoseNaoTomadaAdapter;
 import com.medcare.senior.infrastructure.persistence.adapter.DoseRepositoryAdapter;
 import com.medcare.senior.infrastructure.persistence.adapter.EventoNotificacaoRepositoryAdapter;
@@ -39,7 +40,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
 @Import({CacheDeRelatorioDiarioCaffeine.class, DoseRepositoryAdapter.class, EventoNotificacaoRepositoryAdapter.class, DoseMapper.class,
-        LogNotificadorDeDoseNaoTomadaAdapter.class, EnvioDeAvisoService.class, VerificarDosesVencidasUseCase.class,
+        LogNotificadorDeDoseNaoTomadaAdapter.class, LogNotificadorDeLembreteDoPacienteAdapter.class, EnvioDeAvisoService.class,
+        VerificarDosesVencidasUseCase.class,
         ReenviarAvisosPendentesUseCase.class, PushDesligadoPostgresTest.Configuracao.class})
 class PushDesligadoPostgresTest {
 
@@ -149,8 +151,8 @@ class PushDesligadoPostgresTest {
         Long pendente = dose(AGORA.minusMinutes(45));
         // Eventos que ficaram PENDENTES (ex.: criados antes de o push ser desligado), já elegíveis para a retentativa
         for (Long doseId : new Long[]{confirmada, pendente}) {
-            jdbc.update("INSERT INTO evento_notificacao (status, tentativas, ultima_tentativa, dose_id) "
-                    + "VALUES ('PENDENTE', 1, ?, ?)", AGORA.minusMinutes(10), doseId);
+            jdbc.update("INSERT INTO evento_notificacao (status, tentativas, ultima_tentativa, dose_id, tipo) "
+                    + "VALUES ('PENDENTE', 1, ?, ?, 'AVISO_CUIDADOR')", AGORA.minusMinutes(10), doseId);
         }
         jdbc.update("UPDATE dose SET status = 'CONFIRMADA_COM_ATRASO', hora_confirmacao = ?, confirmado_por = 'CUIDADOR' "
                 + "WHERE id = ?", AGORA.minusMinutes(5), confirmada);

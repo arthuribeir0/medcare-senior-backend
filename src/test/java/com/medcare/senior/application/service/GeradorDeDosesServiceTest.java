@@ -1,3 +1,10 @@
+/*
+ * Testes automatizados de gerador de doses (14 casos). Cobre: deve gerar janela de trinta dias para tratamento sem
+ * data fim; deve parar na data fim quando ela vem antes do fim da janela; deve comecar na data início quando ela e
+ * futura; deve gerar somente nos dias da semana do tratamento; no dia de hoje deve gerar somente horários
+ * posteriores ao momento atual; não deve duplicar doses já existentes; não deve salvar nada quando todas as doses
+ * já existem; tratamento removido não gera doses; entre outros.
+ */
 package com.medcare.senior.application.service;
 
 import com.medcare.senior.domain.dose.Dose;

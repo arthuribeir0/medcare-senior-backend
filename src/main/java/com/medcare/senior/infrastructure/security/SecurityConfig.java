@@ -1,3 +1,8 @@
+/*
+ * Regras de acesso da API, no estilo "fail closed": cada rota tem uma regra explícita por papel e tudo que sobra
+ * cai em denyAll. API sem sessão e sem cookie (stateless), com o filtro de JWT, CORS e o BCrypt como codificador
+ * de senha. Um teste compara estas regras com o OpenAPI.
+ */
 package com.medcare.senior.infrastructure.security;
 
 import com.medcare.senior.domain.usuario.Role;
@@ -58,6 +63,7 @@ public class SecurityConfig {
                     auth
                             .requestMatchers(HttpMethod.POST, "/api/cuidadores").permitAll()
                             .requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll()
+                            .requestMatchers(HttpMethod.POST, "/api/auth/esqueci-senha", "/api/auth/redefinir-senha").permitAll()
                             .requestMatchers(HttpMethod.POST, "/api/vinculo/validar").permitAll()
                             .requestMatchers("/error").permitAll()
                             // Saúde mínima para o HEALTHCHECK do contêiner: só {"status":"UP"}, sem detalhes
@@ -66,8 +72,15 @@ public class SecurityConfig {
                             .requestMatchers(HttpMethod.DELETE, "/api/cuidadores/me").hasRole(Role.CUIDADOR.name())
                             .requestMatchers(HttpMethod.PUT, "/api/cuidadores/me/fcm-token").hasRole(Role.CUIDADOR.name())
                             .requestMatchers(HttpMethod.DELETE, "/api/cuidadores/me/fcm-token").hasRole(Role.CUIDADOR.name())
+                            .requestMatchers(HttpMethod.POST, "/api/cuidadores/me/verificacao-email/confirmar",
+                                    "/api/cuidadores/me/verificacao-email/reenviar").hasRole(Role.CUIDADOR.name())
                             // Rotas do aparelho do paciente: ANTES de /api/pacientes/** (a primeira regra que casa vence)
                             .requestMatchers(HttpMethod.GET, "/api/pacientes/me", "/api/pacientes/me/doses").hasRole(Role.PACIENTE.name())
+                            .requestMatchers(HttpMethod.POST, "/api/pacientes/me/pedido-desconexao").hasRole(Role.PACIENTE.name())
+                            .requestMatchers(HttpMethod.GET, "/api/pacientes/me/pedido-desconexao").hasRole(Role.PACIENTE.name())
+                            .requestMatchers(HttpMethod.DELETE, "/api/pacientes/me/pedido-desconexao").hasRole(Role.PACIENTE.name())
+                            .requestMatchers(HttpMethod.PUT, "/api/pacientes/me/fcm-token").hasRole(Role.PACIENTE.name())
+                            .requestMatchers(HttpMethod.DELETE, "/api/pacientes/me/fcm-token").hasRole(Role.PACIENTE.name())
                             .requestMatchers("/api/pacientes/**").hasRole(Role.CUIDADOR.name())
                             // Confirmação de dose: o paciente (a própria) ou o cuidador (dos pacientes dele); o dono fica no use case
                             .requestMatchers(HttpMethod.PUT, "/api/doses/*/confirmar").hasAnyRole(Role.PACIENTE.name(), Role.CUIDADOR.name())

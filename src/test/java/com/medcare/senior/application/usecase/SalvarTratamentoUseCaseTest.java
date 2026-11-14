@@ -1,3 +1,9 @@
+/*
+ * Testes automatizados de salvar tratamento (11 casos). Cobre: deve salvar tratamento valido; deve aceitar
+ * tratamento continuo sem data fim; deve aceitar data fim igual a data início; deve rejeitar horários duplicados;
+ * deve rejeitar horários vazios; deve rejeitar dias semana vazios; deve rejeitar data fim anterior a data início;
+ * deve rejeitar medicamento de outro cuidador; entre outros.
+ */
 package com.medcare.senior.application.usecase;
 
 import com.medcare.senior.application.service.GeradorDeDosesService;
@@ -9,22 +15,26 @@ import com.medcare.senior.domain.tratamento.HorariosDuplicadosException;
 import com.medcare.senior.domain.tratamento.HorariosObrigatoriosException;
 import com.medcare.senior.domain.tratamento.PeriodoTratamentoInvalidoException;
 import com.medcare.senior.domain.tratamento.Tratamento;
+import com.medcare.senior.domain.tratamento.HorarioMuitoProximoException;
 import com.medcare.senior.domain.tratamento.TratamentoRepositoryPort;
 import com.medcare.senior.domain.usuario.Paciente;
 import com.medcare.senior.domain.usuario.PacienteRepositoryPort;
 import com.medcare.senior.domain.relatorio.CacheDeRelatorioDiarioPort;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.Clock;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Optional;
 
@@ -45,6 +55,7 @@ class SalvarTratamentoUseCaseTest {
     private static final LocalDate INICIO = LocalDate.of(2026, 10, 1);
     private static final List<LocalTime> HORARIOS = List.of(LocalTime.of(8, 0), LocalTime.of(20, 0));
     private static final List<DayOfWeek> DIAS = List.of(DayOfWeek.MONDAY, DayOfWeek.THURSDAY);
+    private static final ZoneId FUSO = ZoneId.of("America/Sao_Paulo");
 
     @Mock
     private CacheDeRelatorioDiarioPort cacheDeRelatorio;
@@ -61,8 +72,14 @@ class SalvarTratamentoUseCaseTest {
     @Mock
     private GeradorDeDosesService geradorDeDoses;
 
-    @InjectMocks
     private SalvarTratamentoUseCase useCase;
+
+    // Antes do início dos tratamentos dos testes: a antecedência mínima não se aplica (testada em AntecedenciaDoHorarioTest)
+    @BeforeEach
+    void setUp() {
+        useCase = new SalvarTratamentoUseCase(tratamentoRepository, medicamentoRepository, pacienteRepository, geradorDeDoses,
+                cacheDeRelatorio, Clock.fixed(LocalDateTime.of(2026, 9, 30, 12, 0).atZone(FUSO).toInstant(), FUSO));
+    }
 
     private void medicamentoDoCuidador() {
         when(medicamentoRepository.findById(MEDICAMENTO_ID))
@@ -80,7 +97,7 @@ class SalvarTratamentoUseCaseTest {
             return salvo;
         });
 
-        Tratamento resultado = useCase.executar(MEDICAMENTO_ID, INICIO, INICIO.plusDays(30), HORARIOS, DIAS, CUIDADOR_ID);
+        Tratamento resultado = useCase.executar(MEDICAMENTO_ID, INICIO, INICIO.plusDays(30), HORARIOS, DIAS, CUIDADOR_ID).tratamento();
 
         assertThat(resultado.getId()).isEqualTo(1000L);
         ArgumentCaptor<Tratamento> captor = ArgumentCaptor.forClass(Tratamento.class);
@@ -102,7 +119,7 @@ class SalvarTratamentoUseCaseTest {
         medicamentoDoCuidador();
         when(tratamentoRepository.save(any(Tratamento.class))).thenAnswer(invocacao -> invocacao.getArgument(0));
 
-        Tratamento resultado = useCase.executar(MEDICAMENTO_ID, INICIO, null, HORARIOS, DIAS, CUIDADOR_ID);
+        Tratamento resultado = useCase.executar(MEDICAMENTO_ID, INICIO, null, HORARIOS, DIAS, CUIDADOR_ID).tratamento();
 
         assertThat(resultado.getDataFim()).isNull();
     }
@@ -112,7 +129,7 @@ class SalvarTratamentoUseCaseTest {
         medicamentoDoCuidador();
         when(tratamentoRepository.save(any(Tratamento.class))).thenAnswer(invocacao -> invocacao.getArgument(0));
 
-        Tratamento resultado = useCase.executar(MEDICAMENTO_ID, INICIO, INICIO, HORARIOS, DIAS, CUIDADOR_ID);
+        Tratamento resultado = useCase.executar(MEDICAMENTO_ID, INICIO, INICIO, HORARIOS, DIAS, CUIDADOR_ID).tratamento();
 
         assertThat(resultado.getDataFim()).isEqualTo(INICIO);
     }
@@ -189,5 +206,38 @@ class SalvarTratamentoUseCaseTest {
 
         verify(tratamentoRepository, never()).save(any());
         verifyNoInteractions(geradorDeDoses);
+    }
+
+    // ---- antecedência mínima (relógio às 10:00 de quinta-feira, 08/10/2026) ---------------------------------------
+
+    private SalvarTratamentoUseCase useCaseAs10h() {
+        LocalDateTime agora = LocalDateTime.of(2026, 10, 8, 10, 0);
+        return new SalvarTratamentoUseCase(tratamentoRepository, medicamentoRepository, pacienteRepository, geradorDeDoses,
+                cacheDeRelatorio, Clock.fixed(agora.atZone(FUSO).toInstant(), FUSO));
+    }
+
+    @Test
+    void horarioDeHojeAMenosDeCincoMinutosEhRecusadoSemSalvarNada() {
+        medicamentoDoCuidador();
+        LocalDate hoje = LocalDate.of(2026, 10, 8);
+
+        assertThatThrownBy(() -> useCaseAs10h().executar(MEDICAMENTO_ID, hoje, null, List.of(LocalTime.of(10, 3)),
+                List.of(DayOfWeek.THURSDAY), CUIDADOR_ID))
+                .isInstanceOf(HorarioMuitoProximoException.class);
+
+        verify(tratamentoRepository, never()).save(any());
+        verifyNoInteractions(geradorDeDoses);
+    }
+
+    @Test
+    void horarioQueJaPassouHojeEhAceitoEAPrimeiraDoseVemNaResposta() {
+        medicamentoDoCuidador();
+        when(tratamentoRepository.save(any(Tratamento.class))).thenAnswer(invocacao -> invocacao.getArgument(0));
+        LocalDate hoje = LocalDate.of(2026, 10, 8);
+
+        TratamentoSalvo salvo = useCaseAs10h().executar(MEDICAMENTO_ID, hoje, null, List.of(LocalTime.of(8, 0)),
+                List.of(DayOfWeek.THURSDAY, DayOfWeek.FRIDAY), CUIDADOR_ID);
+
+        assertThat(salvo.primeiraDose()).isEqualTo(LocalDateTime.of(2026, 10, 9, 8, 0));
     }
 }

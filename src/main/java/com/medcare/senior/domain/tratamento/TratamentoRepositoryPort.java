@@ -37,4 +37,10 @@ public interface TratamentoRepositoryPort {
      * logicamente (exclusão de conta, LGPD).
      */
     void deleteAllByCuidadorId(Long cuidadorId);
+
+    /**
+     * Remove FISICAMENTE todos os tratamentos dos medicamentos do paciente, inclusive os já removidos logicamente
+     * (desvinculação do paciente).
+     */
+    void deleteAllByPacienteId(Long pacienteId);
 }

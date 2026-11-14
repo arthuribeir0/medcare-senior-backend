@@ -1,3 +1,7 @@
+/*
+ * DTO de saída (corpo da resposta): contrato JSON de relatório diário. Campos: paciente, data, totais, doses. A
+ * API devolve DTOs, nunca as entidades.
+ */
 package com.medcare.senior.presentation.dto;
 
 import com.medcare.senior.domain.relatorio.RelatorioDiario;

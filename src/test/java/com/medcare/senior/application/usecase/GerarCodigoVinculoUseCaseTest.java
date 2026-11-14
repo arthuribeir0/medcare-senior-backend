@@ -1,3 +1,8 @@
+/*
+ * Testes automatizados de gerar código vinculo (4 casos). Cobre: deve gerar código de seis digitos valido por 24
+ * horas; deve tentar outro código quando o sorteado já esta ativo; deve falhar depois de dez colisoes seguidas;
+ * deve rejeitar paciente de outro cuidador ou inexistente.
+ */
 package com.medcare.senior.application.usecase;
 
 import com.medcare.senior.domain.exception.RecursoNaoEncontradoException;

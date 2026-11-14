@@ -1,3 +1,7 @@
+/*
+ * Busca os dados do cuidador autenticado (o ID vem do JWT). Se a conta não existir mais, por exemplo excluída com
+ * o token ainda válido, responde sessão inválida (401).
+ */
 package com.medcare.senior.application.usecase;
 
 import com.medcare.senior.domain.exception.SessaoInvalidaException;

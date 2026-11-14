@@ -2,12 +2,15 @@ package com.medcare.senior.application.usecase;
 
 import com.medcare.senior.application.service.EnvioDeAvisoService;
 import com.medcare.senior.domain.dose.DoseRepositoryPort;
+import com.medcare.senior.domain.dose.PoliticaDeJanela;
 import com.medcare.senior.domain.dose.StatusDose;
 import com.medcare.senior.domain.notificacao.DoseNaoTomadaNotificacao;
 import com.medcare.senior.domain.notificacao.EventoNotificacaoRepositoryPort;
 import com.medcare.senior.domain.notificacao.EventoParaRetentativa;
+import com.medcare.senior.domain.notificacao.LembreteDoPacienteNotificacao;
 import com.medcare.senior.domain.notificacao.MotivoFalhaNotificacao;
 import com.medcare.senior.domain.notificacao.ResultadoEnvioPush;
+import com.medcare.senior.domain.notificacao.TipoEventoNotificacao;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -18,13 +21,15 @@ import java.time.LocalDateTime;
 import java.util.Optional;
 
 /**
- * Retentativa dos avisos de dose não confirmada que falharam temporariamente (RN-010), com intervalo crescente.
- * Para cada evento PENDENTE elegível:
+ * Retentativa das notificações de dose que falharam temporariamente (RN-010), com intervalo crescente: o aviso ao
+ * cuidador e o lembrete ao paciente, pelo mesmo caminho. Para cada evento PENDENTE elegível:
  *
  * <ol>
  *   <li>tentativas esgotadas -> FALHA (TENTATIVAS_ESGOTADAS);</li>
  *   <li>dose que não está mais PENDENTE (confirmada, com atraso ou encerrada) ou sem dono -> FALHA
  *       (DOSE_JA_REGISTRADA), sem push;</li>
+ *   <li>lembrete ao paciente cuja dose já chegou ao aviso ao cuidador -> FALHA (FORA_DA_JANELA), sem push: dali em
+ *       diante quem cuida da dose é o aviso;</li>
  *   <li>senão, reivindica a próxima tentativa (UPDATE condicionado às tentativas lidas: só um job envia), relê a dose
  *       e envia pelo {@link EnvioDeAvisoService} (ENVIADO, TOKEN_INVALIDO e SEM_TOKEN encerram o evento; falha
  *       temporária na última tentativa -> TENTATIVAS_ESGOTADAS).</li>
@@ -39,17 +44,20 @@ public class ReenviarAvisosPendentesUseCase {
     private final EventoNotificacaoRepositoryPort eventos;
     private final DoseRepositoryPort doseRepository;
     private final EnvioDeAvisoService envioDeAviso;
+    private final PoliticaDeJanela politicaDeJanela;
     private final Parametros parametros;
     private final Clock clock;
 
     public ReenviarAvisosPendentesUseCase(EventoNotificacaoRepositoryPort eventos,
                                           DoseRepositoryPort doseRepository,
                                           EnvioDeAvisoService envioDeAviso,
+                                          PoliticaDeJanela politicaDeJanela,
                                           Parametros parametros,
                                           Clock clock) {
         this.eventos = eventos;
         this.doseRepository = doseRepository;
         this.envioDeAviso = envioDeAviso;
+        this.politicaDeJanela = politicaDeJanela;
         this.parametros = parametros;
         this.clock = clock;
     }
@@ -88,6 +96,11 @@ public class ReenviarAvisosPendentesUseCase {
             contagem.canceladas++;
             return;
         }
+        if (evento.tipo() == TipoEventoNotificacao.LEMBRETE_PACIENTE && !agora.isBefore(fimDoLembrete(evento))) {
+            eventos.marcarFalha(evento.eventoId(), MotivoFalhaNotificacao.FORA_DA_JANELA);
+            contagem.canceladas++;
+            return;
+        }
         if (!eventos.reivindicar(evento.eventoId(), evento.tentativas(), agora)) {
             // Outro job (o do aviso ou outra instância) pegou esta tentativa: quem reivindicou envia
             return;
@@ -101,8 +114,7 @@ public class ReenviarAvisosPendentesUseCase {
         }
 
         contagem.tentativas++;
-        ResultadoEnvioPush resultado = envioDeAviso.enviar(evento.eventoId(), new DoseNaoTomadaNotificacao(
-                evento.doseId(), evento.cuidadorId(), evento.pacienteId(), evento.nomePaciente(), evento.horarioProgramado()));
+        ResultadoEnvioPush resultado = enviar(evento);
         if (resultado == ResultadoEnvioPush.ENVIADO) {
             contagem.enviadas++;
         } else if (resultado == ResultadoEnvioPush.FALHA_TEMPORARIA
@@ -110,6 +122,21 @@ public class ReenviarAvisosPendentesUseCase {
             eventos.marcarFalha(evento.eventoId(), MotivoFalhaNotificacao.TENTATIVAS_ESGOTADAS);
             contagem.esgotadas++;
         }
+    }
+
+    private ResultadoEnvioPush enviar(EventoParaRetentativa evento) {
+        if (evento.tipo() == TipoEventoNotificacao.LEMBRETE_PACIENTE) {
+            return envioDeAviso.enviarLembrete(evento.eventoId(), new LembreteDoPacienteNotificacao(evento.doseId(),
+                    evento.pacienteId(), evento.nomeMedicamento(), evento.horarioProgramado(), fimDoLembrete(evento)));
+        }
+        return envioDeAviso.enviar(evento.eventoId(), new DoseNaoTomadaNotificacao(evento.doseId(), evento.cuidadorId(),
+                evento.pacienteId(), evento.nomePaciente(), evento.horarioProgramado()));
+    }
+
+    /** O lembrete ao paciente vale até o aviso ao cuidador (PoliticaDeJanela), com a tolerância do cuidador. */
+    private LocalDateTime fimDoLembrete(EventoParaRetentativa evento) {
+        return politicaDeJanela.avisoEm(evento.horarioProgramado(),
+                politicaDeJanela.toleranciaEfetiva(evento.toleranciaMinutos()));
     }
 
     private static final class Contagem {

@@ -6,6 +6,12 @@ package com.medcare.senior.domain.autenticacao;
  * @param token     JWT emitido
  * @param usuarioId ID do cuidador (login) ou do paciente (pareamento)
  * @param nome      nome do cuidador ou do paciente
+ * @param emailVerificado só no login do cuidador: o e-mail já foi confirmado ({@code null} no pareamento)
  */
-public record SessaoAutenticada(String token, Long usuarioId, String nome) {
+public record SessaoAutenticada(String token, Long usuarioId, String nome, Boolean emailVerificado) {
+
+    /** Pareamento do paciente: não há e-mail. */
+    public SessaoAutenticada(String token, Long usuarioId, String nome) {
+        this(token, usuarioId, nome, null);
+    }
 }

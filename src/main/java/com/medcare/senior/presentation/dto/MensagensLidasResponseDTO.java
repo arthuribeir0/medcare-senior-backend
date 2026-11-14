@@ -1,3 +1,7 @@
+/*
+ * DTO de saída (corpo da resposta): contrato JSON de mensagens lidas. Campos: marcadas. A API devolve DTOs, nunca
+ * as entidades.
+ */
 package com.medcare.senior.presentation.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;

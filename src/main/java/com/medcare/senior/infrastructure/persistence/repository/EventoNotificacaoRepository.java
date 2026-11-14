@@ -20,23 +20,27 @@ import java.util.List;
 @Repository
 public interface EventoNotificacaoRepository extends JpaRepository<EventoNotificacaoEntity, Long> {
 
-    // INSERT idempotente pelo UNIQUE de dose_id. RETURNING devolve o id só quando a linha foi criada (lista vazia se
-    // a dose já tinha evento). Sem @Modifying: o comando devolve um resultado, como uma consulta.
-    @Query(value = "INSERT INTO evento_notificacao (status, tentativas, dose_id) VALUES ('PENDENTE', 0, :doseId) "
-            + "ON CONFLICT (dose_id) DO NOTHING RETURNING id", nativeQuery = true)
-    List<Long> inserirSeAusente(@Param("doseId") Long doseId);
+    // INSERT idempotente pelo UNIQUE (dose_id, tipo) da V18. RETURNING devolve o id só quando a linha foi criada (lista
+    // vazia se a dose já tinha evento desse tipo). Sem @Modifying: o comando devolve um resultado, como uma consulta.
+    @Query(value = "INSERT INTO evento_notificacao (status, tentativas, dose_id, tipo) "
+            + "VALUES ('PENDENTE', 0, :doseId, :tipo) ON CONFLICT (dose_id, tipo) DO NOTHING RETURNING id", nativeQuery = true)
+    List<Long> inserirSeAusente(@Param("doseId") Long doseId, @Param("tipo") String tipo);
 
     // Retentativa (RN-010). O intervalo crescente sai de tentativas e ultima_tentativa, sem coluna extra:
     // ultima_tentativa + base * 2^(tentativas - 1) <= agora. Nunca tentado (ultima_tentativa nula) e esgotado
     // (tentativas >= max) entram direto. LEFT JOINs: a dose pode ter ficado sem dono (anonimizada ou de item
     // removido) e o evento precisa ser encerrado mesmo assim. Usa o índice parcial idx_evento_notificacao_pendente.
-    @Query(value = "SELECT e.id AS eventoId, e.tentativas AS tentativas, d.id AS doseId, d.status AS statusDose, "
-            + "d.horario_programado AS horarioProgramado, "
+    // Os dois tipos (aviso ao cuidador e lembrete ao paciente) entram; o nome do remédio e a tolerância do cuidador
+    // servem só ao lembrete (texto e fim da janela).
+    @Query(value = "SELECT e.id AS eventoId, e.tipo AS tipo, e.tentativas AS tentativas, d.id AS doseId, "
+            + "d.status AS statusDose, d.horario_programado AS horarioProgramado, "
             + "(i.id IS NULL OR t.removido_em IS NOT NULL OR m.removido_em IS NOT NULL) AS semDono, "
-            + "i.cuidador_id AS cuidadorId, i.id AS pacienteId, i.nome AS nomePaciente "
+            + "i.cuidador_id AS cuidadorId, i.id AS pacienteId, i.nome AS nomePaciente, m.nome AS nomeMedicamento, "
+            + "c.tolerancia_minutos AS toleranciaMinutos "
             + "FROM evento_notificacao e JOIN dose d ON d.id = e.dose_id "
             + "LEFT JOIN tratamento t ON t.id = d.tratamento_id LEFT JOIN medicamento m ON m.id = t.medicamento_id "
             + "LEFT JOIN paciente i ON i.id = m.paciente_id "
+            + "LEFT JOIN configuracao_alerta c ON c.cuidador_id = i.cuidador_id "
             + "WHERE e.status = 'PENDENTE' AND (e.tentativas >= :maxTentativas OR e.ultima_tentativa IS NULL "
             + "OR e.ultima_tentativa + make_interval(mins => :intervaloBaseMinutos * CAST(power(2, e.tentativas - 1) AS integer)) "
             + "<= :agora) "
@@ -66,4 +70,9 @@ public interface EventoNotificacaoRepository extends JpaRepository<EventoNotific
     @Query("DELETE FROM EventoNotificacaoEntity e WHERE e.doseId IN (SELECT d.id FROM DoseEntity d "
             + "WHERE d.tratamento.medicamento.paciente.cuidador.id = :cuidadorId)")
     int deleteByCuidadorId(@Param("cuidadorId") Long cuidadorId);
+
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("DELETE FROM EventoNotificacaoEntity e WHERE e.doseId IN (SELECT d.id FROM DoseEntity d "
+            + "WHERE d.tratamento.medicamento.paciente.id = :pacienteId)")
+    int deleteByPacienteId(@Param("pacienteId") Long pacienteId);
 }

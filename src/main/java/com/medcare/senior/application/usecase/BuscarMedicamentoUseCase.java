@@ -1,3 +1,7 @@
+/*
+ * Busca um medicamento pelo ID, só se for de um paciente do cuidador autenticado. Medicamento removido (remoção
+ * lógica), inexistente ou de outro cuidador responde igual (404), para não revelar quais IDs existem.
+ */
 package com.medcare.senior.application.usecase;
 
 import com.medcare.senior.domain.exception.RecursoNaoEncontradoException;

@@ -1,3 +1,8 @@
+/*
+ * Testes automatizados de consultar histórico (4 casos). Cobre: sem filtros busca todos os pacientes do cuidador
+ * até hoje e avalia as doses; com paciente do cuidador repassa os filtros; paciente de outro cuidador é não
+ * encontrado; período inválido é recusado antes de consultar.
+ */
 package com.medcare.senior.application.usecase;
 
 import com.medcare.senior.domain.dose.Dose;

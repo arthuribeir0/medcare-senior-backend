@@ -1,3 +1,9 @@
+/*
+ * Testes automatizados de gerar relatório diário (5 casos). Cobre: sem data usa hoje no fuso da aplicacao e monta
+ * totais e doses; dia sem doses devolve relatório vazio sem aderencia; paciente de outro cuidador é não
+ * encontrado; segunda chamada do mesmo dia vem do cache mas o dono é conferido sempre; outro dia não usa o cache e
+ * paciente de outro cuidador continua 404.
+ */
 package com.medcare.senior.application.usecase;
 
 import com.medcare.senior.domain.dose.Dose;

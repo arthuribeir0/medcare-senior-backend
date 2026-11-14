@@ -4,9 +4,14 @@ import com.medcare.senior.domain.exception.AcessoNegadoException;
 import com.medcare.senior.domain.dose.DoseNaoConfirmavelException;
 import com.medcare.senior.domain.exception.CodigoVinculoInvalidoException;
 import com.medcare.senior.domain.exception.ConsentimentoLgpdObrigatorioException;
+import com.medcare.senior.domain.exception.CodigoPorEmailInvalidoException;
 import com.medcare.senior.domain.exception.CredenciaisInvalidasException;
+import com.medcare.senior.domain.exception.EmailInvalidoException;
+import com.medcare.senior.domain.exception.EmailNaoVerificadoException;
+import com.medcare.senior.domain.exception.EsperaParaReenviarException;
 import com.medcare.senior.domain.exception.EmailJaCadastradoException;
 import com.medcare.senior.domain.exception.PacienteJaCadastradoException;
+import com.medcare.senior.domain.exception.PedidoDesconexaoEncerradoException;
 import com.medcare.senior.domain.exception.RecursoNaoEncontradoException;
 import com.medcare.senior.domain.exception.SenhaFracaException;
 import com.medcare.senior.domain.configuracao.ToleranciaInvalidaException;
@@ -17,6 +22,7 @@ import com.medcare.senior.domain.exception.TokenDispositivoInvalidoException;
 import com.medcare.senior.domain.medicamento.DadosObrigatoriosMedicamentoException;
 import com.medcare.senior.domain.medicamento.MedicamentoComTratamentoAtivoException;
 import com.medcare.senior.domain.tratamento.DiasSemanaObrigatoriosException;
+import com.medcare.senior.domain.tratamento.HorarioMuitoProximoException;
 import com.medcare.senior.domain.tratamento.HorariosDuplicadosException;
 import com.medcare.senior.domain.tratamento.HorariosObrigatoriosException;
 import com.medcare.senior.domain.tratamento.PeriodoTratamentoInvalidoException;
@@ -73,6 +79,13 @@ public class GlobalExceptionHandler {
                 List.of(new ErroResponse.CampoInvalido("toleranciaMinutos", ex.getMessage())));
     }
 
+    // Horário do tratamento agora ou a menos de 5 minutos: a mensagem vai no topo (o app mostra no campo) e no campo
+    @ExceptionHandler(HorarioMuitoProximoException.class)
+    public ResponseEntity<ErroResponse> handleHorarioMuitoProximo(HorarioMuitoProximoException ex) {
+        return construirResposta(HttpStatus.BAD_REQUEST, CodigoErro.VALIDACAO, ex.getMessage(),
+                List.of(new ErroResponse.CampoInvalido("horarios", ex.getMessage())));
+    }
+
     // Parâmetro de consulta fora da regra (ex.: período com início depois do fim): mesmo formato da validação de campo
     @ExceptionHandler(ParametroInvalidoException.class)
     public ResponseEntity<ErroResponse> handleParametroForaDaRegra(ParametroInvalidoException ex) {
@@ -107,6 +120,11 @@ public class GlobalExceptionHandler {
                 List.of());
     }
 
+    @ExceptionHandler(PedidoDesconexaoEncerradoException.class)
+    public ResponseEntity<ErroResponse> handlePedidoDesconexaoEncerrado(PedidoDesconexaoEncerradoException ex) {
+        return construirResposta(HttpStatus.CONFLICT, CodigoErro.PEDIDO_ENCERRADO, ex.getMessage(), List.of());
+    }
+
     @ExceptionHandler(AcessoNegadoException.class)
     public ResponseEntity<ErroResponse> handleAcessoNegado(AcessoNegadoException ex) {
         return construirResposta(HttpStatus.FORBIDDEN, CodigoErro.ACESSO_NEGADO, ex.getMessage(), List.of());
@@ -116,6 +134,32 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(CodigoVinculoInvalidoException.class)
     public ResponseEntity<ErroResponse> handleCodigoVinculoInvalido(CodigoVinculoInvalidoException ex) {
         return construirResposta(HttpStatus.BAD_REQUEST, CodigoErro.CODIGO_INVALIDO, ex.getMessage(), List.of());
+    }
+
+    @ExceptionHandler(CodigoPorEmailInvalidoException.class)
+    public ResponseEntity<ErroResponse> handleCodigoPorEmailInvalido(CodigoPorEmailInvalidoException ex) {
+        return construirResposta(HttpStatus.BAD_REQUEST, CodigoErro.CODIGO_EMAIL_INVALIDO, ex.getMessage(), List.of());
+    }
+
+    @ExceptionHandler(EmailInvalidoException.class)
+    public ResponseEntity<ErroResponse> handleEmailInvalido(EmailInvalidoException ex) {
+        return construirResposta(HttpStatus.BAD_REQUEST, CodigoErro.EMAIL_INVALIDO, ex.getMessage(),
+                List.of(new ErroResponse.CampoInvalido("email", ex.getMessage())));
+    }
+
+    @ExceptionHandler(EmailNaoVerificadoException.class)
+    public ResponseEntity<ErroResponse> handleEmailNaoVerificado(EmailNaoVerificadoException ex) {
+        return construirResposta(HttpStatus.FORBIDDEN, CodigoErro.EMAIL_NAO_VERIFICADO, ex.getMessage(), List.of());
+    }
+
+    // Outro código do e-mail antes de 1 minuto: mesmo 429 com Retry-After do pareamento
+    @ExceptionHandler(EsperaParaReenviarException.class)
+    public ResponseEntity<ErroResponse> handleEsperaParaReenviar(EsperaParaReenviarException ex) {
+        ResponseEntity<ErroResponse> resposta = construirResposta(HttpStatus.TOO_MANY_REQUESTS,
+                CodigoErro.LIMITE_TENTATIVAS, ex.getMessage(), List.of());
+        return ResponseEntity.status(resposta.getStatusCode())
+                .header(HttpHeaders.RETRY_AFTER, String.valueOf(ex.getSegundos()))
+                .body(resposta.getBody());
     }
 
     @ExceptionHandler(MuitasTentativasException.class)

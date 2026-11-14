@@ -1,3 +1,7 @@
+/*
+ * Implementa a porta de hash de senha com BCrypt (RN-002 e RNF-03): a senha nunca é guardada em texto claro. O
+ * BCrypt é lento de propósito e já inclui sal.
+ */
 package com.medcare.senior.infrastructure.security;
 
 import com.medcare.senior.domain.autenticacao.PasswordHasherPort;

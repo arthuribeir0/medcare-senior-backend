@@ -1,7 +1,15 @@
+/*
+ * Testes automatizados de cadastrar paciente (6 casos). Cobre: deve cadastrar paciente; deve rejeitar paciente
+ * duplicado para o mesmo cuidador; deve rejeitar paciente duplicado com variacao de maiusculas no nome; deve
+ * permitir mesmo nome e data para outro cuidador; deve rejeitar cuidador inexistente; cuidador sem e-mail
+ * confirmado não cadastra paciente.
+ */
 package com.medcare.senior.application.usecase;
 
 import com.medcare.senior.domain.exception.PacienteJaCadastradoException;
+import com.medcare.senior.domain.exception.EmailNaoVerificadoException;
 import com.medcare.senior.domain.exception.SessaoInvalidaException;
+import com.medcare.senior.domain.usuario.Cuidador;
 import com.medcare.senior.domain.usuario.CuidadorRepositoryPort;
 import com.medcare.senior.domain.usuario.Paciente;
 import com.medcare.senior.domain.usuario.PacienteRepositoryPort;
@@ -12,6 +20,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDate;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -39,7 +48,7 @@ class CadastrarPacienteUseCaseTest {
 
     @Test
     void deveCadastrarPaciente() {
-        when(cuidadorRepository.existsById(CUIDADOR_ID)).thenReturn(true);
+        when(cuidadorRepository.findById(CUIDADOR_ID)).thenReturn(Optional.of(cuidador(CUIDADOR_ID, true)));
         when(pacienteRepository.save(any(Paciente.class))).thenAnswer(invocacao -> {
             Paciente paciente = invocacao.getArgument(0);
             paciente.setId(10L);
@@ -83,7 +92,7 @@ class CadastrarPacienteUseCaseTest {
     @Test
     void devePermitirMesmoNomeEDataParaOutroCuidador() {
         Long outroCuidador = 2L;
-        when(cuidadorRepository.existsById(outroCuidador)).thenReturn(true);
+        when(cuidadorRepository.findById(outroCuidador)).thenReturn(Optional.of(cuidador(outroCuidador, true)));
         when(pacienteRepository.save(any(Paciente.class))).thenAnswer(invocacao -> invocacao.getArgument(0));
 
         Paciente resultado = useCase.executar("Maria Silva", NASCIMENTO, null, outroCuidador);
@@ -94,11 +103,26 @@ class CadastrarPacienteUseCaseTest {
 
     @Test
     void deveRejeitarCuidadorInexistente() {
-        when(cuidadorRepository.existsById(CUIDADOR_ID)).thenReturn(false);
+        when(cuidadorRepository.findById(CUIDADOR_ID)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> useCase.executar("Maria Silva", NASCIMENTO, null, CUIDADOR_ID))
                 .isInstanceOf(SessaoInvalidaException.class);
 
         verify(pacienteRepository, never()).save(any());
+    }
+
+    @Test
+    void cuidadorSemEmailConfirmadoNaoCadastraPaciente() {
+        when(cuidadorRepository.findById(CUIDADOR_ID)).thenReturn(Optional.of(cuidador(CUIDADOR_ID, false)));
+
+        assertThatThrownBy(() -> useCase.executar("Maria Silva", NASCIMENTO, null, CUIDADOR_ID))
+                .isInstanceOf(EmailNaoVerificadoException.class)
+                .hasMessageContaining("Confirme o seu e-mail");
+
+        verify(pacienteRepository, never()).save(any());
+    }
+
+    private static Cuidador cuidador(Long id, boolean emailVerificado) {
+        return Cuidador.builder().id(id).nome("Ana").email("ana@email.com").emailVerificado(emailVerificado).build();
     }
 }

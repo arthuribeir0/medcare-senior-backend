@@ -1,3 +1,7 @@
+/*
+ * Formato único de resposta de erro da API: data e hora, status HTTP, código estável em MAIÚSCULAS (o app decide
+ * pelo código, nunca pela mensagem), mensagem e a lista de campos inválidos quando o erro é de validação.
+ */
 package com.medcare.senior.presentation.exception;
 
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -19,11 +23,12 @@ public record ErroResponse(
         @Schema(description = "Código estável do erro (UPPER_SNAKE_CASE), para o app decidir o que fazer sem depender "
                 + "da mensagem. Ver a tabela em CodigoErro.", example = "VALIDACAO",
                 allowableValues = {"VALIDACAO", "CORPO_INVALIDO", "REQUISICAO_INVALIDA", "SENHA_FRACA",
-                        "CONSENTIMENTO_OBRIGATORIO", "TOKEN_DISPOSITIVO_INVALIDO", "CODIGO_INVALIDO",
+                        "CONSENTIMENTO_OBRIGATORIO", "TOKEN_DISPOSITIVO_INVALIDO", "CODIGO_INVALIDO", "CODIGO_EMAIL_INVALIDO",
+                        "EMAIL_INVALIDO", "EMAIL_NAO_VERIFICADO",
                         "DADOS_OBRIGATORIOS_MEDICAMENTO", "TRATAMENTO_INVALIDO", "CREDENCIAIS_INVALIDAS", "SESSAO_INVALIDA", "NAO_AUTENTICADO",
                         "ACESSO_NEGADO",
                         "RECURSO_NAO_ENCONTRADO", "METODO_NAO_PERMITIDO", "EMAIL_DUPLICADO", "PACIENTE_DUPLICADO",
-                        "TRATAMENTO_ATIVO", "DOSE_JA_REGISTRADA", "DOSE_MUITO_CEDO", "DOSE_ENCERRADA",
+                        "TRATAMENTO_ATIVO", "DOSE_JA_REGISTRADA", "DOSE_MUITO_CEDO", "DOSE_ENCERRADA", "PEDIDO_ENCERRADO",
                         "PERIODO_SEM_REGISTROS", "LIMITE_TENTATIVAS", "ERRO_INTERNO"})
         String codigo,
 

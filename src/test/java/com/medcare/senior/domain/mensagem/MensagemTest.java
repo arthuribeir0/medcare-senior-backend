@@ -1,3 +1,9 @@
+/*
+ * Testes automatizados de mensagem (6 casos). Cobre: mensagem nova tira espacos das pontas e nasce não lida sem
+ * id; hora do envio é truncada em microssegundos como no postgres; vazio ou só espacos é recusado no campo
+ * conteúdo; aceita até 500 caracteres e recusa 501; tamanho é contado em caracteres como o check do banco; outro
+ * lado da conversa.
+ */
 package com.medcare.senior.domain.mensagem;
 
 import com.medcare.senior.domain.exception.ParametroInvalidoException;

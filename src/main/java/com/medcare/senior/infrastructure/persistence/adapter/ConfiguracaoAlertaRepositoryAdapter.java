@@ -1,3 +1,7 @@
+/*
+ * Adaptador que implementa a porta ConfiguracaoAlertaRepositoryPort com Spring Data JPA e o mapper, escondendo o
+ * JPA do domínio. Métodos: findToleranciaMinutos, salvarToleranciaMinutos.
+ */
 package com.medcare.senior.infrastructure.persistence.adapter;
 
 import com.medcare.senior.domain.configuracao.ConfiguracaoAlertaRepositoryPort;

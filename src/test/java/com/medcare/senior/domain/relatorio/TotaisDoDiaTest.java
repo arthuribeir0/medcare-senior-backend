@@ -1,3 +1,8 @@
+/*
+ * Testes automatizados de totais do dia (5 casos). Cobre: dia sem doses não tem aderencia; só pendentes não tem
+ * aderencia; mistura de status conta cada um e aderencia ignora pendentes; aderencia arredonda a uma casa para
+ * cima; contagens dao o mesmo resultado que a lista de status.
+ */
 package com.medcare.senior.domain.relatorio;
 
 import com.medcare.senior.domain.dose.StatusDose;

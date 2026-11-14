@@ -1,3 +1,8 @@
+/*
+ * Testes automatizados de buscar medicamento (3 casos). Cobre: deve devolver medicamento de paciente do cuidador;
+ * deve responder não encontrado para medicamento de outro cuidador; deve responder não encontrado para medicamento
+ * inexistente ou removido.
+ */
 package com.medcare.senior.application.usecase;
 
 import com.medcare.senior.domain.exception.RecursoNaoEncontradoException;

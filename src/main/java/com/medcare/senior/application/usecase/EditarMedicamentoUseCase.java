@@ -1,3 +1,8 @@
+/*
+ * UC-004: edição de medicamento (semântica de PUT: substitui todos os dados). Só o dono edita; o paciente pode
+ * mudar, desde que o novo também seja do cuidador. Revalida os campos obrigatórios (RN-005) e descarta o cache do
+ * relatório diário, pois nome, dosagem e cor aparecem nele.
+ */
 package com.medcare.senior.application.usecase;
 
 import com.medcare.senior.domain.exception.RecursoNaoEncontradoException;

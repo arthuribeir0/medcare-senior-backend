@@ -9,6 +9,8 @@ public interface EventoParaRetentativaView {
 
     Long getEventoId();
 
+    String getTipo();
+
     Integer getTentativas();
 
     Long getDoseId();
@@ -24,4 +26,8 @@ public interface EventoParaRetentativaView {
     Long getPacienteId();
 
     String getNomePaciente();
+
+    String getNomeMedicamento();
+
+    Integer getToleranciaMinutos();
 }

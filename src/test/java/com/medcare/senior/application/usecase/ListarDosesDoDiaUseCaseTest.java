@@ -1,3 +1,9 @@
+/*
+ * Testes automatizados de listar doses do dia (6 casos). Cobre: paciente sem data lista as doses de hoje no fuso
+ * da aplicacao com avaliacao; paciente com data informada usa o dia pedido; paciente que não existe mais tem
+ * sessão inválida; cuidador lista as doses de um paciente dele; usa a tolerância do cuidador dono do paciente na
+ * janela e no status; cuidador não ve doses de paciente de outro cuidador.
+ */
 package com.medcare.senior.application.usecase;
 
 import com.medcare.senior.domain.dose.Confirmabilidade;

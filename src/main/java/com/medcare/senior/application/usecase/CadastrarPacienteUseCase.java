@@ -1,7 +1,14 @@
+/*
+ * UC-002: cadastro de paciente, já vinculado ao cuidador do token (nunca do corpo da requisição). Recusa nome com
+ * mesma data de nascimento repetido para o mesmo cuidador (RN-003) e exige que o cuidador tenha confirmado o
+ * e-mail.
+ */
 package com.medcare.senior.application.usecase;
 
 import com.medcare.senior.domain.exception.PacienteJaCadastradoException;
+import com.medcare.senior.domain.exception.EmailNaoVerificadoException;
 import com.medcare.senior.domain.exception.SessaoInvalidaException;
+import com.medcare.senior.domain.usuario.Cuidador;
 import com.medcare.senior.domain.usuario.CuidadorRepositoryPort;
 import com.medcare.senior.domain.usuario.Paciente;
 import com.medcare.senior.domain.usuario.PacienteRepositoryPort;
@@ -28,8 +35,10 @@ public class CadastrarPacienteUseCase {
             throw new PacienteJaCadastradoException();
         }
 
-        if (!cuidadorRepository.existsById(cuidadorId)) {
-            throw SessaoInvalidaException.doCuidador();
+        Cuidador cuidador = cuidadorRepository.findById(cuidadorId).orElseThrow(SessaoInvalidaException::doCuidador);
+        // Só quem confirmou o e-mail cadastra pacientes (dados de saúde de terceiros numa conta sem dono comprovado, não)
+        if (!cuidador.isEmailVerificado()) {
+            throw new EmailNaoVerificadoException();
         }
 
         Paciente paciente = Paciente.builder()

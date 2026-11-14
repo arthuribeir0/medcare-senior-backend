@@ -48,6 +48,16 @@ sequenceDiagram
     J->>B: doses com a janela encerrada passam a NAO_TOMADA (UPDATE atômico só se ainda PENDENTE)
 ```
 
+Lembrete de dose do paciente, em duas camadas (detalhes em `docs/lembrete-do-paciente.md`, no repositório do app):
+
+- **No aparelho** (principal): o app agenda alarmes locais no horário e 10 minutos depois, e funciona sem internet.
+- **No servidor** (reserva): o job `LembreteDoPacienteJob`, a cada minuto (segundo 15), procura doses PENDENTES cujo
+  horário passou há pelo menos 2 minutos e que ainda não chegaram ao aviso ao cuidador (`PoliticaDeJanela`), de
+  pacientes com aparelho registrado (`PUT /api/pacientes/me/fcm-token`). Grava o evento `LEMBRETE_PACIENTE` (um por
+  dose, `ON CONFLICT DO NOTHING`) e envia "Hora do remédio" pelo mesmo `EnvioDeAvisoService` e a mesma retentativa
+  do aviso ao cuidador. O push usa o canal `lembrete-dose` e a tag `dose-{id}-1`, a mesma do lembrete local, para o
+  Android substituir em vez de empilhar.
+
 ## Rodar no PC
 
 Pré-requisitos: Docker Desktop, JDK 17 (no IntelliJ: *File → Project Structure → SDK*) e o arquivo `.env` na raiz
@@ -73,7 +83,7 @@ Precisam de um PostgreSQL e das variáveis `POSTGRES_*` no ambiente:
 
 ```powershell
 Get-Content .env | ForEach-Object { if ($_ -match '^([^#=]+)=(.*)$') { Set-Item "env:$($Matches[1])" $Matches[2] } }
-.\mvnw.cmd verify       # 570 testes + JaCoCo (o build falha abaixo de 60% de linhas em domain e application)
+.\mvnw.cmd verify       # 761 testes + JaCoCo (o build falha abaixo de 60% de linhas em domain e application)
 ```
 
 - **Unidade** (Mockito) para domínio e casos de uso.
@@ -85,6 +95,7 @@ Cobertura atual: 99,6% das linhas e 97,6% dos ramos em domain+application; 93% n
 | Para | Como | Detalhes |
 |---|---|---|
 | Ver a documentação da API | Swagger UI | [docs/api/README.md](docs/api/README.md) |
+| Confirmar o e-mail e trocar a senha | Código de 6 dígitos por e-mail (SMTP) | [docs/email.md](docs/email.md) |
 | Teste de carga | JMeter por Docker, com massa isolada | [docs/carga/README.md](docs/carga/README.md) e [resultados](docs/carga/resultados.md) |
 | Qualidade | SonarQube local (`docker-compose.sonar.yml`) | [docs/qualidade.md](docs/qualidade.md) |
 | Implantar | Oracle Cloud Always Free + `deploy/instalar-vm.sh` | [docs/implantacao.md](docs/implantacao.md) |
@@ -101,15 +112,19 @@ Cobertura atual: 99,6% das linhas e 97,6% dos ramos em domain+application; 93% n
 | Remédio exige nome, dosagem e tipo | `Medicamento` | `CadastrarMedicamentoUseCaseTest`, `EditarMedicamentoUseCaseTest` |
 | Remédio com tratamento ativo só sai com confirmação | `RemoverMedicamentoUseCase` | `RemoverMedicamentoUseCaseTest` |
 | Tratamento válido (horários sem repetição, dias da semana, período) | `Tratamento` | `TratamentoTest`, `SalvarTratamentoUseCaseTest`, `EditarTratamentoUseCaseTest` |
+| Horário de hoje com pelo menos 5 minutos de antecedência (na edição, só os novos ou alterados); horário que já passou vale a partir do próximo dia, informado em `primeiraDose` | `Tratamento.validarAntecedencia`, `Tratamento.primeiraDoseDepoisDe` | `AntecedenciaDoHorarioTest`, `SalvarTratamentoUseCaseTest`, `EditarTratamentoUseCaseTest`, `TratamentoApiTest` |
 | Doses geradas numa janela rolante, idempotente | `GeradorDeDosesService` | `GeradorDeDosesServiceTest`, `PersistenciaPostgresTest` |
 | Janela da dose (abre 60 min antes; aviso na tolerância; encerra 30 min depois do aviso) | `PoliticaDeJanela` | `PoliticaDeJanelaTest`, `ConfirmarDoseUseCaseTest` |
 | Dose registrada nunca muda, nem em confirmações simultâneas | `Dose`, `DoseRepositoryAdapter.registrarSePendente` | `DoseTest`, `ConfirmacaoConcorrentePostgresTest`, `VarreduraConcorrentePostgresTest` |
 | Tolerância do cuidador de 5 a 120 minutos | `Tolerancia` | `ToleranciaUseCasesTest`, `PoliticaDeJanelaTest` |
 | Cada um só vê o que é seu (404 igual a inexistente) | casos de uso + `SecurityConfig` | `SegurancaApiTest`, `OpenApiContratoTest` |
 | Aviso push sem o nome do remédio, com retentativa | `EnvioDeAvisoService`, `PushNotificadorDeDoseNaoTomadaAdapter` | `EnvioDeAvisoServiceTest`, `PushNotificadorDeDoseNaoTomadaAdapterTest`, `RetentativaPostgresTest` |
+| Lembrete do servidor ao paciente: só dose PENDENTE, de 2 min depois do horário até o aviso ao cuidador, uma vez por dose e tipo | `LembrarPacienteDaDoseUseCase`, `PoliticaDeJanela`, `PushNotificadorDeLembreteDoPacienteAdapter` | `LembrarPacienteDaDoseUseCaseTest`, `LembreteDoPacientePostgresTest`, `PoliticaDeJanelaTest`, `MigracoesDoZeroPostgresTest` |
+| Token do aparelho do paciente: paciente sempre do JWT; apagado ao sair, desconectar, desvincular e excluir a conta | `RegistrarTokenDoPacienteUseCase`, `DesconexaoDoAparelhoService` | `TokenDoPacienteUseCasesTest`, `TokenDoPacienteApiTest` |
 | Histórico: início não posterior ao fim; período vazio é página vazia | `FiltroHistorico` | `FiltroHistoricoTest`, `HistoricoApiTest` |
 | PDF de até 12 meses, com taxa de adesão; período sem doses = 422 | `GerarRelatorioPdfUseCase`, `TotaisDoDia` | `GerarRelatorioPdfUseCaseTest`, `TotaisDoDiaTest`, `RelatorioPdfApiTest` |
 | Exclusão de conta apaga os dados pessoais; o histórico fica anônimo | `ExcluirContaUseCase` | `ExcluirContaUseCaseTest`, `PersistenciaPostgresTest` |
+| Paciente só sai da conta com autorização do cuidador vinculado; um pedido pendente por vez, válido por 24 h; decisão única mesmo simultânea; autorizar desconecta o aparelho e mantém o vínculo | `PedirDesconexaoUseCase`, `DecidirPedidoDesconexaoUseCase`, `PedidoDesconexao`, `SessaoDoPacienteInterceptor` | `PedidoDesconexaoTest`, `PedirDesconexaoUseCaseTest`, `DecidirPedidoDesconexaoUseCaseTest`, `DesconexaoApiTest`, `DesconexaoConcorrentePostgresTest` |
 
 ## Segredos
 
@@ -135,11 +150,28 @@ Cobertura atual: 99,6% das linhas e 97,6% dos ramos em domain+application; 93% n
 | `DOSES_HORIZONTE_DIAS` | 30 | Doses geradas à frente, em dias (de 1 a 90) |
 | `CACHE_RELATORIO_DIARIO_SEGUNDOS` | 30 | Cache do relatório diário (0 desliga) |
 | `FCM_ENABLED`, `FCM_DRY_RUN`, `FIREBASE_CREDENTIALS_PATH` | false, false, vazio | Push |
-| `JOBS_ENABLED` | true | Varredura de doses, retentativa e reabastecimento |
+| `ALERTAS_LEMBRETE_PACIENTE_ATRASO_MINUTOS` | 2 | Quanto depois do horário o servidor reforça o lembrete do paciente |
+| `LEMBRETE_PACIENTE_CRON` | `15 * * * * *` | Frequência do job de lembrete ao paciente |
+| `JOBS_ENABLED` | true | Varredura de doses, lembrete ao paciente, retentativa e reabastecimento |
 | `SWAGGER_ENABLED` | true fora do `prod`; false no `prod` | Swagger UI e `/v3/api-docs` |
+
+## Apresentação no PC
+
+Backend e banco em contêineres no próprio PC, publicados por um túnel ngrok com domínio estático (HTTPS), para os
+dois celulares da apresentação funcionarem em qualquer rede. Um comando sobe tudo:
+
+```powershell
+cd deploy\apresentacao
+.\iniciar-apresentacao.ps1        # PRONTO: https://<domínio> | backend OK | banco OK | push OK | túnel OK
+.\preparar-demonstracao.ps1       # dados de demonstração e códigos de pareamento
+```
+
+Roteiro, scripts e solução de problemas em [docs/apresentacao-local.md](docs/apresentacao-local.md).
 
 ## Mais documentação
 
+- [docs/apresentacao-local.md](docs/apresentacao-local.md): apresentação no PC com túnel HTTPS, dados de
+  demonstração e solução de problemas.
 - [docs/implantacao.md](docs/implantacao.md): Oracle Cloud, DuckDNS, `instalar-vm.sh`, backup e restauração e
   checklist de produção.
 - [docs/capacidade.md](docs/capacidade.md): capacidade estimada, pool de conexões, planos das consultas, cache e plano B.

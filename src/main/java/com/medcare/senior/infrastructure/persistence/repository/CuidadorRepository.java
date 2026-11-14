@@ -1,3 +1,8 @@
+/*
+ * Interface Spring Data JPA de CuidadorEntity: consultas e atualizações no banco. Métodos: findByEmail,
+ * existsByEmail, atualizarFcmToken, removerFcmTokenDosOutros, removerFcmTokenSeIgual, removerFcmToken,
+ * redefinirSenha, marcarEmailVerificado.
+ */
 package com.medcare.senior.infrastructure.persistence.repository;
 
 import com.medcare.senior.infrastructure.persistence.entity.CuidadorEntity;
@@ -31,4 +36,12 @@ public interface CuidadorRepository extends JpaRepository<CuidadorEntity, Long> 
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("UPDATE CuidadorEntity c SET c.fcmToken = NULL WHERE c.id = :id AND c.fcmToken IS NOT NULL")
     int removerFcmToken(@Param("id") Long id);
+
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("UPDATE CuidadorEntity c SET c.senhaHash = :senhaHash, c.emailVerificado = true WHERE c.id = :id")
+    int redefinirSenha(@Param("id") Long id, @Param("senhaHash") String senhaHash);
+
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("UPDATE CuidadorEntity c SET c.emailVerificado = true WHERE c.id = :id")
+    int marcarEmailVerificado(@Param("id") Long id);
 }

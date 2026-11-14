@@ -1,3 +1,8 @@
+/*
+ * Interface Spring Data JPA de TratamentoEntity: consultas e atualizações no banco. Métodos:
+ * findAllByMedicamento_IdAndRemovidoEmIsNullOrderByDataInicioAscIdAsc, findAtivoByIdAndCuidadorId, findAllAtivos,
+ * marcarComoRemovidosPorMedicamento, deleteAllByCuidadorId, deleteAllByPacienteId.
+ */
 package com.medcare.senior.infrastructure.persistence.repository;
 
 import com.medcare.senior.infrastructure.persistence.entity.TratamentoEntity;
@@ -37,4 +42,10 @@ public interface TratamentoRepository extends JpaRepository<TratamentoEntity, Lo
     @Query("DELETE FROM TratamentoEntity t WHERE t.medicamento.id IN ("
             + "SELECT m.id FROM MedicamentoEntity m WHERE m.paciente.cuidador.id = :cuidadorId)")
     void deleteAllByCuidadorId(@Param("cuidadorId") Long cuidadorId);
+
+    // Exclusão física de um paciente desvinculado: inclui os tratamentos já removidos logicamente
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("DELETE FROM TratamentoEntity t WHERE t.medicamento.id IN ("
+            + "SELECT m.id FROM MedicamentoEntity m WHERE m.paciente.id = :pacienteId)")
+    int deleteAllByPacienteId(@Param("pacienteId") Long pacienteId);
 }

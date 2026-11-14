@@ -1,3 +1,10 @@
+/*
+ * Testes automatizados de validar código vinculo (7 casos). Cobre: código valido deve gerar token com role
+ * paciente e devolver id e nome do paciente; código inexistente deve ser rejeitado; código expirado deve ser
+ * rejeitado; código que expira exatamente agora deve ser rejeitado; código já usado deve ser rejeitado; código
+ * consumido por requisição concorrente deve ser rejeitado; mensagem de erro deve ser generica e igual nos três
+ * casos de falha.
+ */
 package com.medcare.senior.application.usecase;
 
 import com.medcare.senior.domain.autenticacao.SessaoAutenticada;

@@ -112,6 +112,12 @@ public class DocumentacaoPadraoCustomizer implements GlobalOperationCustomizer, 
                 return;
             }
             MediaType json = new MediaType().schema(new Schema<>().$ref(ERRO_RESPONSE_REF));
+            // Exemplos declarados na própria operação (casos específicos) vêm primeiro e são mantidos
+            if (resposta.getContent() != null) {
+                resposta.getContent().values().stream()
+                        .filter(anotado -> anotado.getExamples() != null)
+                        .forEach(anotado -> anotado.getExamples().forEach(json::addExamples));
+            }
             exemplos(status, resposta.getDescription()).forEach(json::addExamples);
             resposta.setContent(new Content().addMediaType(org.springframework.http.MediaType.APPLICATION_JSON_VALUE, json));
             if ("429".equals(status)) {
@@ -187,6 +193,9 @@ public class DocumentacaoPadraoCustomizer implements GlobalOperationCustomizer, 
                 + "cadastro");
         m.put("TOKEN_DISPOSITIVO_INVALIDO", "O token do dispositivo é obrigatório e deve ter no máximo 512 caracteres");
         m.put("CODIGO_INVALIDO", "Código inválido ou expirado");
+        m.put("CODIGO_EMAIL_INVALIDO", "Código incorreto. Você tem mais 4 tentativas.");
+        m.put("EMAIL_INVALIDO", "O domínio \"gmial.com\" não existe. Confira o e-mail.");
+        m.put("EMAIL_NAO_VERIFICADO", "Confirme o seu e-mail com o código que enviamos antes de cadastrar pacientes.");
         m.put("DADOS_OBRIGATORIOS_MEDICAMENTO", "Nome, dosagem e tipo do medicamento são obrigatórios");
         m.put("TRATAMENTO_INVALIDO", "Informe ao menos um horário para o tratamento");
         m.put("CREDENCIAIS_INVALIDAS", "E-mail ou senha inválidos");
@@ -201,6 +210,7 @@ public class DocumentacaoPadraoCustomizer implements GlobalOperationCustomizer, 
         m.put("DOSE_JA_REGISTRADA", "Esta dose já foi registrada.");
         m.put("DOSE_MUITO_CEDO", "Ainda é cedo para confirmar esta dose.");
         m.put("DOSE_ENCERRADA", "O prazo para confirmar esta dose terminou.");
+        m.put("PEDIDO_ENCERRADO", "Este pedido já foi decidido, cancelado ou expirou.");
         m.put("PERIODO_SEM_REGISTROS", "Não há doses registradas neste período. Escolha outro período para exportar.");
         m.put("LIMITE_TENTATIVAS", "Muitas tentativas inválidas. Tente novamente mais tarde.");
         m.put("ERRO_INTERNO", "Erro interno. Tente novamente mais tarde.");

@@ -1,3 +1,8 @@
+/*
+ * Adaptador que implementa a porta MedicamentoRepositoryPort com Spring Data JPA e o mapper, escondendo o JPA do
+ * domínio. Métodos: save, findById, findAllByPacienteId, existsById, marcarComoRemovido, deleteAllByCuidadorId,
+ * deleteAllByPacienteId.
+ */
 package com.medcare.senior.infrastructure.persistence.adapter;
 
 import com.medcare.senior.domain.medicamento.Medicamento;
@@ -51,5 +56,10 @@ public class MedicamentoRepositoryAdapter implements MedicamentoRepositoryPort {
     @Transactional
     public void deleteAllByCuidadorId(Long cuidadorId) {
         medicamentoRepository.deleteAllByCuidadorId(cuidadorId);
+    }
+
+    @Override
+    public void deleteAllByPacienteId(Long pacienteId) {
+        medicamentoRepository.deleteAllByPacienteId(pacienteId);
     }
 }

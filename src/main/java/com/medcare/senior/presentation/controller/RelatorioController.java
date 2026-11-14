@@ -1,3 +1,7 @@
+/*
+ * Rotas de relatório do cuidador: GET /api/relatorios/diario (UC-008, doses do dia com totais) e GET
+ * /api/relatorios/pdf (UC-012, histórico de adesão em PDF, até 12 meses).
+ */
 package com.medcare.senior.presentation.controller;
 
 import com.medcare.senior.infrastructure.docs.PerfilExigido;

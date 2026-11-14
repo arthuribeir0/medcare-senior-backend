@@ -1,3 +1,8 @@
+/*
+ * Porta (interface) do domínio para cuidador; a implementação fica na infraestrutura. Operações: save,
+ * findByEmail, existsByEmail, existsById, findById, atualizarFcmToken, removerFcmTokenDosOutrosCuidadores,
+ * removerFcmTokenSeIgual, removerFcmToken, redefinirSenha, marcarEmailVerificado, deleteById.
+ */
 package com.medcare.senior.domain.usuario;
 
 import java.util.Optional;
@@ -41,6 +46,11 @@ public interface CuidadorRepositoryPort {
      * Apaga o token de dispositivo do cuidador, qualquer que seja (logout do aparelho). Sem token gravado, nada muda.
      */
     void removerFcmToken(Long cuidadorId);
+
+    /** Grava a senha nova (já em hash) e marca o e-mail como confirmado: só quem recebeu o código chega aqui. */
+    void redefinirSenha(Long cuidadorId, String senhaHash);
+
+    void marcarEmailVerificado(Long cuidadorId);
 
     void deleteById(Long id);
 }

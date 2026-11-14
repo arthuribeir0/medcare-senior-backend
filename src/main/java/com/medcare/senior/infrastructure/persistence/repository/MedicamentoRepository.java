@@ -1,3 +1,8 @@
+/*
+ * Interface Spring Data JPA de MedicamentoEntity: consultas e atualizações no banco. Métodos:
+ * findByIdAndRemovidoEmIsNull, findAllByPaciente_IdAndRemovidoEmIsNullOrderByNomeAsc,
+ * existsByIdAndRemovidoEmIsNull, marcarComoRemovido, deleteAllByCuidadorId, deleteAllByPacienteId.
+ */
 package com.medcare.senior.infrastructure.persistence.repository;
 
 import com.medcare.senior.infrastructure.persistence.entity.MedicamentoEntity;
@@ -29,4 +34,9 @@ public interface MedicamentoRepository extends JpaRepository<MedicamentoEntity, 
     @Query("DELETE FROM MedicamentoEntity m "
             + "WHERE m.paciente.id IN (SELECT i.id FROM PacienteEntity i WHERE i.cuidador.id = :cuidadorId)")
     void deleteAllByCuidadorId(@Param("cuidadorId") Long cuidadorId);
+
+    // Exclusão física de um paciente desvinculado: inclui os medicamentos já removidos logicamente
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("DELETE FROM MedicamentoEntity m WHERE m.paciente.id = :pacienteId")
+    int deleteAllByPacienteId(@Param("pacienteId") Long pacienteId);
 }

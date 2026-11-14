@@ -1,3 +1,7 @@
+/*
+ * Converte entre a entidade JPA CuidadorEntity e o objeto de domínio Cuidador, nos dois sentidos, para o domínio
+ * não depender do JPA.
+ */
 package com.medcare.senior.infrastructure.persistence.mapper;
 
 import com.medcare.senior.domain.usuario.Cuidador;
@@ -18,6 +22,7 @@ public class CuidadorMapper {
                 .consentimentoLgpd(entity.isConsentimentoLgpd())
                 .dataConsentimento(entity.getDataConsentimento())
                 .fcmToken(entity.getFcmToken())
+                .emailVerificado(entity.isEmailVerificado())
                 .build();
     }
 
@@ -32,6 +37,7 @@ public class CuidadorMapper {
                 .consentimentoLgpd(cuidador.isConsentimentoLgpd())
                 .dataConsentimento(cuidador.getDataConsentimento())
                 .fcmToken(cuidador.getFcmToken())
+                .emailVerificado(cuidador.isEmailVerificado())
                 .build();
     }
 }

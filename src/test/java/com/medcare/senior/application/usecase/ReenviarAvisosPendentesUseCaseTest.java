@@ -1,13 +1,22 @@
+/*
+ * Testes automatizados de reenviar avisos pendentes (16 casos). Cobre: sem eventos não faz nada; reivindica rele a
+ * dose e reenvia; dose já registrada cancela o aviso sem push; dose sem dono cancela o aviso; dose confirmada
+ * entre a busca e a reivindicação cancela na releitura; reivindicação perdida não envia; evento nunca tentado é
+ * enviado na hora; falha temporária antes da última tentativa deixa o evento pendente; entre outros.
+ */
 package com.medcare.senior.application.usecase;
 
 import com.medcare.senior.application.service.EnvioDeAvisoService;
 import com.medcare.senior.domain.dose.DoseRepositoryPort;
+import com.medcare.senior.domain.dose.PoliticaDeJanela;
 import com.medcare.senior.domain.dose.StatusDose;
 import com.medcare.senior.domain.notificacao.DoseNaoTomadaNotificacao;
 import com.medcare.senior.domain.notificacao.EventoNotificacaoRepositoryPort;
 import com.medcare.senior.domain.notificacao.EventoParaRetentativa;
+import com.medcare.senior.domain.notificacao.LembreteDoPacienteNotificacao;
 import com.medcare.senior.domain.notificacao.MotivoFalhaNotificacao;
 import com.medcare.senior.domain.notificacao.ResultadoEnvioPush;
+import com.medcare.senior.domain.notificacao.TipoEventoNotificacao;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -43,6 +52,9 @@ class ReenviarAvisosPendentesUseCaseTest {
     private static final int MAX = 5;
     private static final Duration BASE = Duration.ofMinutes(5);
     private static final int LOTE = 200;
+    // Tolerância padrão de 30 min: o lembrete ao paciente de uma dose das 13:40 vale até 14:10
+    private static final PoliticaDeJanela POLITICA = new PoliticaDeJanela(Duration.ofMinutes(60), Duration.ofMinutes(30),
+            Duration.ofMinutes(30));
 
     @Mock
     private EventoNotificacaoRepositoryPort eventos;
@@ -57,13 +69,14 @@ class ReenviarAvisosPendentesUseCaseTest {
 
     @BeforeEach
     void setUp() {
-        useCase = new ReenviarAvisosPendentesUseCase(eventos, doseRepository, envioDeAviso,
+        useCase = new ReenviarAvisosPendentesUseCase(eventos, doseRepository, envioDeAviso, POLITICA,
                 new ReenviarAvisosPendentesUseCase.Parametros(MAX, BASE, LOTE),
                 Clock.fixed(AGORA.atZone(FUSO).toInstant(), FUSO));
     }
 
     private static EventoParaRetentativa evento(long eventoId, int tentativas, StatusDose statusDose) {
-        return new EventoParaRetentativa(eventoId, tentativas, eventoId * 10, statusDose, HORARIO, false, 1L, 2L, "Maria");
+        return new EventoParaRetentativa(eventoId, TipoEventoNotificacao.AVISO_CUIDADOR, tentativas, eventoId * 10,
+                statusDose, HORARIO, false, 1L, 2L, "Maria", "Losartana", null);
     }
 
     private void elegiveis(EventoParaRetentativa... lista) {
@@ -103,7 +116,8 @@ class ReenviarAvisosPendentesUseCaseTest {
 
     @Test
     void doseSemDonoCancelaOAviso() {
-        elegiveis(new EventoParaRetentativa(1L, 1, 10L, StatusDose.PENDENTE, HORARIO, true, null, null, null));
+        elegiveis(new EventoParaRetentativa(1L, TipoEventoNotificacao.AVISO_CUIDADOR, 1, 10L, StatusDose.PENDENTE, HORARIO,
+                true, null, null, null, null, null));
 
         assertThat(useCase.executar().canceladas()).isEqualTo(1);
         verify(eventos).marcarFalha(1L, MotivoFalhaNotificacao.DOSE_JA_REGISTRADA);
@@ -207,5 +221,54 @@ class ReenviarAvisosPendentesUseCaseTest {
                 .isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> new ReenviarAvisosPendentesUseCase.Parametros(MAX, BASE, 0))
                 .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    // ---- lembrete ao paciente: mesmo caminho, até o aviso ao cuidador ----------------------------------------------
+
+    private static EventoParaRetentativa lembrete(long eventoId, StatusDose statusDose, LocalDateTime horario,
+                                                  Integer toleranciaDoCuidador) {
+        return new EventoParaRetentativa(eventoId, TipoEventoNotificacao.LEMBRETE_PACIENTE, 1, eventoId * 10, statusDose,
+                horario, false, 1L, 2L, "Maria", "Losartana", toleranciaDoCuidador);
+    }
+
+    @Test
+    void lembreteDentroDaJanelaEhReenviadoPeloNotificadorDoPaciente() {
+        // Dose das 13:50 com a tolerância padrão (30): o lembrete vale até 14:20
+        LocalDateTime horario = AGORA.minusMinutes(10);
+        elegiveis(lembrete(1L, StatusDose.PENDENTE, horario, null));
+        when(eventos.reivindicar(1L, 1, AGORA)).thenReturn(true);
+        when(doseRepository.findStatusById(10L)).thenReturn(Optional.of(StatusDose.PENDENTE));
+        when(envioDeAviso.enviarLembrete(eq(1L), any())).thenReturn(ResultadoEnvioPush.ENVIADO);
+
+        assertThat(useCase.executar()).isEqualTo(new ReenviarAvisosPendentesUseCase.Resultado(1, 1, 0, 0, 0));
+        verify(envioDeAviso).enviarLembrete(1L, new LembreteDoPacienteNotificacao(10L, 2L, "Losartana", horario,
+                horario.plusMinutes(30)));
+        verify(envioDeAviso, never()).enviar(anyLong(), any());
+    }
+
+    @Test
+    void lembreteQueChegouAoAvisoAoCuidadorEhEncerradoForaDaJanelaSemPush() {
+        // Dose das 13:10 com tolerância padrão: o aviso ao cuidador foi às 13:40; com a do cuidador (50), é agora
+        elegiveis(lembrete(1L, StatusDose.PENDENTE, HORARIO, null), lembrete(2L, StatusDose.PENDENTE, HORARIO, 50));
+
+        assertThat(useCase.executar()).isEqualTo(new ReenviarAvisosPendentesUseCase.Resultado(0, 0, 2, 0, 0));
+        verify(eventos).marcarFalha(1L, MotivoFalhaNotificacao.FORA_DA_JANELA);
+        verify(eventos).marcarFalha(2L, MotivoFalhaNotificacao.FORA_DA_JANELA);
+        verify(eventos, never()).reivindicar(anyLong(), anyInt(), any());
+        verifyNoInteractions(envioDeAviso);
+    }
+
+    @Test
+    void lembreteComAToleranciaMaiorDoCuidadorAindaValeEDoseConfirmadaCancela() {
+        // Tolerância do cuidador de 60: a dose das 13:10 ainda está no lembrete até 14:10
+        elegiveis(lembrete(1L, StatusDose.PENDENTE, HORARIO, 60),
+                lembrete(2L, StatusDose.CONFIRMADA_NO_HORARIO, HORARIO, 60));
+        when(eventos.reivindicar(1L, 1, AGORA)).thenReturn(true);
+        when(doseRepository.findStatusById(10L)).thenReturn(Optional.of(StatusDose.PENDENTE));
+        when(envioDeAviso.enviarLembrete(eq(1L), any())).thenReturn(ResultadoEnvioPush.FALHA_TEMPORARIA);
+
+        assertThat(useCase.executar()).isEqualTo(new ReenviarAvisosPendentesUseCase.Resultado(1, 0, 1, 0, 0));
+        verify(eventos).marcarFalha(2L, MotivoFalhaNotificacao.DOSE_JA_REGISTRADA);
+        verify(eventos, never()).marcarFalha(1L, MotivoFalhaNotificacao.FORA_DA_JANELA);
     }
 }

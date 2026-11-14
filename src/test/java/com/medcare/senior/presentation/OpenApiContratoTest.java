@@ -106,6 +106,19 @@ class OpenApiContratoTest {
     }
 
     @Test
+    void contratoPublicaAsQuarentaEOitoOperacoesComAConfirmacaoDoEmail() {
+        // 42 até o lembrete do paciente, mais PUT e DELETE /api/pacientes/me/fcm-token, mais as 4 do e-mail
+        assertThat(operacoes()).hasSize(48)
+                .containsKeys("PUT /api/pacientes/me/fcm-token", "DELETE /api/pacientes/me/fcm-token",
+                        "PUT /api/cuidadores/me/fcm-token", "DELETE /api/cuidadores/me/fcm-token",
+                        "POST /api/cuidadores/me/verificacao-email/confirmar",
+                        "POST /api/cuidadores/me/verificacao-email/reenviar",
+                        "POST /api/auth/esqueci-senha", "POST /api/auth/redefinir-senha");
+        assertThat(texto(operacoes().get("PUT /api/pacientes/me/fcm-token"), "description"))
+                .startsWith("**Perfil exigido:** PACIENTE");
+    }
+
+    @Test
     void todaOperacaoTemResumoPerfilTagEErroNoCorpoPadrao() {
         List<String> problemas = new ArrayList<>();
         Set<String> tagsUsadas = new HashSet<>();
@@ -217,6 +230,18 @@ class OpenApiContratoTest {
         JsonNode resposta = contrato.at("/paths/~1api~1vinculo~1validar/post/responses/429");
         assertThat(resposta.at("/headers/Retry-After").isMissingNode()).isFalse();
         assertThat(resposta.at("/content/application~1json/examples/LIMITE_TENTATIVAS").isMissingNode()).isFalse();
+    }
+
+    @Test
+    void tratamentoDocumentaAPrimeiraDoseEOHorarioMuitoProximo() {
+        JsonNode primeiraDose = contrato.at("/components/schemas/TratamentoResponseDTO/properties/primeiraDose");
+        assertThat(primeiraDose.path("format").asString("")).isEqualTo("date-time");
+        for (String operacao : List.of("/paths/~1api~1medicamentos~1{medicamentoId}~1tratamentos/post",
+                "/paths/~1api~1tratamentos~1{id}/put")) {
+            JsonNode exemplo = contrato.at(operacao + "/responses/400/content/application~1json/examples/HORARIO_MUITO_PROXIMO");
+            assertThat(exemplo.isMissingNode()).as(operacao).isFalse();
+            assertThat(exemplo.toString()).contains("pelo menos 5 minutos de diferença do horário atual");
+        }
     }
 
     @Test

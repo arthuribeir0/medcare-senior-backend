@@ -1,3 +1,9 @@
+/*
+ * Adaptador que implementa a porta PacienteRepositoryPort com Spring Data JPA e o mapper, escondendo o JPA do
+ * domínio. Métodos: save, existsByCuidadorIdAndNomeAndDataNascimento, findByIdAndCuidadorId, findById,
+ * findAllByCuidadorId, invalidarSessoes, sessaoValida, atualizarTokenFcm, removerTokenFcmDosOutrosPacientes,
+ * findTokenFcm, removerTokenFcm, removerTokenFcmSeIgual, deleteAllByCuidadorId, deleteByIdAndCuidadorId.
+ */
 package com.medcare.senior.infrastructure.persistence.adapter;
 
 import com.medcare.senior.domain.exception.PacienteJaCadastradoException;
@@ -10,7 +16,9 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 
@@ -55,7 +63,53 @@ public class PacienteRepositoryAdapter implements PacienteRepositoryPort {
 
     @Override
     @Transactional
+    public void invalidarSessoes(Long pacienteId, Instant desde) {
+        pacienteRepository.invalidarSessoes(pacienteId, desde.atOffset(ZoneOffset.UTC));
+    }
+
+    @Override
+    public boolean sessaoValida(Long pacienteId, Instant tokenEmitidoEm) {
+        return pacienteRepository.contarComSessaoValida(pacienteId, tokenEmitidoEm.atOffset(ZoneOffset.UTC)) > 0;
+    }
+
+    @Override
+    @Transactional
+    public boolean atualizarTokenFcm(Long pacienteId, String token, Instant agora) {
+        return pacienteRepository.atualizarTokenFcm(pacienteId, token, agora.atOffset(ZoneOffset.UTC)) > 0;
+    }
+
+    @Override
+    @Transactional
+    public void removerTokenFcmDosOutrosPacientes(String token, Long pacienteId) {
+        pacienteRepository.removerTokenFcmDosOutros(token, pacienteId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<String> findTokenFcm(Long pacienteId) {
+        return pacienteRepository.findTokenFcm(pacienteId);
+    }
+
+    @Override
+    @Transactional
+    public void removerTokenFcm(Long pacienteId) {
+        pacienteRepository.removerTokenFcm(pacienteId);
+    }
+
+    @Override
+    @Transactional
+    public void removerTokenFcmSeIgual(Long pacienteId, String token) {
+        pacienteRepository.removerTokenFcmSeIgual(pacienteId, token);
+    }
+
+    @Override
+    @Transactional
     public void deleteAllByCuidadorId(Long cuidadorId) {
         pacienteRepository.deleteAllByCuidadorId(cuidadorId);
+    }
+
+    @Override
+    public boolean deleteByIdAndCuidadorId(Long id, Long cuidadorId) {
+        return pacienteRepository.deleteByIdAndCuidadorId(id, cuidadorId) > 0;
     }
 }

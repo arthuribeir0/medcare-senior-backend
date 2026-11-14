@@ -238,4 +238,34 @@ class PoliticaDeJanelaTest {
     private StatusExibicao exibicao(LocalDateTime agora, Duration tolerancia) {
         return politica.statusExibicao(StatusDose.PENDENTE, HORARIO, agora, tolerancia);
     }
+
+    // ---- lembrete do servidor ao paciente: de horário + atraso (inclusive) até o aviso (exclusive) ---------------
+
+    private static final Duration ATRASO = Duration.ofMinutes(2);
+
+    @Test
+    void lembreteAoPacienteComecaNoAtrasoMinimo() {
+        assertThat(politica.dentroDoLembreteAoPaciente(HORARIO, HORARIO.plusMinutes(2).minusSeconds(1), ATRASO, TOLERANCIA))
+                .isFalse();
+        assertThat(politica.dentroDoLembreteAoPaciente(HORARIO, HORARIO.plusMinutes(2), ATRASO, TOLERANCIA)).isTrue();
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {Tolerancia.MINIMO_MINUTOS, 30, Tolerancia.MAXIMO_MINUTOS})
+    void lembreteAoPacienteTerminaExatamenteQuandoOAvisoAoCuidadorComeca(int minutos) {
+        Duration tolerancia = Duration.ofMinutes(minutos);
+        LocalDateTime aviso = politica.avisoEm(HORARIO, tolerancia);
+
+        assertThat(politica.dentroDoLembreteAoPaciente(HORARIO, aviso.minusSeconds(1), ATRASO, tolerancia)).isTrue();
+        assertThat(politica.dentroDoLembreteAoPaciente(HORARIO, aviso, ATRASO, tolerancia)).isFalse();
+        assertThat(politica.dentroDoLembreteAoPaciente(HORARIO, aviso.plusSeconds(1), ATRASO, tolerancia)).isFalse();
+    }
+
+    @Test
+    void lembreteAoPacienteNaoAceitaAtrasoNegativo() {
+        assertThatThrownBy(() -> politica.dentroDoLembreteAoPaciente(HORARIO, HORARIO, Duration.ofMinutes(-1), TOLERANCIA))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> politica.dentroDoLembreteAoPaciente(HORARIO, HORARIO, null, TOLERANCIA))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
 }

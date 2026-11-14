@@ -1,3 +1,8 @@
+/*
+ * Interface Spring Data JPA de MensagemEntity: consultas e atualizações no banco. Métodos: findConversa,
+ * marcarComoLidas, countByPacienteIdAndRemetenteAndLidaEmIsNull, countNaoLidasDoCuidador, findConversasDoCuidador,
+ * findConversaDoPaciente, deleteAllByCuidadorId, deleteAllByPacienteId.
+ */
 package com.medcare.senior.infrastructure.persistence.repository;
 
 import com.medcare.senior.domain.mensagem.Remetente;
@@ -56,4 +61,8 @@ public interface MensagemRepository extends JpaRepository<MensagemEntity, Long> 
     @Query("DELETE FROM MensagemEntity m WHERE m.pacienteId IN "
             + "(SELECT i.id FROM PacienteEntity i WHERE i.cuidador.id = :cuidadorId)")
     int deleteAllByCuidadorId(@Param("cuidadorId") Long cuidadorId);
+
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("DELETE FROM MensagemEntity m WHERE m.pacienteId = :pacienteId")
+    int deleteAllByPacienteId(@Param("pacienteId") Long pacienteId);
 }

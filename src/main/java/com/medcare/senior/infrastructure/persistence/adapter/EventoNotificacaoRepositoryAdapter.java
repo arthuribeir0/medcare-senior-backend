@@ -5,6 +5,7 @@ import com.medcare.senior.domain.notificacao.EventoNotificacaoRepositoryPort;
 import com.medcare.senior.domain.notificacao.EventoParaRetentativa;
 import com.medcare.senior.domain.notificacao.MotivoFalhaNotificacao;
 import com.medcare.senior.domain.notificacao.StatusEventoNotificacao;
+import com.medcare.senior.domain.notificacao.TipoEventoNotificacao;
 import com.medcare.senior.infrastructure.persistence.repository.EventoNotificacaoRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -28,8 +29,9 @@ public class EventoNotificacaoRepositoryAdapter implements EventoNotificacaoRepo
 
     @Override
     @Transactional
-    public Optional<Long> criarSeAusente(Long doseId) {
-        return repository.inserirSeAusente(Objects.requireNonNull(doseId)).stream().findFirst();
+    public Optional<Long> criarSeAusente(Long doseId, TipoEventoNotificacao tipo) {
+        return repository.inserirSeAusente(Objects.requireNonNull(doseId), Objects.requireNonNull(tipo).name())
+                .stream().findFirst();
     }
 
     @Override
@@ -44,10 +46,11 @@ public class EventoNotificacaoRepositoryAdapter implements EventoNotificacaoRepo
                                                            int limite) {
         return repository.findParaRetentativa(agora, maxTentativas, Math.toIntExact(intervaloBase.toMinutes()), limite)
                 .stream()
-                .map(linha -> new EventoParaRetentativa(linha.getEventoId(), linha.getTentativas(), linha.getDoseId(),
-                        StatusDose.valueOf(linha.getStatusDose()), linha.getHorarioProgramado(),
-                        Boolean.TRUE.equals(linha.getSemDono()), linha.getCuidadorId(), linha.getPacienteId(),
-                        linha.getNomePaciente()))
+                .map(linha -> new EventoParaRetentativa(linha.getEventoId(), TipoEventoNotificacao.valueOf(linha.getTipo()),
+                        linha.getTentativas(), linha.getDoseId(), StatusDose.valueOf(linha.getStatusDose()),
+                        linha.getHorarioProgramado(), Boolean.TRUE.equals(linha.getSemDono()), linha.getCuidadorId(),
+                        linha.getPacienteId(), linha.getNomePaciente(), linha.getNomeMedicamento(),
+                        linha.getToleranciaMinutos()))
                 .toList();
     }
 
@@ -68,5 +71,10 @@ public class EventoNotificacaoRepositoryAdapter implements EventoNotificacaoRepo
     @Transactional
     public void deleteByCuidadorId(Long cuidadorId) {
         repository.deleteByCuidadorId(cuidadorId);
+    }
+
+    @Override
+    public void deleteByPacienteId(Long pacienteId) {
+        repository.deleteByPacienteId(pacienteId);
     }
 }

@@ -19,6 +19,7 @@ import com.medcare.senior.domain.dose.DoseParaAviso;
 import com.medcare.senior.domain.dose.StatusDose;
 import com.medcare.senior.domain.exception.RecursoNaoEncontradoException;
 import com.medcare.senior.domain.notificacao.MotivoFalhaNotificacao;
+import com.medcare.senior.domain.notificacao.TipoEventoNotificacao;
 import com.medcare.senior.domain.usuario.CodigoVinculo;
 import com.medcare.senior.infrastructure.persistence.adapter.CodigoVinculoRepositoryAdapter;
 import com.medcare.senior.infrastructure.persistence.adapter.ConfiguracaoAlertaRepositoryAdapter;
@@ -652,7 +653,7 @@ class PersistenciaPostgresTest {
         DoseEntity dentroDaTolerancia = dose(tratamento, agora.minus(tolerancia).plusSeconds(1), StatusDose.PENDENTE);
         DoseEntity noLimiteDoEncerramento = dose(tratamento, agora.minusMinutes(60), StatusDose.PENDENTE);
         DoseEntity jaAvisada = dose(tratamento, agora.minusMinutes(45), StatusDose.PENDENTE);
-        eventoAdapter.criarSeAusente(jaAvisada.getId());
+        eventoAdapter.criarSeAusente(jaAvisada.getId(), TipoEventoNotificacao.AVISO_CUIDADOR);
         DoseEntity noHorario = dose(tratamento, agora.minusMinutes(50), StatusDose.CONFIRMADA_NO_HORARIO);
         DoseEntity deTratamentoRemovido = dose(tratamento(medicamento, agora), agora.minusMinutes(35), StatusDose.PENDENTE);
         DoseEntity deMedicamentoRemovido = dose(tratamento(medicamento(paciente, agora), null), agora.minusMinutes(40),
@@ -771,8 +772,8 @@ class PersistenciaPostgresTest {
         DoseEntity dose = dose(tratamento(medicamento(paciente(cuidador()), null), null), AGORA.minusHours(1),
                 StatusDose.PENDENTE);
 
-        java.util.Optional<Long> criado = eventoAdapter.criarSeAusente(dose.getId());
-        java.util.Optional<Long> repetido = eventoAdapter.criarSeAusente(dose.getId());
+        java.util.Optional<Long> criado = eventoAdapter.criarSeAusente(dose.getId(), TipoEventoNotificacao.AVISO_CUIDADOR);
+        java.util.Optional<Long> repetido = eventoAdapter.criarSeAusente(dose.getId(), TipoEventoNotificacao.AVISO_CUIDADOR);
 
         assertThat(criado).isPresent();
         assertThat(repetido).isEmpty();
@@ -788,7 +789,7 @@ class PersistenciaPostgresTest {
     void reivindicarSoGanhaComAsTentativasEsperadasEEnquantoPendente() {
         DoseEntity dose = dose(tratamento(medicamento(paciente(cuidador()), null), null), AGORA.minusHours(1),
                 StatusDose.PENDENTE);
-        Long eventoId = eventoAdapter.criarSeAusente(dose.getId()).orElseThrow();
+        Long eventoId = eventoAdapter.criarSeAusente(dose.getId(), TipoEventoNotificacao.AVISO_CUIDADOR).orElseThrow();
 
         assertThat(eventoAdapter.reivindicar(eventoId, 0, AGORA)).isTrue();
         // Segunda reivindicação com a mesma expectativa (outro job concorrente): perde
@@ -809,7 +810,7 @@ class PersistenciaPostgresTest {
     void marcarFalhaGravaOMotivo() {
         DoseEntity dose = dose(tratamento(medicamento(paciente(cuidador()), null), null), AGORA.minusHours(1),
                 StatusDose.PENDENTE);
-        Long eventoId = eventoAdapter.criarSeAusente(dose.getId()).orElseThrow();
+        Long eventoId = eventoAdapter.criarSeAusente(dose.getId(), TipoEventoNotificacao.AVISO_CUIDADOR).orElseThrow();
 
         eventoAdapter.marcarFalha(eventoId, MotivoFalhaNotificacao.TOKEN_INVALIDO);
 
@@ -823,7 +824,7 @@ class PersistenciaPostgresTest {
                 StatusDose.PENDENTE);
 
         assertThatThrownBy(() -> em.getEntityManager()
-                .createNativeQuery("INSERT INTO evento_notificacao (status, tentativas, dose_id) VALUES ('ENVIANDO', 0, ?1)")
+                .createNativeQuery("INSERT INTO evento_notificacao (status, tentativas, dose_id, tipo) VALUES ('ENVIANDO', 0, ?1, 'AVISO_CUIDADOR')")
                 .setParameter(1, dose.getId())
                 .executeUpdate())
                 .hasMessageContaining("ck_evento_notificacao_status");
@@ -835,7 +836,7 @@ class PersistenciaPostgresTest {
                 StatusDose.PENDENTE);
 
         assertThatThrownBy(() -> em.getEntityManager()
-                .createNativeQuery("INSERT INTO evento_notificacao (status, tentativas, dose_id) VALUES ('PENDENTE', -1, ?1)")
+                .createNativeQuery("INSERT INTO evento_notificacao (status, tentativas, dose_id, tipo) VALUES ('PENDENTE', -1, ?1, 'AVISO_CUIDADOR')")
                 .setParameter(1, dose.getId())
                 .executeUpdate())
                 .hasMessageContaining("ck_evento_notificacao_tentativas");
@@ -845,11 +846,11 @@ class PersistenciaPostgresTest {
     void uniqueDaTabelaDeEventoImpedeDoisEventosParaAMesmaDose() {
         DoseEntity dose = dose(tratamento(medicamento(paciente(cuidador()), null), null), AGORA.minusHours(1),
                 StatusDose.PENDENTE);
-        eventoAdapter.criarSeAusente(dose.getId()).orElseThrow();
+        eventoAdapter.criarSeAusente(dose.getId(), TipoEventoNotificacao.AVISO_CUIDADOR).orElseThrow();
 
         // Sem o ON CONFLICT do adapter, o banco recusa o segundo evento da mesma dose
         assertThatThrownBy(() -> em.getEntityManager()
-                .createNativeQuery("INSERT INTO evento_notificacao (status, tentativas, dose_id) VALUES ('PENDENTE', 0, ?1)")
+                .createNativeQuery("INSERT INTO evento_notificacao (status, tentativas, dose_id, tipo) VALUES ('PENDENTE', 0, ?1, 'AVISO_CUIDADOR')")
                 .setParameter(1, dose.getId())
                 .executeUpdate())
                 .hasMessageContaining("uk_evento_notificacao_dose");
@@ -859,9 +860,9 @@ class PersistenciaPostgresTest {
     void apagarADoseApagaOEventoPorOnDeleteCascade() {
         TratamentoEntity tratamento = tratamento(medicamento(paciente(cuidador()), null), null);
         DoseEntity dose = dose(tratamento, AGORA.minusHours(1), StatusDose.PENDENTE);
-        Long evento = eventoAdapter.criarSeAusente(dose.getId()).orElseThrow();
+        Long evento = eventoAdapter.criarSeAusente(dose.getId(), TipoEventoNotificacao.AVISO_CUIDADOR).orElseThrow();
         DoseEntity outra = dose(tratamento, AGORA.minusHours(2), StatusDose.PENDENTE);
-        Long eventoDaOutra = eventoAdapter.criarSeAusente(outra.getId()).orElseThrow();
+        Long eventoDaOutra = eventoAdapter.criarSeAusente(outra.getId(), TipoEventoNotificacao.AVISO_CUIDADOR).orElseThrow();
 
         em.getEntityManager().createNativeQuery("DELETE FROM dose WHERE id = ?1")
                 .setParameter(1, dose.getId())
@@ -877,20 +878,20 @@ class PersistenciaPostgresTest {
         TratamentoEntity tratamento = tratamento(medicamento(paciente(cuidador), null), null);
         // Evento em dose ainda PENDENTE (aviso feito, dose não encerrada)
         DoseEntity pendente = dose(tratamento, AGORA.minusHours(1), StatusDose.PENDENTE);
-        Long eventoPendente = eventoAdapter.criarSeAusente(pendente.getId()).orElseThrow();
+        Long eventoPendente = eventoAdapter.criarSeAusente(pendente.getId(), TipoEventoNotificacao.AVISO_CUIDADOR).orElseThrow();
         // Evento ENVIADO em dose que depois foi confirmada com atraso (registrada: a dose fica, anonimizada)
         DoseEntity comAtraso = dose(tratamento, AGORA.minusHours(2), StatusDose.CONFIRMADA_COM_ATRASO);
-        Long eventoEnviado = eventoAdapter.criarSeAusente(comAtraso.getId()).orElseThrow();
+        Long eventoEnviado = eventoAdapter.criarSeAusente(comAtraso.getId(), TipoEventoNotificacao.AVISO_CUIDADOR).orElseThrow();
         eventoAdapter.marcarEnviado(eventoEnviado);
         // Evento FALHA em dose encerrada como NAO_TOMADA
         DoseEntity naoTomada = dose(tratamento, AGORA.minusHours(5), StatusDose.NAO_TOMADA);
-        Long eventoFalha = eventoAdapter.criarSeAusente(naoTomada.getId()).orElseThrow();
+        Long eventoFalha = eventoAdapter.criarSeAusente(naoTomada.getId(), TipoEventoNotificacao.AVISO_CUIDADOR).orElseThrow();
         eventoAdapter.marcarFalha(eventoFalha, MotivoFalhaNotificacao.SEM_TOKEN);
 
         CuidadorEntity outro = cuidador();
         DoseEntity doseDoOutro = dose(tratamento(medicamento(paciente(outro), null), null), AGORA.minusHours(1),
                 StatusDose.PENDENTE);
-        Long eventoDoOutro = eventoAdapter.criarSeAusente(doseDoOutro.getId()).orElseThrow();
+        Long eventoDoOutro = eventoAdapter.criarSeAusente(doseDoOutro.getId(), TipoEventoNotificacao.AVISO_CUIDADOR).orElseThrow();
 
         excluirContaUseCase.executar(cuidador.getId());
 
@@ -920,10 +921,12 @@ class PersistenciaPostgresTest {
     }
 
     @Test
-    void checkDaConfiguracaoRecusaToleranciaForaDe5a120() {
+    void checkDaConfiguracaoRecusaToleranciaAbaixoDeUmMinuto() {
         CuidadorEntity cuidador = cuidador();
 
-        assertThatThrownBy(() -> configuracaoAdapter.salvarToleranciaMinutos(cuidador.getId(), 4))
+        // O banco aceita de 1 a 120 (V19, mínimo do modo de teste); o mínimo de 5 fora dele é da aplicação
+        configuracaoAdapter.salvarToleranciaMinutos(cuidador.getId(), 1);
+        assertThatThrownBy(() -> configuracaoAdapter.salvarToleranciaMinutos(cuidador.getId(), 0))
                 .isInstanceOf(DataIntegrityViolationException.class);
     }
 

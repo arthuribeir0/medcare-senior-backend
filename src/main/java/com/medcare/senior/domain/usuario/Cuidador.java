@@ -1,3 +1,7 @@
+/*
+ * Entidade de domínio do cuidador: nome, e-mail, hash da senha, telefone, consentimento LGPD (com data), token de
+ * push e se o e-mail foi confirmado. Sem anotações de framework.
+ */
 package com.medcare.senior.domain.usuario;
 
 import lombok.AllArgsConstructor;
@@ -28,4 +32,11 @@ public class Cuidador {
      * Token FCM do aparelho do cuidador, para avisos push. Dado pessoal (LGPD). {@code null} = sem aparelho registrado.
      */
     private String fcmToken;
+
+    /**
+     * O cuidador confirmou o e-mail com o código enviado a ele (ou redefiniu a senha por e-mail). Sem isso, não cadastra
+     * pacientes. Contas anteriores à confirmação contam como confirmadas (ver V20).
+     */
+    @Builder.Default
+    private boolean emailVerificado = true;
 }

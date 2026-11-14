@@ -1,3 +1,8 @@
+/*
+ * Interface Spring Data JPA de CodigoVinculoEntity: consultas e atualizações no banco. Métodos:
+ * existsByCodigoUnicoAndUsadoFalseAndExpiraEmAfter, findFirstByCodigoUnicoOrderByIdDesc, marcarComoUsado,
+ * inutilizarCodigosDoPaciente, deleteAllByCuidadorId, deleteAllByPacienteId.
+ */
 package com.medcare.senior.infrastructure.persistence.repository;
 
 import com.medcare.senior.infrastructure.persistence.entity.CodigoVinculoEntity;
@@ -27,9 +32,17 @@ public interface CodigoVinculoRepository extends JpaRepository<CodigoVinculoEnti
             + "WHERE c.id = :id AND c.usado = false AND c.expiraEm > :agora")
     int marcarComoUsado(@Param("id") Long id, @Param("agora") LocalDateTime agora);
 
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("UPDATE CodigoVinculoEntity c SET c.usado = true WHERE c.paciente.id = :pacienteId AND c.usado = false")
+    int inutilizarCodigosDoPaciente(@Param("pacienteId") Long pacienteId);
+
     // Inclui também códigos dos pacientes do cuidador, por segurança, caso cuidador_id e paciente.cuidador_id divirjam
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("DELETE FROM CodigoVinculoEntity c WHERE c.cuidador.id = :cuidadorId "
             + "OR c.paciente.id IN (SELECT i.id FROM PacienteEntity i WHERE i.cuidador.id = :cuidadorId)")
     void deleteAllByCuidadorId(@Param("cuidadorId") Long cuidadorId);
+
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("DELETE FROM CodigoVinculoEntity c WHERE c.paciente.id = :pacienteId")
+    int deleteAllByPacienteId(@Param("pacienteId") Long pacienteId);
 }

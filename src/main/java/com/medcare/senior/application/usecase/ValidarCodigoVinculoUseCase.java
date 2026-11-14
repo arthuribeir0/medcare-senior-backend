@@ -1,3 +1,8 @@
+/*
+ * UC-003: valida o código de pareamento e entrega ao aparelho do paciente o JWT de 180 dias. Recusa código
+ * inexistente, usado ou expirado. A marcação como usado é um UPDATE condicional atômico: se duas requisições
+ * chegarem juntas, só uma recebe o token.
+ */
 package com.medcare.senior.application.usecase;
 
 import com.medcare.senior.domain.autenticacao.SessaoAutenticada;

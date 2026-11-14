@@ -1,3 +1,7 @@
+/*
+ * Converte entre a entidade JPA TratamentoEntity e o objeto de domínio Tratamento, nos dois sentidos, para o
+ * domínio não depender do JPA.
+ */
 package com.medcare.senior.infrastructure.persistence.mapper;
 
 import com.medcare.senior.domain.tratamento.Tratamento;

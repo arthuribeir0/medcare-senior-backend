@@ -1,3 +1,10 @@
+/*
+ * Adaptador que implementa a porta DoseRepositoryPort com Spring Data JPA e o mapper, escondendo o JPA do domínio.
+ * Métodos: inserirPendentes, findHorariosProgramadosByTratamentoIdDesde, findPendentesParaAviso, encerrarVencidas,
+ * findPendentesParaLembrete, findDetalhadasDoPacienteEntre, findHistorico, contarPorMedicamentoEStatus,
+ * percorrerDoPaciente, findDetalhadaByIdAndPacienteId, findDetalhadaByIdAndCuidadorId, findStatusById,
+ * registrarSePendente, deletePendentesFuturasByTratamentoId.
+ */
 package com.medcare.senior.infrastructure.persistence.adapter;
 
 import com.medcare.senior.domain.configuracao.Tolerancia;
@@ -5,6 +12,7 @@ import com.medcare.senior.domain.dose.Dose;
 import com.medcare.senior.domain.dose.DoseDetalhada;
 import com.medcare.senior.domain.dose.DoseEncerrada;
 import com.medcare.senior.domain.dose.DoseParaAviso;
+import com.medcare.senior.domain.dose.DoseParaLembrete;
 import com.medcare.senior.domain.dose.DoseRepositoryPort;
 import com.medcare.senior.domain.dose.StatusDose;
 import com.medcare.senior.domain.historico.FiltroHistorico;
@@ -83,18 +91,33 @@ public class DoseRepositoryAdapter implements DoseRepositoryPort {
                 .toList();
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public List<DoseParaLembrete> findPendentesParaLembrete(LocalDateTime agora, Duration atrasoMinimo,
+                                                            Duration toleranciaPadrao, int limite) {
+        // Nenhuma dose com horário antes disto ainda está antes do aviso, qualquer que seja a tolerância do cuidador
+        LocalDateTime horarioMinimo = agora.minus(maiorTolerancia(toleranciaPadrao));
+        return doseRepository.findParaLembrete(agora, minutos(toleranciaPadrao), horarioMinimo, agora.minus(atrasoMinimo),
+                        limite)
+                .stream()
+                .map(linha -> new DoseParaLembrete(linha.getDoseId(), linha.getHorarioProgramado(), linha.getPacienteId(),
+                        linha.getNomeMedicamento(), linha.getToleranciaMinutos()))
+                .toList();
+    }
+
     private static int minutos(Duration duracao) {
         return Math.toIntExact(duracao.toMinutes());
     }
 
-    // Tolerâncias possíveis: a de cada cuidador (5 a 120 min, garantido pelo CHECK da configuracao_alerta) ou a padrão
+    // Tolerâncias possíveis: a de cada cuidador (5 a 120 min, ou 1 a 120 no modo de teste, garantido pelo CHECK da
+    // configuracao_alerta) ou a padrão
     private static Duration maiorTolerancia(Duration padrao) {
         Duration maxima = Duration.ofMinutes(Tolerancia.MAXIMO_MINUTOS);
         return padrao.compareTo(maxima) > 0 ? padrao : maxima;
     }
 
     private static Duration menorTolerancia(Duration padrao) {
-        Duration minima = Duration.ofMinutes(Tolerancia.MINIMO_MINUTOS);
+        Duration minima = Duration.ofMinutes(Tolerancia.MINIMO_MODO_TESTE_MINUTOS);
         return padrao.compareTo(minima) < 0 ? padrao : minima;
     }
 
@@ -190,5 +213,10 @@ public class DoseRepositoryAdapter implements DoseRepositoryPort {
     @Transactional
     public void deletePendentesByCuidadorId(Long cuidadorId) {
         doseRepository.deleteByCuidadorIdAndStatus(cuidadorId, StatusDose.PENDENTE);
+    }
+
+    @Override
+    public void deletePendentesByPacienteId(Long pacienteId) {
+        doseRepository.deleteByPacienteIdAndStatus(pacienteId, StatusDose.PENDENTE);
     }
 }

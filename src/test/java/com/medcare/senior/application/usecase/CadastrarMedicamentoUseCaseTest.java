@@ -1,3 +1,7 @@
+/*
+ * Testes automatizados de cadastrar medicamento (5 casos). Cobre: deve cadastrar medicamento; deve rejeitar nome
+ * ausente; deve rejeitar dosagem ausente; deve rejeitar tipo ausente; deve rejeitar paciente de outro cuidador.
+ */
 package com.medcare.senior.application.usecase;
 
 import com.medcare.senior.domain.exception.RecursoNaoEncontradoException;

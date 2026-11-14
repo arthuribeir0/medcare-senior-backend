@@ -5,9 +5,11 @@ import com.medcare.senior.domain.dose.StatusDose;
 import java.time.LocalDateTime;
 
 /**
- * Evento de aviso PENDENTE elegível para nova tentativa, com o estado da dose e quem avisar, lidos na mesma consulta.
+ * Evento de notificação PENDENTE elegível para nova tentativa, com o estado da dose e quem avisar, lidos na mesma
+ * consulta.
  *
  * @param eventoId          o evento
+ * @param tipo              aviso ao cuidador ou lembrete ao paciente
  * @param tentativas        tentativas já feitas (a reivindicação espera exatamente este valor)
  * @param doseId            dose do aviso
  * @param statusDose        status da dose no momento da busca (o reenvio só faz sentido com a dose PENDENTE)
@@ -16,8 +18,11 @@ import java.time.LocalDateTime;
  * @param cuidadorId        destinatário (nulo se {@code semDono})
  * @param pacienteId           paciente da dose (nulo se {@code semDono})
  * @param nomePaciente         nome para o texto do aviso (nulo se {@code semDono})
+ * @param nomeMedicamento   nome para o texto do lembrete ao paciente (nulo se {@code semDono})
+ * @param toleranciaMinutos tolerância própria do cuidador (nula = a padrão), para saber até quando o lembrete vale
  */
 public record EventoParaRetentativa(Long eventoId,
+                                    TipoEventoNotificacao tipo,
                                     int tentativas,
                                     Long doseId,
                                     StatusDose statusDose,
@@ -25,5 +30,7 @@ public record EventoParaRetentativa(Long eventoId,
                                     boolean semDono,
                                     Long cuidadorId,
                                     Long pacienteId,
-                                    String nomePaciente) {
+                                    String nomePaciente,
+                                    String nomeMedicamento,
+                                    Integer toleranciaMinutos) {
 }

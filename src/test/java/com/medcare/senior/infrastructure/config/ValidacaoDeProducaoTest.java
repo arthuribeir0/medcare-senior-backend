@@ -1,3 +1,8 @@
+/*
+ * Testes automatizados de validação de producao (5 casos). Cobre: regras do segredo do jwt e da senha do banco;
+ * segredos validos sobem sem erro com fcm ligado; recusa subir com mensagem clara sem expor os valores; fcm
+ * desligado em producao sobe com erro destacado no log; só entra no contexto com o perfil prod.
+ */
 package com.medcare.senior.infrastructure.config;
 
 import org.junit.jupiter.api.Test;

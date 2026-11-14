@@ -1,5 +1,12 @@
+/*
+ * Porta (interface) do domínio para paciente; a implementação fica na infraestrutura. Operações: save,
+ * existsByCuidadorIdAndNomeAndDataNascimento, findByIdAndCuidadorId, findById, findAllByCuidadorId,
+ * invalidarSessoes, sessaoValida, atualizarTokenFcm, removerTokenFcmDosOutrosPacientes, findTokenFcm,
+ * removerTokenFcm, removerTokenFcmSeIgual, deleteAllByCuidadorId, deleteByIdAndCuidadorId.
+ */
 package com.medcare.senior.domain.usuario;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -29,7 +36,53 @@ public interface PacienteRepositoryPort {
     List<Paciente> findAllByCuidadorId(Long cuidadorId);
 
     /**
+     * Invalida as sessões do paciente: tokens emitidos antes de {@code desde} deixam de valer (desconexão do aparelho).
+     * O vínculo com o cuidador continua.
+     */
+    void invalidarSessoes(Long pacienteId, Instant desde);
+
+    /**
+     * Uma consulta por chave primária: o paciente existe e o token emitido em {@code tokenEmitidoEm} não foi
+     * invalidado por uma desconexão posterior.
+     */
+    boolean sessaoValida(Long pacienteId, Instant tokenEmitidoEm);
+
+    /**
+     * Grava (ou troca) o token de dispositivo FCM do aparelho do paciente, com o instante do registro.
+     *
+     * @return false se o paciente não existe (ex.: desvinculado com o token ainda válido)
+     */
+    boolean atualizarTokenFcm(Long pacienteId, String token, Instant agora);
+
+    /**
+     * Tira o mesmo token de qualquer OUTRO paciente: um aparelho pertence a um paciente por vez.
+     */
+    void removerTokenFcmDosOutrosPacientes(String token, Long pacienteId);
+
+    /**
+     * Token de dispositivo do aparelho do paciente, se houver.
+     */
+    Optional<String> findTokenFcm(Long pacienteId);
+
+    /**
+     * Apaga o token do aparelho do paciente (saída da conta, desconexão do aparelho). Idempotente.
+     */
+    void removerTokenFcm(Long pacienteId);
+
+    /**
+     * Apaga o token só se ainda for {@code token} (o provedor o recusou; um token novo, registrado no meio, fica).
+     */
+    void removerTokenFcmSeIgual(Long pacienteId, String token);
+
+    /**
      * Remove todos os pacientes do cuidador (exclusão de conta, LGPD).
      */
     void deleteAllByCuidadorId(Long cuidadorId);
+
+    /**
+     * Remove o paciente, se for do cuidador (desvinculação do paciente).
+     *
+     * @return true se removeu
+     */
+    boolean deleteByIdAndCuidadorId(Long id, Long cuidadorId);
 }

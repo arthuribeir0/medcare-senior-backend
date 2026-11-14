@@ -1,3 +1,8 @@
+/*
+ * Porta (interface) do domínio para código vinculo; a implementação fica na infraestrutura. Operações: save,
+ * existsCodigoAtivo, findMaisRecenteByCodigoUnico, marcarComoUsado, inutilizarCodigosDoPaciente,
+ * deleteAllByCuidadorId, deleteAllByPacienteId.
+ */
 package com.medcare.senior.domain.usuario;
 
 import java.time.LocalDateTime;
@@ -28,7 +33,17 @@ public interface CodigoVinculoRepositoryPort {
     boolean marcarComoUsado(Long id, LocalDateTime agora);
 
     /**
+     * Inutiliza os códigos ainda não usados do paciente (desconexão do aparelho): para voltar, só um código novo.
+     */
+    void inutilizarCodigosDoPaciente(Long pacienteId);
+
+    /**
      * Remove todos os códigos de vínculo gerados pelo cuidador (exclusão de conta, LGPD).
      */
     void deleteAllByCuidadorId(Long cuidadorId);
+
+    /**
+     * Remove todos os códigos de vínculo do paciente, usados ou não (desvinculação do paciente).
+     */
+    void deleteAllByPacienteId(Long pacienteId);
 }

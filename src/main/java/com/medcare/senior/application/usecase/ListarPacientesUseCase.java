@@ -1,3 +1,6 @@
+/*
+ * Lista os pacientes do cuidador autenticado, em ordem alfabética do nome.
+ */
 package com.medcare.senior.application.usecase;
 
 import com.medcare.senior.domain.usuario.Paciente;

@@ -1,3 +1,7 @@
+/*
+ * Lista os tratamentos de um medicamento, só se o medicamento for de um paciente do cuidador autenticado; caso
+ * contrário 404.
+ */
 package com.medcare.senior.application.usecase;
 
 import com.medcare.senior.domain.exception.RecursoNaoEncontradoException;

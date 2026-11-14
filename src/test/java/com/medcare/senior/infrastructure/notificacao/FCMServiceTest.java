@@ -4,6 +4,7 @@ import com.google.firebase.messaging.FirebaseMessaging;
 import com.google.firebase.messaging.FirebaseMessagingException;
 import com.google.firebase.messaging.Message;
 import com.google.firebase.messaging.MessagingErrorCode;
+import com.medcare.senior.domain.notificacao.OpcoesDeEntrega;
 import com.medcare.senior.domain.notificacao.ResultadoEnvioPush;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -13,6 +14,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.Duration;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -62,6 +64,32 @@ class FCMServiceTest {
         assertThat(mensagem.getValue()).extracting("androidConfig").hasFieldOrPropertyWithValue("priority", "high");
         assertThat(mensagem.getValue()).extracting("androidConfig.notification")
                 .hasFieldOrPropertyWithValue("channelId", FCMService.CANAL_ANDROID);
+    }
+
+    @Test
+    void lembreteAoPacienteUsaOCanalDoLembreteATagDaDosePrioridadeMaximaEValidade() {
+        Message mensagem = FCMService.montar(TOKEN, "Hora do remédio", "Tomar Losartana às 08:00",
+                Map.of("tipo", "LEMBRETE_DOSE", "doseId", "10"),
+                new OpcoesDeEntrega("lembrete-dose", "dose-10-1", true, Duration.ofMinutes(28)));
+
+        assertThat(mensagem).extracting("androidConfig").hasFieldOrPropertyWithValue("priority", "high");
+        assertThat(mensagem).extracting("androidConfig").hasFieldOrPropertyWithValue("ttl", "1680s");
+        assertThat(mensagem).extracting("androidConfig.notification")
+                .hasFieldOrPropertyWithValue("channelId", "lembrete-dose")
+                .hasFieldOrPropertyWithValue("tag", "dose-10-1");
+        assertThat(mensagem).extracting("androidConfig.notification.priority").isNotNull();
+        assertThat(mensagem).extracting("androidConfig.notification.visibility").isNotNull();
+    }
+
+    @Test
+    void avisoAoCuidadorContinuaSemTagSemValidadeESemPrioridadeDeNotificacao() {
+        Message mensagem = FCMService.montar(TOKEN, "t", "c", Map.of(), OpcoesDeEntrega.PADRAO);
+
+        assertThat(mensagem).extracting("androidConfig").hasFieldOrPropertyWithValue("ttl", null);
+        assertThat(mensagem).extracting("androidConfig.notification")
+                .hasFieldOrPropertyWithValue("channelId", "alertas-dose")
+                .hasFieldOrPropertyWithValue("tag", null)
+                .hasFieldOrPropertyWithValue("priority", null);
     }
 
     @Test

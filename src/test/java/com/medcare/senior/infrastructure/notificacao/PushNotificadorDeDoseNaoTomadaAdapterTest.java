@@ -1,3 +1,10 @@
+/*
+ * Testes automatizados de push notificador de dose não tomada adapter (7 casos). Cobre: envia mensagem em
+ * português com paciente e horário sem o medicamento; dose de outro dia leva a data no corpo; cuidador sem token
+ * não recebe push e devolve sem token; conta excluída não recebe push e devolve sem token; token inválido é
+ * descartado do cuidador; falha temporária não descarta o token nem lança exceção; corpo usa o horário programado
+ * em formato 24 horas.
+ */
 package com.medcare.senior.infrastructure.notificacao;
 
 import com.medcare.senior.domain.notificacao.DoseNaoTomadaNotificacao;

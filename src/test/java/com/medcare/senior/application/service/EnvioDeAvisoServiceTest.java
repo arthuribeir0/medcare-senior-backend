@@ -1,3 +1,11 @@
+/*
+ * Testes automatizados de envio de aviso (10 casos). Cobre: enviado marca o evento como enviado; token inválido
+ * encerra o evento com falha token inválido; sem token encerra o evento com falha sem token; push desligado
+ * encerra o evento com falha push desligado sem retentativa; falha temporária deixa o evento pendente para a
+ * retentativa; exceção do notificador é tratada como falha temporária sem propagar; resultado nulo é tratado como
+ * falha temporária; lembrete enviado marca o evento como enviado sem tocar no notificador do cuidador; entre
+ * outros.
+ */
 package com.medcare.senior.application.service;
 
 import com.medcare.senior.domain.notificacao.DoseNaoTomadaNotificacao;

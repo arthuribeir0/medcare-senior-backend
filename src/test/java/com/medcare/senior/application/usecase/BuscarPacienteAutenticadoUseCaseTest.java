@@ -1,3 +1,7 @@
+/*
+ * Testes automatizados de buscar paciente autenticado (2 casos). Cobre: devolve o paciente eo nome de quem cuida;
+ * paciente que não existe mais tem sessão inválida.
+ */
 package com.medcare.senior.application.usecase;
 
 import com.medcare.senior.domain.exception.SessaoInvalidaException;

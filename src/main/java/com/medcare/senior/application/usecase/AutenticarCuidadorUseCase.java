@@ -1,3 +1,9 @@
+/*
+ * Caso de uso do login do cuidador. Normaliza o e-mail, confere a senha com o hash BCrypt e devolve o JWT (papel
+ * CUIDADOR), o ID, o nome e se o e-mail já foi confirmado. Para e-mail inexistente compara com um hash fictício,
+ * para o tempo de resposta ser igual ao de uma senha errada e não revelar quais e-mails existem. O erro é sempre o
+ * mesmo (credenciais inválidas).
+ */
 package com.medcare.senior.application.usecase;
 
 import com.medcare.senior.domain.autenticacao.PasswordHasherPort;

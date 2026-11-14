@@ -1,3 +1,8 @@
+/*
+ * Interface Spring Data JPA de TratamentoEntity: consultas e atualizações no banco. Métodos:
+ * findAllByMedicamento_IdAndRemovidoEmIsNullOrderByDataInicioAscIdAsc, findAtivoByIdAndCuidadorId, findAllAtivos,
+ * marcarComoRemovidosPorMedicamento, deleteAllByCuidadorId, deleteAllByPacienteId.
+ */
 package com.medcare.senior.infrastructure.persistence.repository;
 
 import com.medcare.senior.infrastructure.persistence.entity.TratamentoEntity;

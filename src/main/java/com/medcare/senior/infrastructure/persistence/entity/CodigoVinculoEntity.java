@@ -1,3 +1,7 @@
+/*
+ * Entidade JPA mapeada para a tabela codigo_vinculo do PostgreSQL. Campos: id, codigoUnico, cuidador, paciente,
+ * expiraEm, usado. É um detalhe de persistência, separada da entidade de domínio e ligada a ela por um mapper.
+ */
 package com.medcare.senior.infrastructure.persistence.entity;
 
 import jakarta.persistence.*;

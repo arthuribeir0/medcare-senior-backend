@@ -1,3 +1,8 @@
+/*
+ * Interface Spring Data JPA de MensagemEntity: consultas e atualizações no banco. Métodos: findConversa,
+ * marcarComoLidas, countByPacienteIdAndRemetenteAndLidaEmIsNull, countNaoLidasDoCuidador, findConversasDoCuidador,
+ * findConversaDoPaciente, deleteAllByCuidadorId, deleteAllByPacienteId.
+ */
 package com.medcare.senior.infrastructure.persistence.repository;
 
 import com.medcare.senior.domain.mensagem.Remetente;

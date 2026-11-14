@@ -1,3 +1,8 @@
+/*
+ * Testes automatizados de autenticar cuidador (4 casos). Cobre: deve retornar token id e nome quando credenciais
+ * corretas; deve rejeitar e-mail inexistente; deve rejeitar senha incorreta; mensagem de erro deve ser igual para
+ * e-mail inexistente e senha incorreta.
+ */
 package com.medcare.senior.application.usecase;
 
 import com.medcare.senior.domain.autenticacao.PasswordHasherPort;

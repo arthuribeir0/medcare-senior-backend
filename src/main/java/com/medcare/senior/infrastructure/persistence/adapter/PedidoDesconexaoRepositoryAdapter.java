@@ -1,3 +1,9 @@
+/*
+ * Adaptador que implementa a porta PedidoDesconexaoRepositoryPort com Spring Data JPA e o mapper, escondendo o JPA
+ * do domínio. Métodos: inserirPendente, findPendente, findMaisRecente, findByIdAndPacienteId,
+ * findPendentesValidos, decidir, autorizarPendente, cancelarPendente, expirarVencidos, expirarTodosVencidos,
+ * deleteAllByPacienteId.
+ */
 package com.medcare.senior.infrastructure.persistence.adapter;
 
 import com.medcare.senior.domain.desconexao.PedidoDesconexao;

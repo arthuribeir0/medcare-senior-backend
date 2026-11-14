@@ -1,3 +1,7 @@
+/*
+ * Envia outro código de confirmação ao e-mail do cuidador autenticado. Se o e-mail já está confirmado não envia
+ * nada; antes de 1 minuto do código anterior, recusa.
+ */
 package com.medcare.senior.application.usecase;
 
 import com.medcare.senior.application.service.CodigosPorEmailService;

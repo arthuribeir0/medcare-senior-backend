@@ -1,3 +1,8 @@
+/*
+ * Adaptador que implementa a porta CodigoVinculoRepositoryPort com Spring Data JPA e o mapper, escondendo o JPA do
+ * domínio. Métodos: save, existsCodigoAtivo, findMaisRecenteByCodigoUnico, marcarComoUsado,
+ * inutilizarCodigosDoPaciente, deleteAllByCuidadorId, deleteAllByPacienteId.
+ */
 package com.medcare.senior.infrastructure.persistence.adapter;
 
 import com.medcare.senior.domain.usuario.CodigoVinculo;

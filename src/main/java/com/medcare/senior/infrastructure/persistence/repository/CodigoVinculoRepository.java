@@ -1,3 +1,8 @@
+/*
+ * Interface Spring Data JPA de CodigoVinculoEntity: consultas e atualizações no banco. Métodos:
+ * existsByCodigoUnicoAndUsadoFalseAndExpiraEmAfter, findFirstByCodigoUnicoOrderByIdDesc, marcarComoUsado,
+ * inutilizarCodigosDoPaciente, deleteAllByCuidadorId, deleteAllByPacienteId.
+ */
 package com.medcare.senior.infrastructure.persistence.repository;
 
 import com.medcare.senior.infrastructure.persistence.entity.CodigoVinculoEntity;

@@ -1,3 +1,10 @@
+/*
+ * Testes automatizados de editar tratamento (9 casos). Cobre: deve salvar nova configuracao e regenerar somente
+ * doses pendentes futuras; deve aceitar tornar o tratamento continuo; deve responder não encontrado para
+ * tratamento de outro cuidador ou removido; deve rejeitar horários duplicados; deve rejeitar horários vazios; deve
+ * rejeitar dias semana vazios; deve rejeitar data fim anterior a data início original; edicao sem mudar os
+ * horários não é bloqueada por horário que já existia; entre outros.
+ */
 package com.medcare.senior.application.usecase;
 
 import com.medcare.senior.application.service.GeradorDeDosesService;

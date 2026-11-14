@@ -1,3 +1,8 @@
+/*
+ * UC-005: cria o tratamento de um medicamento e gera as doses da janela inicial, na mesma transação. Valida
+ * horários e período (RN-007). Se hoje tem dose do tratamento, nenhum horário pode cair de agora até daqui a menos
+ * de 5 minutos (no modo de teste, qualquer horário vale). Devolve o tratamento e a primeira dose.
+ */
 package com.medcare.senior.application.usecase;
 
 import com.medcare.senior.application.service.GeradorDeDosesService;

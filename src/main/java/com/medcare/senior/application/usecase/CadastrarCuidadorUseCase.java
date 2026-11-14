@@ -1,3 +1,9 @@
+/*
+ * UC-001: cadastro do cuidador. Exige o aceite do termo LGPD (verificado primeiro), valida o formato do e-mail,
+ * e-mail único (RN-001), senha forte (RN-002) e se o domínio do e-mail existe. Grava a conta com a senha em hash
+ * BCrypt e com o e-mail ainda NÃO confirmado, e envia o código de confirmação (se o envio falhar, o cadastro
+ * permanece e o app oferece reenviar).
+ */
 package com.medcare.senior.application.usecase;
 
 import com.medcare.senior.application.service.CodigosPorEmailService;

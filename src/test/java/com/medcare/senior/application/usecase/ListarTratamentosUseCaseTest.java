@@ -1,3 +1,7 @@
+/*
+ * Testes automatizados de listar tratamentos (3 casos). Cobre: deve listar tratamentos do medicamento do cuidador;
+ * deve rejeitar medicamento de outro cuidador; deve rejeitar medicamento inexistente.
+ */
 package com.medcare.senior.application.usecase;
 
 import com.medcare.senior.domain.exception.RecursoNaoEncontradoException;

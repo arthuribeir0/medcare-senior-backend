@@ -1,3 +1,10 @@
+/*
+ * Testes automatizados de remover medicamento (7 casos). Cobre: deve marcar como removido medicamento sem
+ * tratamento; deve remover sem confirmação quando todos os tratamentos já terminaram; deve bloquear remoção com
+ * tratamento continuo sem confirmação; deve bloquear remoção com tratamento terminando hoje sem confirmação; deve
+ * remover com tratamento ativo quando forcado; deve responder não encontrado para medicamento já removido; deve
+ * rejeitar medicamento de outro cuidador.
+ */
 package com.medcare.senior.application.usecase;
 
 import com.medcare.senior.domain.dose.DoseRepositoryPort;

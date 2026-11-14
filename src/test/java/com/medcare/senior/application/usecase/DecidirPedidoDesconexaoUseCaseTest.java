@@ -1,3 +1,9 @@
+/*
+ * Testes automatizados de decidir pedido desconexão (7 casos). Cobre: autorizar decide e desconecta o aparelho;
+ * recusar decide sem desconectar; autorizar de novo devolve o pedido sem repetir o efeito; decidir o contrario de
+ * um pedido já decidido responde 409; pedido cancelado ou vencido responde 409; paciente de outro cuidador
+ * responde 404 sem tocar no pedido; pedido de outro paciente responde 404 sem decidir.
+ */
 package com.medcare.senior.application.usecase;
 
 import com.medcare.senior.application.service.DesconexaoDoAparelhoService;

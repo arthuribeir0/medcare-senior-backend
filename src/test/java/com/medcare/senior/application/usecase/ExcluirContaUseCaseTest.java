@@ -1,3 +1,7 @@
+/*
+ * Testes automatizados de excluir conta (2 casos). Cobre: deve apagar dados na ordem das chaves estrangeiras; deve
+ * responder sessão inválida quando conta já foi excluída.
+ */
 package com.medcare.senior.application.usecase;
 
 import com.medcare.senior.domain.dose.DoseRepositoryPort;

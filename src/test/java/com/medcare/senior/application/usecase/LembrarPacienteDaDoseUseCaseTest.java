@@ -1,3 +1,11 @@
+/*
+ * Testes automatizados de lembrar paciente da dose (10 casos). Cobre: cria o lembrete reivindica e envia com o
+ * nome do remédio e a validade até o aviso ao cuidador; não envia antes do atraso mínimo de dois minutos; envia
+ * exatamente nos dois minutos; não envia no aviso ao cuidador nem depois com a tolerância do cuidador; segunda
+ * execução não envia de novo porque o evento já existe; não envia se a retentativa ganhou a primeira tentativa;
+ * falha temporária conta como lembrete não enviado e fica para a retentativa; erro em uma dose não impede as
+ * demais; entre outros.
+ */
 package com.medcare.senior.application.usecase;
 
 import com.medcare.senior.application.service.EnvioDeAvisoService;

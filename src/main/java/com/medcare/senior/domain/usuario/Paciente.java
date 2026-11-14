@@ -1,3 +1,7 @@
+/*
+ * Entidade de domínio do paciente (antes chamado idoso): nome, data de nascimento, telefone e o cuidador
+ * responsável (RN-004). Sem anotações de framework.
+ */
 package com.medcare.senior.domain.usuario;
 
 import lombok.AllArgsConstructor;

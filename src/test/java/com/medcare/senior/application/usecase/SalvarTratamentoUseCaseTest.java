@@ -1,3 +1,9 @@
+/*
+ * Testes automatizados de salvar tratamento (11 casos). Cobre: deve salvar tratamento valido; deve aceitar
+ * tratamento continuo sem data fim; deve aceitar data fim igual a data início; deve rejeitar horários duplicados;
+ * deve rejeitar horários vazios; deve rejeitar dias semana vazios; deve rejeitar data fim anterior a data início;
+ * deve rejeitar medicamento de outro cuidador; entre outros.
+ */
 package com.medcare.senior.application.usecase;
 
 import com.medcare.senior.application.service.GeradorDeDosesService;

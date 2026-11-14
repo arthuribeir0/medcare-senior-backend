@@ -1,3 +1,8 @@
+/*
+ * Porta (interface) do domínio para cuidador; a implementação fica na infraestrutura. Operações: save,
+ * findByEmail, existsByEmail, existsById, findById, atualizarFcmToken, removerFcmTokenDosOutrosCuidadores,
+ * removerFcmTokenSeIgual, removerFcmToken, redefinirSenha, marcarEmailVerificado, deleteById.
+ */
 package com.medcare.senior.domain.usuario;
 
 import java.util.Optional;

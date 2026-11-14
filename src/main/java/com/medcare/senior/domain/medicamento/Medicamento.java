@@ -1,3 +1,7 @@
+/*
+ * Entidade de domínio do medicamento: nome, dosagem, tipo, formato, cor, estoque, link da bula e o paciente dono.
+ * Tem remoção lógica (removidoEm) e a regra RN-005: nome, dosagem e tipo são obrigatórios.
+ */
 package com.medcare.senior.domain.medicamento;
 
 import lombok.AllArgsConstructor;

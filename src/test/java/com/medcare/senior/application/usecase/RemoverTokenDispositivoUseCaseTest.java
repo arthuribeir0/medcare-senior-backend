@@ -1,3 +1,7 @@
+/*
+ * Testes automatizados de remover token dispositivo (2 casos). Cobre: deve apagar somente o token do cuidador
+ * autenticado; deve ser idempotente.
+ */
 package com.medcare.senior.application.usecase;
 
 import com.medcare.senior.domain.usuario.CuidadorRepositoryPort;

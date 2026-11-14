@@ -1,3 +1,8 @@
+/*
+ * Testes automatizados de tolerância (6 casos). Cobre: sem configuracao própria vale a padrao; com configuracao
+ * própria vale a do cuidador; grava dentro dos limites inclusivos; recusa fora dos limites sem gravar; no modo de
+ * teste grava a partir de um minuto; no modo de teste recusa fora de um a cento e vinte.
+ */
 package com.medcare.senior.application.usecase;
 
 import com.medcare.senior.domain.configuracao.ConfiguracaoAlertaRepositoryPort;

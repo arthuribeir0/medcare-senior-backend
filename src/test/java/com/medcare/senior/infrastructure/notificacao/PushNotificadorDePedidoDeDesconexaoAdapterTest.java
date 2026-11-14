@@ -1,3 +1,8 @@
+/*
+ * Testes automatizados de push notificador de pedido de desconexão adapter (4 casos). Cobre: envia com tipo e ids
+ * para o app abrir o pedido; cuidador sem token não envia; token inválido e descartado; com fcm desligado o aviso
+ * fica só no log.
+ */
 package com.medcare.senior.infrastructure.notificacao;
 
 import com.medcare.senior.domain.desconexao.NotificadorDePedidoDeDesconexaoPort;

@@ -1,3 +1,9 @@
+/*
+ * DTO de saída (corpo da resposta): contrato JSON de dose. Campos: id, pacienteId, pacienteNome, medicamentoId,
+ * medicamentoNome, dosagem, tipo, cor, tratamentoId, horarioProgramado, horaConfirmacao, status, confirmadoPor,
+ * statusExibicao, toleranciaMinutos, janela, limiteConfirmacao, confirmabilidade. A API devolve DTOs, nunca as
+ * entidades.
+ */
 package com.medcare.senior.presentation.dto;
 
 import com.medcare.senior.domain.dose.Confirmabilidade;

@@ -1,3 +1,7 @@
+/*
+ * DTO de entrada (corpo da requisição): contrato JSON de cuidador. Campos: nome, email, senha, telefone,
+ * consentimentoLgpd. A API devolve DTOs, nunca as entidades.
+ */
 package com.medcare.senior.presentation.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;

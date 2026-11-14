@@ -1,3 +1,8 @@
+/*
+ * Porta (interface) do domínio para mensagem; a implementação fica na infraestrutura. Operações: salvar,
+ * findConversa, marcarComoLidas, contarNaoLidas, contarNaoLidasDoCuidador, findConversasDoCuidador,
+ * findConversaDoPaciente, deleteAllByCuidadorId, deleteAllByPacienteId.
+ */
 package com.medcare.senior.domain.mensagem;
 
 import com.medcare.senior.domain.historico.Pagina;

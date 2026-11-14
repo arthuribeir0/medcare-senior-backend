@@ -1,3 +1,10 @@
+/*
+ * Testes automatizados de push notificador de lembrete do paciente adapter (8 casos). Cobre: envia hora do remédio
+ * com o nome o horário o canal do lembrete a tag da dose e a validade; dose de outro dia leva a data; validade
+ * nunca fica abaixo de um minuto; sem token não envia nada; token em branco conta como sem token; token inválido
+ * apaga o token do paciente só se ainda for o mesmo; outros resultados voltam como vieram sem apagar o token; sem
+ * fcm o lembrete vai só para o log com push desligado.
+ */
 package com.medcare.senior.infrastructure.notificacao;
 
 import com.medcare.senior.domain.notificacao.LembreteDoPacienteNotificacao;

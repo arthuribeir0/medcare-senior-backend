@@ -1,3 +1,8 @@
+/*
+ * Entidade JPA mapeada para a tabela pedido_desconexao do PostgreSQL. Campos: id, pacienteId, status, criadoEm,
+ * expiraEm, decididoEm, decididoPorCuidadorId. É um detalhe de persistência, separada da entidade de domínio e
+ * ligada a ela por um mapper.
+ */
 package com.medcare.senior.infrastructure.persistence.entity;
 
 import com.medcare.senior.domain.desconexao.StatusPedidoDesconexao;

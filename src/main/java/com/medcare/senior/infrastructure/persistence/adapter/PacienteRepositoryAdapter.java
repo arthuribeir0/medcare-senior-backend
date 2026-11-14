@@ -1,3 +1,9 @@
+/*
+ * Adaptador que implementa a porta PacienteRepositoryPort com Spring Data JPA e o mapper, escondendo o JPA do
+ * domínio. Métodos: save, existsByCuidadorIdAndNomeAndDataNascimento, findByIdAndCuidadorId, findById,
+ * findAllByCuidadorId, invalidarSessoes, sessaoValida, atualizarTokenFcm, removerTokenFcmDosOutrosPacientes,
+ * findTokenFcm, removerTokenFcm, removerTokenFcmSeIgual, deleteAllByCuidadorId, deleteByIdAndCuidadorId.
+ */
 package com.medcare.senior.infrastructure.persistence.adapter;
 
 import com.medcare.senior.domain.exception.PacienteJaCadastradoException;

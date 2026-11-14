@@ -1,3 +1,8 @@
+/*
+ * Troca a senha de quem recebeu o código no e-mail ("esqueci minha senha") e confirma o e-mail, já que o código
+ * chegou nele. A senha nova precisa ser forte (RN-002) e é conferida antes de gastar o código. E-mail sem conta
+ * responde igual a código inválido.
+ */
 package com.medcare.senior.application.usecase;
 
 import com.medcare.senior.application.service.CodigosPorEmailService;

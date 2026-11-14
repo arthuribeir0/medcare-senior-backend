@@ -1,3 +1,8 @@
+/*
+ * Testes automatizados de pedido desconexão (4 casos). Cobre: novo nascee pendente com prazo da validade; continua
+ * pendente até 23h 59 e vence exatamente em 24h; visto depois do prazo sai expirado com o decidido em no prazo;
+ * decidido não muda com o tempo.
+ */
 package com.medcare.senior.domain.desconexao;
 
 import org.junit.jupiter.api.Test;

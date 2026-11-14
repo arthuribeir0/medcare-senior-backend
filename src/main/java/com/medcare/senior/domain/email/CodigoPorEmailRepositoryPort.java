@@ -1,3 +1,7 @@
+/*
+ * Porta (interface) do domínio para código por e-mail; a implementação fica na infraestrutura. Operações: buscar,
+ * salvar, registrarTentativa, apagar.
+ */
 package com.medcare.senior.domain.email;
 
 import java.util.Optional;

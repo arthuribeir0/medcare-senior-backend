@@ -1,3 +1,8 @@
+/*
+ * Testes automatizados de desvincular paciente (3 casos). Cobre: deve apagar dados do paciente na ordem das chaves
+ * estrangeiras; paciente inexistente ou de outro cuidador não apaga nada; desvinculação simultanea que perde a
+ * corrida responde 404.
+ */
 package com.medcare.senior.application.usecase;
 
 import com.medcare.senior.domain.desconexao.PedidoDesconexaoRepositoryPort;

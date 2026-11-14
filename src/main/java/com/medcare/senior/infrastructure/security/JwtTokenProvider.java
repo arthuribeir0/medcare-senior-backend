@@ -1,3 +1,8 @@
+/*
+ * Emite e valida o JWT (HS256, biblioteca JJWT) com o ID, o papel e a data de emissão. O cuidador expira em 24
+ * horas e o paciente em 180 dias (ambos configuráveis). Aceita o nome antigo do papel (IDOSO) para tokens emitidos
+ * antes da renomeação.
+ */
 package com.medcare.senior.infrastructure.security;
 
 import com.medcare.senior.domain.autenticacao.TokenGeneratorPort;

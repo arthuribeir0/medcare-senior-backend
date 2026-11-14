@@ -1,3 +1,9 @@
+/*
+ * Interface Spring Data JPA de PacienteEntity: consultas e atualizações no banco. Métodos:
+ * existsByCuidador_IdAndNomeIgnoreCaseAndDataNascimento, findByIdAndCuidador_Id, findAllByCuidadorIdOrderByNome,
+ * invalidarSessoes, contarComSessaoValida, atualizarTokenFcm, removerTokenFcmDosOutros, findTokenFcm,
+ * removerTokenFcm, removerTokenFcmSeIgual, deleteAllByCuidadorId, deleteByIdAndCuidadorId.
+ */
 package com.medcare.senior.infrastructure.persistence.repository;
 
 import com.medcare.senior.infrastructure.persistence.entity.PacienteEntity;

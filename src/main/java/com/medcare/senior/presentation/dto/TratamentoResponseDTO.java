@@ -1,3 +1,7 @@
+/*
+ * DTO de saída (corpo da resposta): contrato JSON de tratamento. Campos: id, medicamentoId, dataInicio, dataFim,
+ * horarios, diasSemana, primeiraDose. A API devolve DTOs, nunca as entidades.
+ */
 package com.medcare.senior.presentation.dto;
 
 import com.medcare.senior.application.usecase.TratamentoSalvo;

@@ -1,3 +1,9 @@
+/*
+ * Adaptador que implementa a porta CuidadorRepositoryPort com Spring Data JPA e o mapper, escondendo o JPA do
+ * domínio. Métodos: save, findByEmail, existsByEmail, existsById, findById, atualizarFcmToken,
+ * removerFcmTokenDosOutrosCuidadores, removerFcmTokenSeIgual, removerFcmToken, redefinirSenha,
+ * marcarEmailVerificado, deleteById.
+ */
 package com.medcare.senior.infrastructure.persistence.adapter;
 
 import com.medcare.senior.domain.exception.EmailJaCadastradoException;

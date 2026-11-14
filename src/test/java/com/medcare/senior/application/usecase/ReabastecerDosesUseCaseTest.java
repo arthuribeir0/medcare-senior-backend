@@ -1,3 +1,7 @@
+/*
+ * Testes automatizados de reabastecer doses (3 casos). Cobre: deve gerar doses para cada tratamento ativo de hoje;
+ * erro em um tratamento não impede os demais; sem tratamentos ativos não gera nada.
+ */
 package com.medcare.senior.application.usecase;
 
 import com.medcare.senior.application.service.GeradorDeDosesService;

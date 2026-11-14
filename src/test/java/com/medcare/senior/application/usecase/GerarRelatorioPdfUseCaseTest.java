@@ -1,3 +1,10 @@
+/*
+ * Testes automatizados de gerar relatório pdf (8 casos). Cobre: monta totais do período e por medicamento em ordem
+ * de nome e passa as doses em lotes; sem data de fim vale hoje; início ausente ou depois do fim é recusado antes
+ * de consultar; período de exatamente 12 meses é aceito; período de 12 meses mais um dia é recusado antes de
+ * consultar; paciente de outro cuidador é não encontrado; período sem doses não gera arquivo; resultado compara o
+ * conteúdo do pdf e não expõe dados no to string.
+ */
 package com.medcare.senior.application.usecase;
 
 import com.medcare.senior.domain.dose.DoseRepositoryPort;

@@ -1,3 +1,9 @@
+/*
+ * Testes automatizados de pedir desconexão (7 casos). Cobre: cria pedido pendente de 24h e avisa o cuidador; com
+ * pedido pendente devolve o mesmo sem duplicar nem avisar de novo; pedido simultaneo que perde a corrida devolve o
+ * que ficou; falha do aviso não derruba o pedido; aviso sem token ou push desligado também não atrapalha; paciente
+ * que não existe mais tem sessão inválida; validade configuravel de 1 a 72 horas.
+ */
 package com.medcare.senior.application.usecase;
 
 import com.medcare.senior.domain.desconexao.NotificadorDePedidoDeDesconexaoPort;

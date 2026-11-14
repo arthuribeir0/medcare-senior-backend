@@ -1,3 +1,8 @@
+/*
+ * Entidade JPA mapeada para a tabela medicamento do PostgreSQL. Campos: id, nome, dosagem, tipo, formato, cor,
+ * quantidadeEstoque, bulaUrl, paciente, removidoEm. É um detalhe de persistência, separada da entidade de domínio
+ * e ligada a ela por um mapper.
+ */
 package com.medcare.senior.infrastructure.persistence.entity;
 
 import jakarta.persistence.*;

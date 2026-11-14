@@ -1,3 +1,7 @@
+/*
+ * Testes automatizados de buscar paciente (2 casos). Cobre: deve devolver paciente do cuidador; deve responder não
+ * encontrado para paciente de outro cuidador ou inexistente.
+ */
 package com.medcare.senior.application.usecase;
 
 import com.medcare.senior.domain.exception.RecursoNaoEncontradoException;

@@ -1,3 +1,8 @@
+/*
+ * Testes automatizados de cadastrar cuidador (5 casos). Cobre: deve cadastrar cuidador com senha hasheada; deve
+ * rejeitar cadastro sem consentimento lgpd; deve rejeitar e-mail já cadastrado; deve normalizar e-mail antes de
+ * checar duplicidade; deve salvar e-mail normalizado.
+ */
 package com.medcare.senior.application.usecase;
 
 import com.medcare.senior.domain.autenticacao.PasswordHasherPort;

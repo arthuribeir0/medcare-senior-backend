@@ -1,3 +1,8 @@
+/*
+ * Testes automatizados de registrar token dispositivo (5 casos). Cobre: deve gravar o token sem espacos e retirar
+ * dos outros cuidadores; deve rejeitar token vazio; deve rejeitar token maior que a coluna; deve aceitar token no
+ * tamanho máximo; conta inexistente responde sessão inválida e não mexe em outros cuidadores.
+ */
 package com.medcare.senior.application.usecase;
 
 import com.medcare.senior.domain.exception.SessaoInvalidaException;

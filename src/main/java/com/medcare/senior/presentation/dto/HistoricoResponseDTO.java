@@ -1,3 +1,7 @@
+/*
+ * DTO de saída (corpo da resposta): contrato JSON de histórico. Campos: conteudo, pagina, tamanho, totalElementos,
+ * totalPaginas. A API devolve DTOs, nunca as entidades.
+ */
 package com.medcare.senior.presentation.dto;
 
 import com.medcare.senior.domain.dose.DoseAvaliada;

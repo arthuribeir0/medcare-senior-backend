@@ -1,3 +1,7 @@
+/*
+ * Entidade de domínio do cuidador: nome, e-mail, hash da senha, telefone, consentimento LGPD (com data), token de
+ * push e se o e-mail foi confirmado. Sem anotações de framework.
+ */
 package com.medcare.senior.domain.usuario;
 
 import lombok.AllArgsConstructor;

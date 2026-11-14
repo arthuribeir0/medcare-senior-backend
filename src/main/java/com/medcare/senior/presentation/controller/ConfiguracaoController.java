@@ -1,3 +1,7 @@
+/*
+ * Rotas da tolerância do alerta do cuidador (UC-009): GET e PUT em /api/configuracoes/tolerancia. Só o cuidador
+ * acessa; o valor vale para todas as doses dele.
+ */
 package com.medcare.senior.presentation.controller;
 
 import com.medcare.senior.infrastructure.docs.PerfilExigido;

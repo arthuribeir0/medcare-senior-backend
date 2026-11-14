@@ -1,3 +1,7 @@
+/*
+ * Lista os medicamentos de um paciente do cuidador autenticado. Paciente de outro cuidador responde igual a
+ * inexistente (404).
+ */
 package com.medcare.senior.application.usecase;
 
 import com.medcare.senior.domain.exception.RecursoNaoEncontradoException;

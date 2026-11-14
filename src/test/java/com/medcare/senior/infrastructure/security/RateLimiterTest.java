@@ -1,3 +1,8 @@
+/*
+ * Testes automatizados de rate limiter (5 casos). Cobre: não deve bloquear antes de atingir o limite; deve
+ * bloquear a sexta tentativa após cinco falhas; falhas de um ip não devem afetar outro ip; deve liberar ip quando
+ * a janela terminar; limpeza deve remover somente ips com janela expirada.
+ */
 package com.medcare.senior.infrastructure.security;
 
 import org.junit.jupiter.api.BeforeEach;

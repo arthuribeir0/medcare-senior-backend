@@ -1,3 +1,10 @@
+/*
+ * Adaptador que implementa a porta DoseRepositoryPort com Spring Data JPA e o mapper, escondendo o JPA do domínio.
+ * Métodos: inserirPendentes, findHorariosProgramadosByTratamentoIdDesde, findPendentesParaAviso, encerrarVencidas,
+ * findPendentesParaLembrete, findDetalhadasDoPacienteEntre, findHistorico, contarPorMedicamentoEStatus,
+ * percorrerDoPaciente, findDetalhadaByIdAndPacienteId, findDetalhadaByIdAndCuidadorId, findStatusById,
+ * registrarSePendente, deletePendentesFuturasByTratamentoId.
+ */
 package com.medcare.senior.infrastructure.persistence.adapter;
 
 import com.medcare.senior.domain.configuracao.Tolerancia;

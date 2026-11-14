@@ -1,3 +1,8 @@
+/*
+ * Adaptador que implementa a porta TratamentoRepositoryPort com Spring Data JPA e o mapper, escondendo o JPA do
+ * domínio. Métodos: save, findAllByMedicamentoId, findByIdAndCuidadorId, findAllAtivos,
+ * marcarComoRemovidosPorMedicamento, deleteAllByCuidadorId, deleteAllByPacienteId.
+ */
 package com.medcare.senior.infrastructure.persistence.adapter;
 
 import com.medcare.senior.domain.tratamento.Tratamento;

@@ -1,3 +1,9 @@
+/*
+ * Testes automatizados de filtro histórico (8 casos). Cobre: sem fim vale hoje e paginação padrao; guarda os
+ * filtros informados; início depois do fim é recusado; início igual ao fim é permitido; pagina negativa é
+ * recusada; tamanho fora de 1a 100 é recusado; tamanho nos limites é aceito; pagina calcula o total de paginas e
+ * converte.
+ */
 package com.medcare.senior.domain.historico;
 
 import com.medcare.senior.domain.dose.StatusDose;

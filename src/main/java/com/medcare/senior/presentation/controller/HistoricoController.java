@@ -1,3 +1,7 @@
+/*
+ * GET /api/historico (UC-011): histórico de doses de um paciente do cuidador, paginado e da mais recente para a
+ * mais antiga, com filtros de período, medicamento e status.
+ */
 package com.medcare.senior.presentation.controller;
 
 import com.medcare.senior.infrastructure.docs.PerfilExigido;

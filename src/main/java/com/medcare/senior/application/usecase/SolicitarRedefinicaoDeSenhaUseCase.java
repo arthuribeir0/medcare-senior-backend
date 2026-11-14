@@ -1,3 +1,7 @@
+/*
+ * "Esqueci minha senha": se o e-mail tem conta, envia o código para redefinir a senha. A resposta é sempre a
+ * mesma, com ou sem conta, para não revelar quais e-mails estão cadastrados.
+ */
 package com.medcare.senior.application.usecase;
 
 import com.medcare.senior.application.service.CodigosPorEmailService;

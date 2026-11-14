@@ -1,3 +1,9 @@
+/*
+ * Testes automatizados de documentacao padrao customizer (5 casos). Cobre: rota sem anotacao fica como veio; rota
+ * publica sem descricao nem respostas ganha perfil sem cadeado e só 500; rota protegida ganha cadeado 401 e 403
+ * sem trocar o que já estava documentado; erros ganham o corpo padrao com um exemplo por código citado ou o código
+ * padrao do status; saude entra uma vez só com a tag mesmo se a tag já existir.
+ */
 package com.medcare.senior.infrastructure.docs;
 
 import com.medcare.senior.infrastructure.docs.PerfilExigido.Perfil;

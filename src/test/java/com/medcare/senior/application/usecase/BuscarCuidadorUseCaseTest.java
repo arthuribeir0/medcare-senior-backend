@@ -1,3 +1,7 @@
+/*
+ * Testes automatizados de buscar cuidador (2 casos). Cobre: deve devolver o cuidador autenticado; deve responder
+ * sessão inválida para conta excluída.
+ */
 package com.medcare.senior.application.usecase;
 
 import com.medcare.senior.domain.exception.SessaoInvalidaException;

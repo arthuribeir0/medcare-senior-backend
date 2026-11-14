@@ -1,3 +1,7 @@
+/*
+ * Testes automatizados de dose response dto (3 casos). Cobre: mapeia a cor do medicamento e os demais campos;
+ * medicamento sem cor fica nulo; com dose troca só a dose e mantem cor e tolerância.
+ */
 package com.medcare.senior.presentation.dto;
 
 import com.medcare.senior.domain.dose.Confirmabilidade;

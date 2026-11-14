@@ -1,3 +1,8 @@
+/*
+ * Testes automatizados de listar medicamentos (3 casos). Cobre: deve listar medicamentos do paciente do cuidador;
+ * deve retornar lista vazia quando paciente não tem medicamentos; deve rejeitar paciente de outro cuidador ou
+ * inexistente.
+ */
 package com.medcare.senior.application.usecase;
 
 import com.medcare.senior.domain.exception.RecursoNaoEncontradoException;

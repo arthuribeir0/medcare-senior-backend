@@ -1,3 +1,9 @@
+/*
+ * UC-005: edição de tratamento. Altera horários, dias da semana e data de término (o início não muda) e regenera
+ * só as doses futuras PENDENTES, na mesma transação; doses registradas e passadas nunca são tocadas. Horários
+ * novos seguem a antecedência mínima do cadastro (5 minutos, ou nenhuma no modo de teste). Descarta o cache do
+ * relatório.
+ */
 package com.medcare.senior.application.usecase;
 
 import com.medcare.senior.application.service.GeradorDeDosesService;

@@ -1,3 +1,8 @@
+/*
+ * Rotas da conta do cuidador em /api/cuidadores: cadastro (UC-001), dados da conta (/me), confirmação e reenvio do
+ * código de e-mail, exclusão da conta (LGPD) e registro e remoção do token de push do aparelho (/me/fcm-token). O
+ * ID do cuidador vem sempre do JWT.
+ */
 package com.medcare.senior.presentation.controller;
 
 import com.medcare.senior.infrastructure.docs.PerfilExigido;

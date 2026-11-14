@@ -1,3 +1,10 @@
+/*
+ * Testes automatizados de dose (9 casos). Cobre: dose nova nasce como pendente sem confirmação; status diferente
+ * de pendente é registrado; dose pendente pode ser confirmada sem alterar a original; confirmação guarda quem
+ * confirmou e exige que seja informado; hora da confirmação é truncada em microssegundos como no postgres; dose
+ * registrada não pode ser confirmada; confirmação só gera no horário ou com atraso; dose pendente pode ser marcada
+ * como não tomada sem alterar a original; entre outros.
+ */
 package com.medcare.senior.domain.dose;
 
 import org.junit.jupiter.api.Test;

@@ -1,3 +1,9 @@
+/*
+ * Testes automatizados de cadastrar paciente (6 casos). Cobre: deve cadastrar paciente; deve rejeitar paciente
+ * duplicado para o mesmo cuidador; deve rejeitar paciente duplicado com variacao de maiusculas no nome; deve
+ * permitir mesmo nome e data para outro cuidador; deve rejeitar cuidador inexistente; cuidador sem e-mail
+ * confirmado não cadastra paciente.
+ */
 package com.medcare.senior.application.usecase;
 
 import com.medcare.senior.domain.exception.PacienteJaCadastradoException;

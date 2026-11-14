@@ -1,3 +1,9 @@
+/*
+ * Testes automatizados de reenviar avisos pendentes (16 casos). Cobre: sem eventos não faz nada; reivindica rele a
+ * dose e reenvia; dose já registrada cancela o aviso sem push; dose sem dono cancela o aviso; dose confirmada
+ * entre a busca e a reivindicação cancela na releitura; reivindicação perdida não envia; evento nunca tentado é
+ * enviado na hora; falha temporária antes da última tentativa deixa o evento pendente; entre outros.
+ */
 package com.medcare.senior.application.usecase;
 
 import com.medcare.senior.application.service.EnvioDeAvisoService;

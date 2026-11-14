@@ -1,3 +1,8 @@
+/*
+ * Adaptador que implementa a porta MensagemRepositoryPort com Spring Data JPA e o mapper, escondendo o JPA do
+ * domínio. Métodos: salvar, findConversa, marcarComoLidas, contarNaoLidas, contarNaoLidasDoCuidador,
+ * findConversasDoCuidador, findConversaDoPaciente, deleteAllByCuidadorId, deleteAllByPacienteId.
+ */
 package com.medcare.senior.infrastructure.persistence.adapter;
 
 import com.medcare.senior.domain.historico.Pagina;

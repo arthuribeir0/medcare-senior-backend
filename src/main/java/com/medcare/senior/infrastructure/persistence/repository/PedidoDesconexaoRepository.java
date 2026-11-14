@@ -1,3 +1,8 @@
+/*
+ * Interface Spring Data JPA de PedidoDesconexaoEntity: consultas e atualizações no banco. Métodos:
+ * findFirstByPacienteIdAndStatus, findFirstByPacienteIdOrderByIdDesc, findByIdAndPacienteId, findPendentesValidos,
+ * decidir, decidirPendenteDoPaciente, expirarVencidos, expirarTodosVencidos, deleteAllByPacienteId.
+ */
 package com.medcare.senior.infrastructure.persistence.repository;
 
 import com.medcare.senior.domain.desconexao.StatusPedidoDesconexao;

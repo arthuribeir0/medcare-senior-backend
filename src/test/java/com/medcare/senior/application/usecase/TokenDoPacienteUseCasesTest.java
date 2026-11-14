@@ -1,3 +1,8 @@
+/*
+ * Testes automatizados de token do paciente (5 casos). Cobre: grava o token sem espacos com o instante e retira
+ * dos outros pacientes; recusa token vazio; recusa token maior que a coluna; paciente que não existe mais é sessão
+ * inválida e não mexe em outros pacientes; remover apaga só o token do paciente do jwt.
+ */
 package com.medcare.senior.application.usecase;
 
 import com.medcare.senior.domain.exception.SessaoInvalidaException;

@@ -1,3 +1,7 @@
+/*
+ * DTO de saída (corpo da resposta): contrato JSON de auth. Campos: token, tipo, id, nome, emailVerificado. A API
+ * devolve DTOs, nunca as entidades.
+ */
 package com.medcare.senior.presentation.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;

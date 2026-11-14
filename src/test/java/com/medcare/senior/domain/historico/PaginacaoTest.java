@@ -1,3 +1,7 @@
+/*
+ * Testes automatizados de paginação (3 casos). Cobre: sem valores usa pagina 0 e tamanho 20; aceita os limites;
+ * recusa pagina negativa e tamanho fora de 1a 100 no campo.
+ */
 package com.medcare.senior.domain.historico;
 
 import com.medcare.senior.domain.exception.ParametroInvalidoException;

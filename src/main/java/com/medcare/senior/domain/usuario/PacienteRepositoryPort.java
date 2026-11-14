@@ -1,3 +1,9 @@
+/*
+ * Porta (interface) do domínio para paciente; a implementação fica na infraestrutura. Operações: save,
+ * existsByCuidadorIdAndNomeAndDataNascimento, findByIdAndCuidadorId, findById, findAllByCuidadorId,
+ * invalidarSessoes, sessaoValida, atualizarTokenFcm, removerTokenFcmDosOutrosPacientes, findTokenFcm,
+ * removerTokenFcm, removerTokenFcmSeIgual, deleteAllByCuidadorId, deleteByIdAndCuidadorId.
+ */
 package com.medcare.senior.domain.usuario;
 
 import java.time.Instant;

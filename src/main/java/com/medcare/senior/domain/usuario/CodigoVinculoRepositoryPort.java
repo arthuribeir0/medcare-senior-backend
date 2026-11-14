@@ -1,3 +1,8 @@
+/*
+ * Porta (interface) do domínio para código vinculo; a implementação fica na infraestrutura. Operações: save,
+ * existsCodigoAtivo, findMaisRecenteByCodigoUnico, marcarComoUsado, inutilizarCodigosDoPaciente,
+ * deleteAllByCuidadorId, deleteAllByPacienteId.
+ */
 package com.medcare.senior.domain.usuario;
 
 import java.time.LocalDateTime;

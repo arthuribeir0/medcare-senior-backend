@@ -1,3 +1,7 @@
+/*
+ * DTO de entrada (corpo da requisição): contrato JSON de medicamento. Campos: nome, dosagem, tipo, formato, cor,
+ * quantidadeEstoque, bulaUrl, pacienteId. A API devolve DTOs, nunca as entidades.
+ */
 package com.medcare.senior.presentation.dto;
 
 import com.medcare.senior.domain.medicamento.Medicamento;

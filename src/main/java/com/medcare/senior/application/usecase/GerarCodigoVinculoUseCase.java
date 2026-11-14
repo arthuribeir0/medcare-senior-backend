@@ -1,3 +1,7 @@
+/*
+ * UC-003: gera o código de vínculo de 6 dígitos para parear o aparelho do paciente. O código vem de SecureRandom,
+ * é único entre os ativos e vale 24 horas. Só o cuidador dono do paciente pode gerar.
+ */
 package com.medcare.senior.application.usecase;
 
 import com.medcare.senior.domain.exception.RecursoNaoEncontradoException;

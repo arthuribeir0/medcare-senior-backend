@@ -1,3 +1,8 @@
+/*
+ * Rotas públicas de autenticação: POST /api/auth/login (login do cuidador, com limite de tentativas por IP), POST
+ * /api/auth/esqueci-senha (envia o código) e POST /api/auth/redefinir-senha (troca a senha com o código). Só
+ * traduz HTTP e chama os casos de uso.
+ */
 package com.medcare.senior.presentation.controller;
 
 import com.medcare.senior.application.usecase.AutenticarCuidadorUseCase;

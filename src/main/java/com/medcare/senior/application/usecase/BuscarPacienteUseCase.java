@@ -1,3 +1,7 @@
+/*
+ * Busca um paciente pelo ID, só se for do cuidador autenticado. Paciente de outro cuidador responde igual a
+ * inexistente (404), para não revelar quais IDs existem (RN-004).
+ */
 package com.medcare.senior.application.usecase;
 
 import com.medcare.senior.domain.exception.RecursoNaoEncontradoException;

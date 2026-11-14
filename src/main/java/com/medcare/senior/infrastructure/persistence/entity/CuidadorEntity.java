@@ -1,3 +1,8 @@
+/*
+ * Entidade JPA mapeada para a tabela cuidador do PostgreSQL. Campos: id, nome, email, senhaHash, telefone,
+ * dataCadastro, consentimentoLgpd, dataConsentimento, fcmToken, emailVerificado. É um detalhe de persistência,
+ * separada da entidade de domínio e ligada a ela por um mapper.
+ */
 package com.medcare.senior.infrastructure.persistence.entity;
 
 import jakarta.persistence.*;

@@ -1,3 +1,7 @@
+/*
+ * Testes automatizados de log notificador de dose não tomada adapter (1 casos). Cobre: com o fcm desligado o aviso
+ * vai só para o log e conta como push desligado.
+ */
 package com.medcare.senior.infrastructure.notificacao;
 
 import com.medcare.senior.domain.notificacao.DoseNaoTomadaNotificacao;

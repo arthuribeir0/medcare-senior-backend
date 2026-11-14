@@ -1,3 +1,7 @@
+/*
+ * Porta de persistência dos pedidos de saída da conta do paciente, com operações atômicas (decidir só se ainda
+ * PENDENTE e dentro do prazo).
+ */
 package com.medcare.senior.domain.desconexao;
 
 import java.time.LocalDateTime;

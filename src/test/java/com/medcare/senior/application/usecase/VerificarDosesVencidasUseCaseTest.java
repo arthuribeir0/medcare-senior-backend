@@ -1,3 +1,10 @@
+/*
+ * Testes automatizados de verificar doses vencidas (10 casos). Cobre: encerra e avisa com a tolerância padrao e a
+ * margem depois do aviso; conta as doses que o update atômico encerrou sem aviso; erro no encerramento não impede
+ * o aviso; dose que passou da tolerância gera evento e aviso e continua pendente; dose que já tinha evento não é
+ * avisada de novo; evento cuja primeira tentativa foi reivindicada por outro não é enviado; falha de entrega conta
+ * como aviso não enviado sem erro; erro inesperado em um aviso não interrompe os demais; entre outros.
+ */
 package com.medcare.senior.application.usecase;
 
 import com.medcare.senior.application.service.EnvioDeAvisoService;

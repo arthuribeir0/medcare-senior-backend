@@ -1,3 +1,8 @@
+/*
+ * Regras de acesso da API, no estilo "fail closed": cada rota tem uma regra explícita por papel e tudo que sobra
+ * cai em denyAll. API sem sessão e sem cookie (stateless), com o filtro de JWT, CORS e o BCrypt como codificador
+ * de senha. Um teste compara estas regras com o OpenAPI.
+ */
 package com.medcare.senior.infrastructure.security;
 
 import com.medcare.senior.domain.usuario.Role;

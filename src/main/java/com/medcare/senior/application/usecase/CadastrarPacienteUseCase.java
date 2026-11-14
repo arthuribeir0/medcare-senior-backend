@@ -1,3 +1,8 @@
+/*
+ * UC-002: cadastro de paciente, já vinculado ao cuidador do token (nunca do corpo da requisição). Recusa nome com
+ * mesma data de nascimento repetido para o mesmo cuidador (RN-003) e exige que o cuidador tenha confirmado o
+ * e-mail.
+ */
 package com.medcare.senior.application.usecase;
 
 import com.medcare.senior.domain.exception.PacienteJaCadastradoException;

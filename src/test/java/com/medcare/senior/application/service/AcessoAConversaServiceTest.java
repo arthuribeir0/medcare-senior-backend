@@ -1,3 +1,9 @@
+/*
+ * Testes automatizados de acesso a conversa (6 casos). Cobre: cuidador acessa a conversa de um paciente seu;
+ * cuidador precisa informar o paciente; paciente de outro cuidador é não encontrado; paciente acessa a própria
+ * conversa com ou sem informar o id; paciente informando outro paciente é acesso negado; paciente que não existe
+ * mais tem sessão inválida antes de qualquer outra recusa.
+ */
 package com.medcare.senior.application.service;
 
 import com.medcare.senior.domain.autenticacao.AuthenticatedUser;

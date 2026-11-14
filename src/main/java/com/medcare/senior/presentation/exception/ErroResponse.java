@@ -1,3 +1,7 @@
+/*
+ * Formato único de resposta de erro da API: data e hora, status HTTP, código estável em MAIÚSCULAS (o app decide
+ * pelo código, nunca pela mensagem), mensagem e a lista de campos inválidos quando o erro é de validação.
+ */
 package com.medcare.senior.presentation.exception;
 
 import io.swagger.v3.oas.annotations.media.Schema;

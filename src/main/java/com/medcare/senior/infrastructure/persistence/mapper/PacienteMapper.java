@@ -1,3 +1,7 @@
+/*
+ * Converte entre a entidade JPA PacienteEntity e o objeto de domínio Paciente, nos dois sentidos, para o domínio
+ * não depender do JPA.
+ */
 package com.medcare.senior.infrastructure.persistence.mapper;
 
 import com.medcare.senior.domain.usuario.Paciente;

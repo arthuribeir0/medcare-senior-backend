@@ -1,3 +1,7 @@
+/*
+ * Confirma o e-mail do cuidador com o código de 6 dígitos recebido. Se já estava confirmado devolve como está
+ * (idempotente); código errado, vencido ou bloqueado gera erro.
+ */
 package com.medcare.senior.application.usecase;
 
 import com.medcare.senior.application.service.CodigosPorEmailService;

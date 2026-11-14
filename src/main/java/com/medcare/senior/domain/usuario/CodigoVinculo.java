@@ -1,3 +1,7 @@
+/*
+ * Entidade de domínio do código de vínculo: código de 6 dígitos, cuidador, paciente, validade e se já foi usado
+ * (UC-003).
+ */
 package com.medcare.senior.domain.usuario;
 
 import lombok.AllArgsConstructor;

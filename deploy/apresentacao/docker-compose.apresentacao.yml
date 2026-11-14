@@ -16,10 +16,7 @@ services:
   postgres:
     image: postgres:16-alpine
     restart: unless-stopped
-    # Banco e JWT (.env.apresentacao) e o SMTP do envio dos códigos (smtp.env em segredos, ou o vazio smtp-ausente.env)
-    env_file:
-      - .env.apresentacao
-      - ${SMTP_ENV_FILE:?rode iniciar-apresentacao.ps1}
+    env_file: .env.apresentacao
     volumes:
       - medcare_apresentacao_pgdata:/var/lib/postgresql/data
     networks:
@@ -43,8 +40,11 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    # Banco, JWT e as regras opcionais (gerado por iniciar-apresentacao.ps1, fora do git)
-    env_file: .env.apresentacao
+    # Banco, JWT e as regras opcionais (.env.apresentacao, gerado por iniciar-apresentacao.ps1, fora do git) e o SMTP do
+    # envio dos códigos (smtp.env em segredos, ou o vazio smtp-ausente.env). Só o backend recebe o SMTP
+    env_file:
+      - .env.apresentacao
+      - ${SMTP_ENV_FILE:?rode iniciar-apresentacao.ps1}
     environment:
       # Perfil prod: recusa segredos fracos, Swagger desligado e IP do cliente pelo X-Forwarded-For (só de proxy em
       # rede interna, como o contêiner do ngrok; ver docs/apresentacao-local.md)
